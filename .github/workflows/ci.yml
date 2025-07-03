@@ -1,0 +1,355 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-core:
+    name: Core Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run core tests with coverage
+      run: npm run test:core -- --coverage
+
+    - name: Upload core test coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: core
+        name: core-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload core coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: core-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
+  test-react:
+    name: React Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for React tests
+      run: npm run build:lib
+
+    - name: Run React component tests with coverage
+      run: npm run test:react -- --coverage
+
+    - name: Upload React test coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: react
+        name: react-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload React coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: react-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
+  test-e2e:
+    name: E2E Tests  
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+      fail-fast: false
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Build web app
+      run: npm run build:web
+
+    - name: Run E2E tests
+      run: npx playwright test --project=${{ matrix.browser }}
+
+    - name: Upload test results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report-${{ matrix.browser }}-${{ github.run_id }}
+        path: playwright-report/
+        retention-days: 30
+
+    - name: Upload trace files
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-traces-${{ matrix.browser }}-${{ github.run_id }}
+        path: test-results/
+        retention-days: 30
+
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript-typescript
+        queries: security-extended,security-and-quality
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build for analysis
+      run: npm run build
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:javascript-typescript"
+
+    - name: Run Semgrep security scan
+      if: vars.SEMGREP_APP_TOKEN != ''
+      uses: semgrep/semgrep-action@v1
+      with:
+        config: auto
+        publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
+        publishDeployment: true
+        generateSarif: "1"
+
+    - name: Upload SARIF file to GitHub
+      if: always() && vars.SEMGREP_APP_TOKEN != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: semgrep.sarif
+
+    - name: Upload security scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results-${{ github.run_id }}
+        path: |
+          semgrep.sarif
+          codeql-results/
+        retention-days: 30
+
+  quality-checks:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run type check
+      run: npm run type-check
+
+    - name: Run linter
+      run: npm run lint
+
+    - name: Run security audit
+      run: npm audit --audit-level=high
+
+    - name: Check for vulnerabilities
+      run: npm audit --audit-level=moderate --json > audit-results.json || true
+
+    - name: Upload audit results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-audit-${{ github.run_id }}
+        path: audit-results.json
+        retention-days: 7
+
+  build:
+    name: Build & Bundle Analysis
+    needs: [test-core, test-react, quality-checks]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Configure OAuth service URL for production
+      run: |
+        echo "VITE_OAUTH_SERVICE_URL=https://bookmarkdown-github-oauth.workers.dev" > web/.env.production
+
+    - name: Build all targets
+      run: npm run build:all
+
+    - name: Analyze bundle size
+      run: |
+        # Check web app bundle size
+        WEB_SIZE=$(du -sh dist/web/ | cut -f1)
+        echo "Web app bundle size: $WEB_SIZE"
+        
+        # Check library bundle size
+        LIB_SIZE=$(du -sh dist/browser/ | cut -f1)
+        echo "Library bundle size: $LIB_SIZE"
+        
+        # Check extension bundle size
+        EXT_SIZE=$(du -sh dist/extension/ | cut -f1)
+        echo "Extension bundle size: $EXT_SIZE"
+        
+        # Create size report
+        echo "# Bundle Size Report" > bundle-size-report.md
+        echo "| Target | Size |" >> bundle-size-report.md
+        echo "|--------|------|" >> bundle-size-report.md
+        echo "| Web App | $WEB_SIZE |" >> bundle-size-report.md
+        echo "| Library | $LIB_SIZE |" >> bundle-size-report.md
+        echo "| Extension | $EXT_SIZE |" >> bundle-size-report.md
+
+    - name: Check bundle size limits
+      run: |
+        # Check if web app exceeds 10MB (warning threshold)
+        WEB_SIZE_BYTES=$(du -sb dist/web/ | cut -f1)
+        if [ $WEB_SIZE_BYTES -gt 10485760 ]; then
+          echo "⚠️ Warning: Web app bundle size exceeds 10MB threshold"
+          echo "::warning::Web app bundle size is $WEB_SIZE_BYTES bytes (>10MB)"
+        fi
+        
+        # Check if extension exceeds 5MB (Chrome Web Store limit is ~128MB total)
+        EXT_SIZE_BYTES=$(du -sb dist/extension/ | cut -f1)
+        if [ $EXT_SIZE_BYTES -gt 5242880 ]; then
+          echo "⚠️ Warning: Extension bundle size exceeds 5MB threshold"
+          echo "::warning::Extension bundle size is $EXT_SIZE_BYTES bytes (>5MB)"
+        fi
+
+    - name: Upload bundle size report
+      uses: actions/upload-artifact@v4
+      with:
+        name: bundle-size-report-${{ github.run_id }}
+        path: bundle-size-report.md
+        retention-days: 30
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts-${{ github.run_id }}
+        path: |
+          dist/web/
+          dist/browser/
+          dist/extension/
+        retention-days: 1
+
+  # Summary job that depends on all CI jobs
+  ci-complete:
+    name: CI Complete
+    needs: [test-core, test-react, test-e2e, security-scan, quality-checks, build]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check CI results
+      run: |
+        # Check if any required jobs failed
+        if [[ "${{ needs.test-core.result }}" != "success" ]] || \
+           [[ "${{ needs.test-react.result }}" != "success" ]] || \
+           [[ "${{ needs.quality-checks.result }}" != "success" ]] || \
+           [[ "${{ needs.build.result }}" != "success" ]]; then
+          echo "❌ Required CI checks failed"
+          exit 1
+        fi
+        
+        # E2E and security-scan are allowed to fail
+        echo "✅ All required CI checks passed"
+        
+        if [[ "${{ needs.test-e2e.result }}" != "success" ]]; then
+          echo "⚠️ E2E tests failed (non-blocking)"
+        fi
+        
+        if [[ "${{ needs.security-scan.result }}" != "success" ]]; then
+          echo "⚠️ Security scan failed (non-blocking)"
+        fi
+
+    - name: Generate CI summary
+      run: |
+        echo "## 🔍 CI Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status | Result |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|--------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Core Tests | ${{ needs.test-core.result == 'success' && '✅' || '❌' }} | ${{ needs.test-core.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| React Tests | ${{ needs.test-react.result == 'success' && '✅' || '❌' }} | ${{ needs.test-react.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅' || '⚠️' }} | ${{ needs.test-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Quality Checks | ${{ needs.quality-checks.result == 'success' && '✅' || '❌' }} | ${{ needs.quality-checks.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY

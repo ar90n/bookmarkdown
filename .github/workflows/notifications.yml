@@ -1,0 +1,295 @@
+name: Enhanced Notifications
+
+on:
+  workflow_run:
+    workflows: ["Deploy BookMarkDown"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Custom notification message'
+        required: true
+        type: string
+      type:
+        description: 'Notification type'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - info
+          - success
+          - warning
+          - error
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  notify-deployment:
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Get workflow details
+      id: workflow
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "name=Manual Notification" >> $GITHUB_OUTPUT
+          echo "status=${{ github.event.inputs.type }}" >> $GITHUB_OUTPUT
+          echo "conclusion=${{ github.event.inputs.type }}" >> $GITHUB_OUTPUT
+        else
+          echo "name=${{ github.event.workflow_run.name }}" >> $GITHUB_OUTPUT
+          echo "status=${{ github.event.workflow_run.status }}" >> $GITHUB_OUTPUT
+          echo "conclusion=${{ github.event.workflow_run.conclusion }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set notification details
+      id: notification
+      run: |
+        case "${{ steps.workflow.outputs.conclusion }}" in
+          "success")
+            echo "emoji=🚀" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+            echo "title=Deployment Successful" >> $GITHUB_OUTPUT
+            ;;
+          "failure")
+            echo "emoji=❌" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+            echo "title=Deployment Failed" >> $GITHUB_OUTPUT
+            ;;
+          "cancelled")
+            echo "emoji=⏹️" >> $GITHUB_OUTPUT
+            echo "color=warning" >> $GITHUB_OUTPUT
+            echo "title=Deployment Cancelled" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "emoji=ℹ️" >> $GITHUB_OUTPUT
+            echo "color=#439fe0" >> $GITHUB_OUTPUT
+            echo "title=Deployment Notification" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Send Slack notification
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "text": "${{ steps.notification.outputs.emoji }} ${{ steps.notification.outputs.title }}",
+            "attachments": [
+              {
+                "color": "${{ steps.notification.outputs.color }}",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch", 
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow",
+                    "value": "${{ steps.workflow.outputs.name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Status",
+                    "value": "${{ steps.workflow.outputs.conclusion }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Commit",
+                    "value": "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
+                    "short": false
+                  }
+                ],
+                "actions": [
+                  {
+                    "type": "button",
+                    "text": "View Workflow",
+                    "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Send Discord notification
+      if: vars.DISCORD_WEBHOOK_URL != ''
+      uses: Ilshidur/action-discord@master
+      with:
+        args: |
+          ${{ steps.notification.outputs.emoji }} **${{ steps.notification.outputs.title }}**
+          
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          **Workflow:** ${{ steps.workflow.outputs.name }}
+          **Status:** ${{ steps.workflow.outputs.conclusion }}
+          **Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          
+          [View Workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      env:
+        DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+    - name: Send Teams notification
+      if: vars.TEAMS_WEBHOOK_URL != ''
+      uses: toko-bifrost/ms-teams-deploy-card@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        webhook-uri: ${{ secrets.TEAMS_WEBHOOK_URL }}
+        card-layout-start: complete
+        card-layout-exit: complete
+        show-on-start: true
+        show-on-exit: true
+        show-on-failure: true
+
+    - name: Create GitHub deployment status
+      if: github.event.workflow_run.conclusion == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo } = context.repo;
+          
+          // Create deployment
+          const deployment = await github.rest.repos.createDeployment({
+            owner,
+            repo,
+            ref: '${{ github.sha }}',
+            environment: 'production',
+            description: 'BookMarkDown production deployment',
+            auto_merge: false,
+            required_contexts: []
+          });
+          
+          // Create deployment status
+          await github.rest.repos.createDeploymentStatus({
+            owner,
+            repo,
+            deployment_id: deployment.data.id,
+            state: 'success',
+            environment_url: 'https://bookmarkdown.github.io/bookmarkdown',
+            description: 'Deployment completed successfully'
+          });
+
+    - name: Send email notification
+      if: vars.NOTIFICATION_EMAIL != ''
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        username: ${{ secrets.GMAIL_USERNAME }}
+        password: ${{ secrets.GMAIL_PASSWORD }}
+        subject: "${{ steps.notification.outputs.emoji }} BookMarkDown: ${{ steps.notification.outputs.title }}"
+        to: ${{ vars.NOTIFICATION_EMAIL }}
+        from: BookMarkDown CI <${{ secrets.GMAIL_USERNAME }}>
+        html_body: |
+          <h2>${{ steps.notification.outputs.emoji }} ${{ steps.notification.outputs.title }}</h2>
+          
+          <table>
+            <tr><td><strong>Repository:</strong></td><td>${{ github.repository }}</td></tr>
+            <tr><td><strong>Branch:</strong></td><td>${{ github.ref_name }}</td></tr>
+            <tr><td><strong>Workflow:</strong></td><td>${{ steps.workflow.outputs.name }}</td></tr>
+            <tr><td><strong>Status:</strong></td><td>${{ steps.workflow.outputs.conclusion }}</td></tr>
+            <tr><td><strong>Commit:</strong></td><td><a href="https://github.com/${{ github.repository }}/commit/${{ github.sha }}">${{ github.sha }}</a></td></tr>
+          </table>
+          
+          <p><a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Workflow Details</a></p>
+          
+          <hr>
+          <p><em>This notification was sent automatically by BookMarkDown CI/CD.</em></p>
+
+  notify-failure:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Send failure alert
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Create an issue for deployment failures
+          const { owner, repo } = context.repo;
+          
+          const issueBody = `
+          ## 🚨 Deployment Failure Alert
+          
+          The deployment workflow has failed and requires immediate attention.
+          
+          **Details:**
+          - **Workflow:** ${{ github.event.workflow_run.name }}
+          - **Branch:** ${{ github.ref_name }}
+          - **Commit:** ${{ github.sha }}
+          - **Run ID:** ${{ github.event.workflow_run.id }}
+          
+          **Actions Required:**
+          1. Review the [failed workflow](https://github.com/${owner}/${repo}/actions/runs/${{ github.event.workflow_run.id }})
+          2. Check for any breaking changes in recent commits
+          3. Verify all required secrets and variables are configured
+          4. Test the deployment process locally if needed
+          
+          **Quick Links:**
+          - [View Workflow](https://github.com/${owner}/${repo}/actions/runs/${{ github.event.workflow_run.id }})
+          - [Recent Commits](https://github.com/${owner}/${repo}/commits/${{ github.ref_name }})
+          - [Deployment Guide](.github/DEPLOYMENT.md)
+          
+          This issue was created automatically. Please close it once the deployment issue is resolved.
+          `;
+          
+          // Check if a similar issue already exists
+          const issues = await github.rest.issues.listForRepo({
+            owner,
+            repo,
+            state: 'open',
+            labels: 'deployment-failure'
+          });
+          
+          if (issues.data.length === 0) {
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title: '🚨 Deployment Failure - Immediate Attention Required',
+              body: issueBody,
+              labels: ['bug', 'deployment-failure', 'priority-high']
+            });
+          }
+
+    - name: Send urgent Slack alert
+      if: vars.SLACK_WEBHOOK_URL != ''
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "text": "🚨 URGENT: BookMarkDown Deployment Failed",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Repository",
+                    "value": "${{ github.repository }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Branch",
+                    "value": "${{ github.ref_name }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Workflow Run",
+                    "value": "<https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}|View Failed Workflow>",
+                    "short": false
+                  }
+                ]
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
