@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookMarkDown - New Tab</title>
+    <link rel="stylesheet" href="styles/newtab.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">📚 BookMarkDown</h1>
+            <div class="header-actions">
+                <div id="auth-section" class="auth-section">
+                    <!-- Authentication UI will be rendered here -->
+                </div>
+                <button id="sync-btn" class="btn btn-primary">🔄 Sync</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search bookmarks..." class="search-input">
+            </div>
+
+            <div class="stats-bar">
+                <span id="stats-text" class="stats-text">0 categories, 0 bundles, 0 bookmarks</span>
+                <div id="error-message" class="error-message hidden"></div>
+            </div>
+
+            <div id="bookmarks-container" class="bookmarks-container">
+                <!-- Bookmarks will be dynamically loaded here -->
+            </div>
+
+            <div id="empty-state" class="empty-state hidden">
+                <h2>📂 No Bookmarks Yet</h2>
+                <p>Sign in with GitHub to start managing your bookmarks securely.</p>
+            </div>
+        </div>
+
+
+        <div id="add-bookmark-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>➕ Add Bookmark</h2>
+                    <button id="close-add-bookmark" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="bookmark-title">Title:</label>
+                        <input type="text" id="bookmark-title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookmark-url">URL:</label>
+                        <input type="url" id="bookmark-url" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookmark-category">Category:</label>
+                        <input type="text" id="bookmark-category" list="categories-list">
+                        <datalist id="categories-list"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookmark-bundle">Bundle:</label>
+                        <input type="text" id="bookmark-bundle" list="bundles-list">
+                        <datalist id="bundles-list"></datalist>
+                    </div>
+                    <div class="form-group">
+                        <label for="bookmark-tags">Tags (comma-separated):</label>
+                        <input type="text" id="bookmark-tags" placeholder="tag1, tag2, tag3">
+                    </div>
+                    <div class="form-group">
+                        <label for="bookmark-notes">Notes:</label>
+                        <textarea id="bookmark-notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="save-bookmark" class="btn btn-primary">💾 Save Bookmark</button>
+                    <button id="cancel-bookmark" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button id="add-bookmark-fab" class="fab">➕</button>
+
+    <script type="module" src="scripts/newtab.js"></script>
+</body>
+</html>

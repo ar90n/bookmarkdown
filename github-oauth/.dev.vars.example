@@ -1,0 +1,9 @@
+# Development environment variables for Cloudflare Worker
+# Copy this file to .dev.vars and fill in your values
+
+# GitHub OAuth App credentials
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Allowed origins for CORS (comma-separated)
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173

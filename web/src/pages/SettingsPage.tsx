@@ -1,0 +1,322 @@
+import React from 'react';
+import { useAuthContext, useBookmarkContext } from '../contexts/AppProvider';
+import { Button } from '../components/UI/Button';
+
+export const SettingsPage: React.FC = () => {
+  const auth = useAuthContext();
+  const bookmark = useBookmarkContext();
+
+  const handleExportMarkdown = async () => {
+    const result = bookmark.exportToMarkdown();
+    if (result.success) {
+      const blob = new Blob([result.data], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bookmarks.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const content = e.target?.result as string;
+      if (content) {
+        await bookmark.importFromMarkdown(content);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleReset = async () => {
+    if (window.confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
+      bookmark.resetState();
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+        <p className="text-gray-600">Manage your account and application preferences</p>
+      </div>
+
+      {/* Account Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
+        
+        {auth.user && (
+          <div className="flex items-center space-x-4 mb-6">
+            <img
+              src={auth.user.avatar_url}
+              alt={auth.user.login}
+              className="w-16 h-16 rounded-full"
+            />
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">
+                {auth.user.name || auth.user.login}
+              </h3>
+              <p className="text-gray-600">@{auth.user.login}</p>
+              {auth.user.email && (
+                <p className="text-gray-600">{auth.user.email}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Authentication Status
+            </label>
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
+              <span className="text-sm text-gray-600">Connected to GitHub</span>
+            </div>
+          </div>
+
+          {auth.tokens?.scopes && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Token Scopes
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {auth.tokens.scopes.map((scope) => (
+                  <span key={scope} className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                    {scope}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {auth.lastLoginAt && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Last Login
+              </label>
+              <p className="text-sm text-gray-600">
+                {auth.lastLoginAt.toLocaleString()}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 border-t border-gray-200 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => auth.logout()}
+            className="text-red-600 border-red-300 hover:bg-red-50"
+          >
+            Sign Out
+          </Button>
+        </div>
+      </div>
+
+      {/* Data Management Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Data Management</h2>
+        
+        <div className="space-y-6">
+          {/* Sync Status */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Synchronization</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600">
+                  {bookmark.lastSyncAt 
+                    ? `Last synced: ${bookmark.lastSyncAt.toLocaleString()}`
+                    : 'Never synced'
+                  }
+                </p>
+                {bookmark.isDirty && (
+                  <p className="text-amber-600 text-sm">You have unsaved changes</p>
+                )}
+              </div>
+              <Button
+                onClick={() => bookmark.syncWithRemote()}
+                disabled={bookmark.isLoading}
+                isLoading={bookmark.isLoading}
+              >
+                Sync Now
+              </Button>
+            </div>
+          </div>
+
+          {/* Import/Export */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Import & Export</h3>
+            <p className="text-gray-600 mb-4">
+              Export your bookmarks as Markdown or import from a file
+            </p>
+            <div className="flex space-x-4">
+              <Button
+                variant="outline"
+                onClick={handleExportMarkdown}
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Markdown
+              </Button>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".md,.markdown,.txt"
+                  onChange={handleImportFile}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <Button variant="outline">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Import File
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Remote Storage */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Remote Storage</h3>
+            <p className="text-gray-600 mb-4">
+              Your bookmarks are stored in GitHub Gist in human-readable Markdown format
+            </p>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                onClick={() => bookmark.loadFromRemote()}
+                disabled={bookmark.isLoading}
+              >
+                Load from Remote
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => bookmark.saveToRemote()}
+                disabled={bookmark.isLoading}
+              >
+                Save to Remote
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Statistics</h2>
+        
+        {(() => {
+          const statsResult = bookmark.getStats();
+          if (statsResult.success) {
+            const stats = statsResult.data;
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</div>
+                  <div className="text-sm text-gray-500">Categories</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{stats.bundlesCount}</div>
+                  <div className="text-sm text-gray-500">Bundles</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{stats.bookmarksCount}</div>
+                  <div className="text-sm text-gray-500">Bookmarks</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-2xl font-bold text-gray-900">{stats.tagsCount}</div>
+                  <div className="text-sm text-gray-500">Unique Tags</div>
+                </div>
+              </div>
+            );
+          }
+          return <p className="text-gray-500">Unable to load statistics</p>;
+        })()}
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-white rounded-lg border border-red-200 p-6">
+        <h2 className="text-xl font-semibold text-red-900 mb-4">Danger Zone</h2>
+        
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Reset All Data</h3>
+          <p className="text-gray-600 mb-4">
+            This will permanently delete all your local bookmarks. Remote data in GitHub Gist will not be affected.
+          </p>
+          <Button
+            variant="destructive"
+            onClick={handleReset}
+          >
+            Reset Local Data
+          </Button>
+        </div>
+      </div>
+
+      {/* About Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">About BookMarkDown</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-medium text-gray-900">Version</h3>
+            <p className="text-gray-600">1.0.0</p>
+          </div>
+          
+          <div>
+            <h3 className="font-medium text-gray-900">Architecture</h3>
+            <p className="text-gray-600">Functional DDD with immutable data structures</p>
+          </div>
+          
+          <div>
+            <h3 className="font-medium text-gray-900">Technology Stack</h3>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {['TypeScript', 'React', 'Tailwind CSS', 'Functional Programming', 'GitHub Gist'].map((tech) => (
+                <span key={tech} className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm">
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div className="pt-4 border-t border-gray-200">
+            <div className="flex space-x-4">
+              <a
+                href="https://github.com/bookmarkdown/bookmarkdown"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700 text-sm"
+              >
+                View Source Code
+              </a>
+              <a
+                href="https://github.com/bookmarkdown/bookmarkdown/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700 text-sm"
+              >
+                Report Issues
+              </a>
+              <a
+                href="https://github.com/bookmarkdown/bookmarkdown/blob/main/ARCHITECTURE.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700 text-sm"
+              >
+                Architecture Guide
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

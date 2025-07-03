@@ -1,0 +1,21 @@
+# Cloudflare Worker configuration for BookMarkDown GitHub OAuth service
+name = "bookmarkdown-github-oauth"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+
+# Environment variables (set these in Cloudflare dashboard or use wrangler secret)
+[vars]
+ALLOWED_ORIGINS = "http://localhost:3000,https://localhost:5173,https://*.github.io"
+
+# Secrets (use: wrangler secret put GITHUB_CLIENT_SECRET)
+# GITHUB_CLIENT_ID - Set via dashboard or wrangler secret
+# GITHUB_CLIENT_SECRET - Set via dashboard or wrangler secret
+
+# Worker settings
+[build]
+command = "npm run build"
+
+# Optional custom domain
+# [routes]
+# pattern = "oauth.your-domain.com/*"
+# zone_name = "your-domain.com"
