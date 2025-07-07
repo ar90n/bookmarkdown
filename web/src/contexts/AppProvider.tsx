@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppContextValue, createAppContext, AppConfig } from 'bookmarkdown';
+import { AppContextValue, AppConfig, useAppContextProvider } from 'bookmarkdown';
 
 // Create React context for the BookMarkDown app context
 const AppContext = createContext<AppContextValue | null>(null);
@@ -32,22 +32,20 @@ export const AppProvider: React.FC<AppProviderProps> = ({
   children, 
   config = {} 
 }) => {
-  const [appContext] = useState(() => {
-    const defaultConfig: AppConfig = {
-      autoSync: true,
-      syncInterval: 5, // 5 minutes
-      storageConfig: {
-        bookmarkKey: 'bookmarkdown_data',
-        authKey: 'bookmarkdown_auth'
-      },
-      scopes: ['gist', 'user:email'],
-      oauthServiceUrl: import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:8787', // Default to local dev
-      ...config
-    };
-    
-    return createAppContext(defaultConfig);
-  });
-
+  const defaultConfig: AppConfig = {
+    autoSync: true,
+    syncInterval: 5, // 5 minutes
+    storageConfig: {
+      bookmarkKey: 'bookmarkdown_data',
+      authKey: 'bookmarkdown_auth'
+    },
+    scopes: ['gist', 'user:email'],
+    oauthServiceUrl: import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:8787', // Default to local dev
+    ...config
+  };
+  
+  // Use the new hook-based context
+  const appContext = useAppContextProvider(defaultConfig);
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {

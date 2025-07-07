@@ -7,9 +7,12 @@ export const SettingsPage: React.FC = () => {
   const bookmark = useBookmarkContext();
 
   const handleExportMarkdown = async () => {
-    const result = bookmark.exportToMarkdown();
-    if (result.success) {
-      const blob = new Blob([result.data], { type: 'text/markdown' });
+    try {
+      // For now, we'll export the raw data
+      // TODO: Add exportToMarkdown method to context
+      const data = bookmark.root;
+      const markdownContent = JSON.stringify(data, null, 2); // Temporary solution
+      const blob = new Blob([markdownContent], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -18,6 +21,8 @@ export const SettingsPage: React.FC = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
     }
   };
 
@@ -29,7 +34,8 @@ export const SettingsPage: React.FC = () => {
     reader.onload = async (e) => {
       const content = e.target?.result as string;
       if (content) {
-        await bookmark.importFromMarkdown(content);
+        // TODO: Add importFromMarkdown method to context
+        console.log('Import not yet implemented in new context');
       }
     };
     reader.readAsText(file);
@@ -215,31 +221,27 @@ export const SettingsPage: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Statistics</h2>
         
         {(() => {
-          const statsResult = bookmark.getStats();
-          if (statsResult.success) {
-            const stats = statsResult.data;
-            return (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</div>
-                  <div className="text-sm text-gray-500">Categories</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">{stats.bundlesCount}</div>
-                  <div className="text-sm text-gray-500">Bundles</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">{stats.bookmarksCount}</div>
-                  <div className="text-sm text-gray-500">Bookmarks</div>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">{stats.tagsCount}</div>
-                  <div className="text-sm text-gray-500">Unique Tags</div>
-                </div>
+          const stats = bookmark.getStats();
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</div>
+                <div className="text-sm text-gray-500">Categories</div>
               </div>
-            );
-          }
-          return <p className="text-gray-500">Unable to load statistics</p>;
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{stats.bundlesCount}</div>
+                <div className="text-sm text-gray-500">Bundles</div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{stats.bookmarksCount}</div>
+                <div className="text-sm text-gray-500">Bookmarks</div>
+              </div>
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-2xl font-bold text-gray-900">{stats.tagsCount}</div>
+                <div className="text-sm text-gray-500">Unique Tags</div>
+              </div>
+            </div>
+          );
         })()}
       </div>
 

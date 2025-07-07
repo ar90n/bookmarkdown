@@ -35,27 +35,23 @@ export const Header: React.FC = () => {
           {auth.isAuthenticated && (
             <div className="hidden md:flex items-center space-x-6">
               {(() => {
-                const statsResult = bookmark.getStats();
-                if (statsResult.success) {
-                  const stats = statsResult.data;
-                  return (
-                    <>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-900">{stats.categoriesCount}</div>
-                        <div className="text-xs text-gray-500">Categories</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-900">{stats.bundlesCount}</div>
-                        <div className="text-xs text-gray-500">Bundles</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-gray-900">{stats.bookmarksCount}</div>
-                        <div className="text-xs text-gray-500">Bookmarks</div>
-                      </div>
-                    </>
-                  );
-                }
-                return null;
+                const stats = bookmark.getStats();
+                return (
+                  <>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">{stats.categoriesCount}</div>
+                      <div className="text-xs text-gray-500">Categories</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">{stats.bundlesCount}</div>
+                      <div className="text-xs text-gray-500">Bundles</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">{stats.bookmarksCount}</div>
+                      <div className="text-xs text-gray-500">Bookmarks</div>
+                    </div>
+                  </>
+                );
               })()}
             </div>
           )}
