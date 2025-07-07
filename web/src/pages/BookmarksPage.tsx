@@ -4,8 +4,7 @@ import { useBookmarkContext } from '../contexts/AppProvider';
 export const BookmarksPage: React.FC = () => {
   const bookmark = useBookmarkContext();
 
-  const statsResult = bookmark.getStats();
-  const stats = statsResult.success ? statsResult.data : null;
+  const stats = bookmark.getStats();
 
   return (
     <div className="space-y-6">

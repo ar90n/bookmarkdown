@@ -24,18 +24,12 @@ export { createGistClient, type GistClient } from './shell/gist-io.js';
 
 // Context exports
 export * from './context/index.js';
-import { createAppContext } from './context/AppContext.js';
 
 // Factory function for browser usage
 export const createBookmarkAppForBrowser = () => {
   // For browser, we don't include GitHub sync by default
   // Users can implement their own sync mechanism
   return createBookmarkService();
-};
-
-// Factory function for browser with context
-export const createBookmarkAppContext = (config = {}) => {
-  return createAppContext(config);
 };
 
 // Export version for debugging
