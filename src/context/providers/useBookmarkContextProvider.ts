@@ -54,7 +54,6 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
       setService(newService);
     } else {
       // Fallback to localStorage-only service
-      const storageShell = createLocalStorageShell({ storageKey: STORAGE_KEY });
       const newService = createBookmarkService();
       newService.setRoot(root);
       setService(newService);
@@ -71,7 +70,7 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
 
   // Helper to handle async operations
   const handleOperation = useCallback(async (
-    operation: () => { success: boolean; data?: any; error?: Error },
+    operation: () => { success: boolean; data?: Root; error?: Error },
     updateRoot: boolean = true
   ) => {
     setIsLoading(true);
@@ -264,7 +263,8 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
 
       // Auto-save to localStorage
       if (config.autoSave !== false) {
-        await service.saveToStorage();
+        const storageShell = createLocalStorageShell({ storageKey: STORAGE_KEY });
+        storageShell.save(importedRoot);
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Import failed');

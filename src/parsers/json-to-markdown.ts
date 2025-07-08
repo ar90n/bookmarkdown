@@ -1,4 +1,4 @@
-import { Root, Category, Bundle, Bookmark } from '../schemas/index.js';
+import { Root, Category, Bundle, Bookmark } from '../types/index.js';
 
 export class MarkdownGenerator {
   generate(root: Root): string {
