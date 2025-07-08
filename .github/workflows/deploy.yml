@@ -117,7 +117,7 @@ jobs:
     
     environment:
       name: production
-      url: https://bookmarkdown.pages.dev
+      url: https://bookmarkdown.ar90n.net
     
     steps:
     - name: Checkout repository
@@ -135,7 +135,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy ./dist --project-name=bookmarkdown
+        command: pages publish ./dist --project-name=bookmarkdown-pages --commit-dirty=true
 
     - name: Health check deployment
       run: |
@@ -143,7 +143,7 @@ jobs:
         sleep 30
         
         # Check if the deployed site is accessible
-        SITE_URL="https://bookmarkdown.pages.dev"
+        SITE_URL="https://bookmarkdown.ar90n.net"
         echo "Checking deployment health at: $SITE_URL"
         
         # Retry up to 5 times with 10s delays
@@ -183,7 +183,7 @@ jobs:
             repo,
             deployment_id: deployment.data.id,
             state: 'success',
-            environment_url: 'https://bookmarkdown.pages.dev',
+            environment_url: 'https://bookmarkdown.ar90n.net',
             description: 'Deployment completed successfully'
           });
 
@@ -191,7 +191,7 @@ jobs:
       if: success()
       run: |
         echo "🚀 Production deployment successful!"
-        echo "Site URL: https://bookmarkdown.pages.dev"
+        echo "Site URL: https://bookmarkdown.ar90n.net"
 
   deploy-web-staging:
     name: Deploy Web App (Preview)
@@ -201,7 +201,7 @@ jobs:
     
     environment:
       name: staging
-      url: https://${{ github.event.pull_request.number }}.bookmarkdown.pages.dev
+      url: https://${{ github.event.pull_request.number }}.bookmarkdown-pages.pages.dev
     
     steps:
     - name: Checkout repository
@@ -219,14 +219,14 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy ./dist --project-name=bookmarkdown
+        command: pages publish ./dist --project-name=bookmarkdown-pages --commit-dirty=true
 
     - name: Comment PR with preview URL
       uses: actions/github-script@v7
       with:
         script: |
           const prNumber = context.payload.pull_request.number;
-          const previewUrl = `https://${prNumber}.bookmarkdown.pages.dev`;
+          const previewUrl = `https://${prNumber}.bookmarkdown-pages.pages.dev`;
           
           // Look for existing preview comments
           const comments = await github.rest.issues.listComments({
@@ -324,10 +324,10 @@ jobs:
           - `bookmarkdown-library.zip` - Browser library for developers
           
           ### Live Demo
-          Visit [https://bookmarkdown.pages.dev](https://bookmarkdown.pages.dev) to try BookMarkDown with secure OAuth authentication.
+          Visit [https://bookmarkdown.ar90n.net](https://bookmarkdown.ar90n.net) to try BookMarkDown with secure OAuth authentication.
           
           ### Installation
-          1. **Web App**: Visit https://bookmarkdown.pages.dev and sign in with GitHub OAuth
+          1. **Web App**: Visit https://bookmarkdown.ar90n.net and sign in with GitHub OAuth
           2. **Chrome Extension**: Download and install the extension package
           3. **Library Usage**: Include the browser library in your projects
           
