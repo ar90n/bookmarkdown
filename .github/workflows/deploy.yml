@@ -127,15 +127,16 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: web-dist-${{ github.run_id }}
-        path: ./dist
+        path: ./dist/web
 
-    - name: Deploy to Cloudflare Pages (Production)
+    - name: Deploy to Cloudflare Workers (Production)
       id: deployment
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages publish ./dist --project-name=bookmarkdown-pages --commit-dirty=true
+        workingDirectory: 'web'
+        command: deploy
 
     - name: Health check deployment
       run: |
@@ -201,7 +202,7 @@ jobs:
     
     environment:
       name: staging
-      url: https://${{ github.event.pull_request.number }}.bookmarkdown-pages.pages.dev
+      url: https://bookmarkdown-staging.ar90n.net
     
     steps:
     - name: Checkout repository
@@ -211,28 +212,35 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: web-dist-${{ github.run_id }}
-        path: ./dist
+        path: ./dist/web
 
-    - name: Deploy to Cloudflare Pages (Preview)
+    - name: Create staging wrangler config
+      run: |
+        cd web
+        cp wrangler.toml wrangler.staging.toml
+        sed -i 's/name = "bookmarkdown-web"/name = "bookmarkdown-web-staging"/' wrangler.staging.toml
+        sed -i 's/bookmarkdown.ar90n.net/bookmarkdown-staging.ar90n.net/' wrangler.staging.toml
+
+    - name: Deploy to Cloudflare Workers (Staging)
       id: deployment
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages publish ./dist --project-name=bookmarkdown-pages --commit-dirty=true
+        workingDirectory: 'web'
+        command: deploy --config wrangler.staging.toml
 
     - name: Comment PR with preview URL
       uses: actions/github-script@v7
       with:
         script: |
-          const prNumber = context.payload.pull_request.number;
-          const previewUrl = `https://${prNumber}.bookmarkdown-pages.pages.dev`;
+          const previewUrl = `https://bookmarkdown-staging.ar90n.net`;
           
           // Look for existing preview comments
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            issue_number: prNumber,
+            issue_number: context.payload.pull_request.number,
           });
           
           const existingComment = comments.data.find(comment => 
@@ -254,7 +262,7 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: prNumber,
+              issue_number: context.payload.pull_request.number,
               body: commentBody
             });
           }
