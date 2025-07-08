@@ -122,10 +122,15 @@ async function handleGitHubAuth(request: Request, env: Env): Promise<Response> {
     });
   }
 
+  // Force HTTPS for production callback URL
+  const callbackOrigin = url.hostname === 'localhost' || url.hostname === '127.0.0.1' 
+    ? url.origin 
+    : `https://${url.host}`;
+
   // Generate GitHub OAuth URL
   const githubAuthUrl = new URL('https://github.com/login/oauth/authorize');
   githubAuthUrl.searchParams.set('client_id', env.GITHUB_CLIENT_ID);
-  githubAuthUrl.searchParams.set('redirect_uri', `${url.origin}/auth/callback`);
+  githubAuthUrl.searchParams.set('redirect_uri', `${callbackOrigin}/auth/callback`);
   githubAuthUrl.searchParams.set('scope', 'gist user:email');
   githubAuthUrl.searchParams.set('state', `${state}:${encodeURIComponent(redirectUri)}`);
 
@@ -174,7 +179,7 @@ async function handleAuthCallback(request: Request, env: Env): Promise<Response>
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: `${url.origin}/auth/callback`
+        redirect_uri: `${url.hostname === 'localhost' || url.hostname === '127.0.0.1' ? url.origin : `https://${url.host}`}/auth/callback`
       })
     });
 

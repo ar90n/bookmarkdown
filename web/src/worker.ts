@@ -11,15 +11,38 @@ export interface Env {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
+      const url = new URL(request.url);
+      
+      // Force HTTPS redirect for production (except for localhost)
+      if (url.protocol === 'http:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+        url.protocol = 'https:';
+        return Response.redirect(url.toString(), 301);
+      }
+      
       // Serve static assets
       const response = await env.ASSETS.fetch(request);
       
       // If asset not found (404), serve index.html for SPA routing
       if (response.status === 404) {
-        const url = new URL(request.url);
-        // Serve index.html for all routes (SPA behavior)
-        const indexRequest = new Request(`${url.origin}/index.html`, request);
-        return env.ASSETS.fetch(indexRequest);
+        // Preserve query parameters when serving index.html
+        const indexUrl = new URL(url);
+        indexUrl.pathname = '/index.html';
+        const indexRequest = new Request(indexUrl.toString(), request);
+        
+        const indexResponse = await env.ASSETS.fetch(indexRequest);
+        
+        // Add security headers
+        const headers = new Headers(indexResponse.headers);
+        headers.set('X-Content-Type-Options', 'nosniff');
+        headers.set('X-Frame-Options', 'DENY');
+        headers.set('X-XSS-Protection', '1; mode=block');
+        headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        
+        return new Response(indexResponse.body, {
+          status: indexResponse.status,
+          statusText: indexResponse.statusText,
+          headers
+        });
       }
       
       return response;

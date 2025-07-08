@@ -3,14 +3,14 @@ name = "bookmarkdown-github-oauth"
 main = "src/index.ts"
 compatibility_date = "2024-01-15"
 
-# Optional custom domain
+# Custom domain configuration
 routes = [
-  { pattern = "bookmarkdown-github-oauth.ar90n.net", custom_domain = true }
+  { pattern = "bookmarkdown-github-oauth.ar90n.net/*", zone_name = "ar90n.net" }
 ]
 
 # Environment variables (set these in Cloudflare dashboard or use wrangler secret)
 [vars]
-ALLOWED_ORIGINS = "http://localhost:3000,https://bookmarkdown.ar90n.net"
+ALLOWED_ORIGINS = "http://localhost:3000,https://localhost:3000,https://bookmarkdown.ar90n.net"
 
 # Secrets (use: wrangler secret put GITHUB_CLIENT_SECRET)
 # GITHUB_CLIENT_ID - Set via dashboard or wrangler secret
