@@ -8,10 +8,10 @@ compatibility_date = "2024-01-15"
 directory = "../dist/web"
 binding = "ASSETS"
 
-# Custom domain configuration (disabled temporarily)
-# routes = [
-#   { pattern = "bookmarkdown.ar90n.net", custom_domain = true }
-# ]
+# Custom domain configuration
+routes = [
+  { pattern = "bookmarkdown.ar90n.net/*", zone_name = "ar90n.net" }
+]
 
 # Environment variables
 [vars]
