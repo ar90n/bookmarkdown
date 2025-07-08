@@ -32,6 +32,10 @@ export interface BookmarkContextValue {
   loadFromRemote: () => Promise<void>;
   saveToRemote: () => Promise<void>;
   
+  // Import/Export operations
+  importData: (data: string, format: 'json' | 'markdown') => Promise<void>;
+  exportData: (format: 'json' | 'markdown') => Promise<string>;
+  
   // State management
   setError: (error: string | null) => void;
   clearError: () => void;

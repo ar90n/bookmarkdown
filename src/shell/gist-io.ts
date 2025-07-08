@@ -4,6 +4,7 @@ import { Result, success, failure } from '../types/result.js';
 export interface GistConfig {
   readonly accessToken: string;
   readonly filename: string;
+  readonly isPublic?: boolean;
 }
 
 export interface GistContent {
@@ -48,7 +49,7 @@ export const createGistClient = (config: GistConfig) => {
               content,
             },
           },
-          public: false,
+          public: config.isPublic ?? false,
         });
 
         return success({

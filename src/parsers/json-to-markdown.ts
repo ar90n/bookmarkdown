@@ -4,6 +4,14 @@ export class MarkdownGenerator {
   generate(root: Root): string {
     const lines: string[] = [];
     
+    // Add header comment for empty roots
+    if (root.categories.length === 0) {
+      lines.push('# 📚 BookMarkDown');
+      lines.push('');
+      lines.push('Your bookmark collection is empty. Start adding bookmarks!');
+      return lines.join('\n');
+    }
+    
     for (const category of root.categories) {
       this.addCategory(lines, category);
       

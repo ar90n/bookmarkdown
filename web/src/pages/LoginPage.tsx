@@ -29,9 +29,9 @@ export const LoginPage: React.FC = () => {
               <span className="text-2xl">📚</span>
             </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome to BookMarkDown</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Sign In</h2>
           <p className="mt-2 text-gray-600">
-            Sign in with your GitHub account to start managing your bookmarks
+            Continue with your GitHub account
           </p>
         </div>
 
@@ -68,41 +68,6 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Features */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-sm font-medium text-gray-900 mb-4">Why BookMarkDown?</h3>
-          <div className="space-y-3">
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm text-gray-700">Human-readable Markdown format</p>
-                <p className="text-xs text-gray-500">No proprietary file formats or vendor lock-in</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm text-gray-700">Secure GitHub Gist storage</p>
-                <p className="text-xs text-gray-500">Your data stays with you, versioned and backed up</p>
-              </div>
-            </div>
-            
-            <div className="flex items-start">
-              <svg className="w-5 h-5 text-green-500 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-              <div>
-                <p className="text-sm text-gray-700">Functional architecture</p>
-                <p className="text-xs text-gray-500">Built with immutable data and comprehensive testing</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Privacy Note */}
         <div className="text-center">

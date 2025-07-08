@@ -5,6 +5,8 @@ import { BookmarkService, createBookmarkService } from '../../adapters/index.js'
 import { createRoot } from '../../core/index.js';
 import { createLocalStorageShell } from '../../shell/storage.js';
 import { createSyncShell } from '../../shell/sync.js';
+import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
+import { MarkdownParser } from '../../parsers/markdown-to-json.js';
 
 interface BookmarkContextConfig {
   accessToken?: string;
@@ -229,6 +231,64 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     }
   }, [service, config.accessToken]);
 
+  // Import/Export operations
+  const importData = useCallback(async (data: string, format: 'json' | 'markdown') => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      let importedRoot: Root;
+      
+      if (format === 'json') {
+        // Parse JSON directly
+        try {
+          importedRoot = JSON.parse(data);
+        } catch (parseError) {
+          throw new Error('Invalid JSON format');
+        }
+      } else {
+        // Parse Markdown
+        const parser = new MarkdownParser();
+        importedRoot = parser.parse(data);
+      }
+
+      // Validate the imported root structure
+      if (!importedRoot || !Array.isArray(importedRoot.categories)) {
+        throw new Error('Invalid bookmark data structure');
+      }
+
+      // Update the root
+      setRoot(importedRoot);
+      service.setRoot(importedRoot);
+      setIsDirty(true);
+
+      // Auto-save to localStorage
+      if (config.autoSave !== false) {
+        await service.saveToStorage();
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Import failed');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [service, config.autoSave]);
+
+  const exportData = useCallback(async (format: 'json' | 'markdown'): Promise<string> => {
+    try {
+      if (format === 'json') {
+        return JSON.stringify(root, null, 2);
+      } else {
+        const generator = new MarkdownGenerator();
+        return generator.generate(root);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed';
+      setError(message);
+      throw new Error(message);
+    }
+  }, [root]);
+
   // State management
   const resetState = useCallback(() => {
     const newRoot = createRoot();
@@ -263,6 +323,8 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     syncWithRemote,
     loadFromRemote,
     saveToRemote,
+    importData,
+    exportData,
     setError,
     clearError: () => setError(null),
     resetState
