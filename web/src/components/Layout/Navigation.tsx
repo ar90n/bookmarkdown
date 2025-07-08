@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuthContext } from '../../contexts/AppProvider';
+import { useAuthContext, useDialogContext } from '../../contexts/AppProvider';
 
 export const Navigation: React.FC = () => {
   const auth = useAuthContext();
+  const dialog = useDialogContext();
 
   const navItems = [
-    { path: '/', label: 'Home', icon: '🏠' },
+    { path: '/welcome', label: 'Welcome', icon: '🏠' },
     ...(auth.isAuthenticated ? [
       { path: '/bookmarks', label: 'Bookmarks', icon: '📚' },
       { path: '/settings', label: 'Settings', icon: '⚙️' },
@@ -44,15 +45,24 @@ export const Navigation: React.FC = () => {
             Quick Actions
           </h3>
           <div className="space-y-1">
-            <button className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200">
+            <button 
+              onClick={dialog.openCategoryDialog}
+              className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+            >
               <span className="text-lg">➕</span>
               <span>Add Category</span>
             </button>
-            <button className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200">
+            <button 
+              onClick={dialog.openImportDialog}
+              className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+            >
               <span className="text-lg">📥</span>
               <span>Import</span>
             </button>
-            <button className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200">
+            <button 
+              onClick={dialog.openExportDialog}
+              className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+            >
               <span className="text-lg">📤</span>
               <span>Export</span>
             </button>
@@ -62,10 +72,8 @@ export const Navigation: React.FC = () => {
       
       {/* Footer info */}
       <div className="mt-8 pt-8 border-t border-gray-200">
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="text-xs text-gray-500">
           <div>BookMarkDown v1.0.0</div>
-          <div>Functional architecture</div>
-          <div>Open source</div>
         </div>
       </div>
     </nav>

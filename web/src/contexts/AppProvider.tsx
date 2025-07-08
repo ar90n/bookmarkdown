@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppContextValue, AppConfig, useAppContextProvider } from 'bookmarkdown';
+import { DialogProvider } from './DialogContext';
 
 // Create React context for the BookMarkDown app context
 const AppContext = createContext<AppContextValue | null>(null);
@@ -22,6 +23,9 @@ export const useAuthContext = () => {
   const { auth } = useAppContext();
   return auth;
 };
+
+// Re-export dialog context hook
+export { useDialogContext } from './DialogContext';
 
 interface AppProviderProps {
   children: React.ReactNode;
@@ -77,7 +81,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({
 
   return (
     <AppContext.Provider value={appContext}>
-      {children}
+      <DialogProvider>
+        {children}
+      </DialogProvider>
     </AppContext.Provider>
   );
 };

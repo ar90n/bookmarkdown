@@ -134,7 +134,42 @@ export const SettingsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Sync Status */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Synchronization</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Synchronization</h3>
+            
+            {/* Auto Sync Settings */}
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="font-medium text-gray-900">Auto Sync</h4>
+                  <p className="text-sm text-gray-600">Automatically sync your changes at regular intervals</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={true} // TODO: Connect to app context
+                    onChange={() => {}} // TODO: Implement toggle
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                </label>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">Sync every:</span>
+                <select 
+                  className="border border-gray-300 rounded px-3 py-1 text-sm"
+                  defaultValue={5}
+                  onChange={() => {}} // TODO: Implement interval change
+                >
+                  <option value={1}>1 minute</option>
+                  <option value={5}>5 minutes</option>
+                  <option value={10}>10 minutes</option>
+                  <option value={30}>30 minutes</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Manual Sync */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600">
@@ -190,29 +225,6 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Remote Storage */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Remote Storage</h3>
-            <p className="text-gray-600 mb-4">
-              Your bookmarks are stored in GitHub Gist in human-readable Markdown format
-            </p>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                onClick={() => bookmark.loadFromRemote()}
-                disabled={bookmark.isLoading}
-              >
-                Load from Remote
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => bookmark.saveToRemote()}
-                disabled={bookmark.isLoading}
-              >
-                Save to Remote
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -263,62 +275,6 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* About Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">About BookMarkDown</h2>
-        
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-medium text-gray-900">Version</h3>
-            <p className="text-gray-600">1.0.0</p>
-          </div>
-          
-          <div>
-            <h3 className="font-medium text-gray-900">Architecture</h3>
-            <p className="text-gray-600">Functional DDD with immutable data structures</p>
-          </div>
-          
-          <div>
-            <h3 className="font-medium text-gray-900">Technology Stack</h3>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {['TypeScript', 'React', 'Tailwind CSS', 'Functional Programming', 'GitHub Gist'].map((tech) => (
-                <span key={tech} className="bg-primary-100 text-primary-700 px-3 py-1 rounded-full text-sm">
-                  {tech}
-                </span>
-              ))}
-            </div>
-          </div>
-          
-          <div className="pt-4 border-t border-gray-200">
-            <div className="flex space-x-4">
-              <a
-                href="https://github.com/bookmarkdown/bookmarkdown"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                View Source Code
-              </a>
-              <a
-                href="https://github.com/bookmarkdown/bookmarkdown/issues"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                Report Issues
-              </a>
-              <a
-                href="https://github.com/bookmarkdown/bookmarkdown/blob/main/ARCHITECTURE.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                Architecture Guide
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

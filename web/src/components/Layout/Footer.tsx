@@ -6,26 +6,18 @@ export const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex justify-between items-center text-sm text-gray-500">
           <div className="flex items-center space-x-4">
-            <span>© 2024 BookMarkDown</span>
+            <span>© 2024 BookMarkDown Contributors</span>
             <span>•</span>
             <a 
-              href="https://github.com/bookmarkdown/bookmarkdown" 
+              href="https://github.com/ar90n/bookmarkdown" 
               target="_blank" 
               rel="noopener noreferrer"
               className="hover:text-gray-700 transition-colors"
             >
               Open Source
             </a>
-            <span>•</span>
-            <span>Functional DDD Architecture</span>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <span>Made with</span>
-            <span className="text-red-500">♥</span>
-            <span>and</span>
-            <span className="font-mono text-primary-600">TypeScript</span>
-          </div>
         </div>
       </div>
     </footer>

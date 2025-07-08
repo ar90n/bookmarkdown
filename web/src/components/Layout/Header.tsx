@@ -60,28 +60,36 @@ export const Header: React.FC = () => {
           <div className="flex items-center space-x-4">
             {auth.isAuthenticated ? (
               <>
-                {/* Sync button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSync}
-                  disabled={bookmark.isLoading}
-                  className="hidden sm:flex"
-                >
-                  {bookmark.isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      Sync
-                    </>
+                {/* Sync button with status indicator */}
+                <div className="relative">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSync}
+                    disabled={bookmark.isLoading}
+                    className="hidden sm:flex"
+                  >
+                    {bookmark.isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sync
+                      </>
+                    )}
+                  </Button>
+                  {/* Auto-sync indicator */}
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" title="Auto-sync enabled"></div>
+                  {/* Dirty changes indicator */}
+                  {bookmark.isDirty && (
+                    <div className="absolute -top-1 -left-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white" title="Unsaved changes"></div>
                   )}
-                </Button>
+                </div>
 
                 {/* Last sync indicator */}
                 {bookmark.lastSyncAt && (

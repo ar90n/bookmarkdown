@@ -18,22 +18,24 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppProvider';
 import { Layout } from './components/Layout/Layout';
-import { HomePage } from './pages/HomePage';
+import { WelcomePage } from './pages/WelcomePage';
 import { BookmarksPage } from './pages/BookmarksPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
+import { RootRedirect } from './components/Auth/RootRedirect';
 
 export const App: React.FC = () => {
   return (
     <AppProvider>
       <div className="min-h-screen bg-gray-50">
         <Routes>
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomePage />} />
+          <Route path="/welcome" element={<WelcomePage />} />
+          <Route element={<Layout />}>
             <Route
-              path="bookmarks"
+              path="/bookmarks"
               element={
                 <ProtectedRoute>
                   <BookmarksPage />
@@ -41,7 +43,7 @@ export const App: React.FC = () => {
               }
             />
             <Route
-              path="settings"
+              path="/settings"
               element={
                 <ProtectedRoute>
                   <SettingsPage />

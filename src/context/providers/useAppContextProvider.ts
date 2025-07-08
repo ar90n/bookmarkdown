@@ -103,7 +103,26 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     if (config.autoSync) {
       await bookmarkContext.loadFromRemote();
     }
-  }, [authContext.isAuthenticated, bookmarkContext, config.autoSync]);
+
+    // Setup auto-sync interval
+    if (config.autoSync && config.syncInterval) {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+      
+      syncIntervalRef.current = setInterval(async () => {
+        try {
+          // Only sync if there are changes and user is authenticated
+          if (bookmarkContext.isDirty && authContext.isAuthenticated) {
+            console.log('Auto-sync: syncing dirty changes...');
+            await bookmarkContext.syncWithRemote();
+          }
+        } catch (error) {
+          console.warn('Auto-sync failed:', error);
+        }
+      }, config.syncInterval * 60 * 1000); // Convert minutes to milliseconds
+    }
+  }, [authContext.isAuthenticated, bookmarkContext, config.autoSync, config.syncInterval]);
 
   const disableSync = useCallback(() => {
     setSyncEnabled(false);
