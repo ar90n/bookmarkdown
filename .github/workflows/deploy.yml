@@ -57,7 +57,7 @@ jobs:
 
     - name: Configure OAuth service URL for production
       run: |
-        echo "VITE_OAUTH_SERVICE_URL=https://bookmarkdown-github-oauth.workers.dev" > web/.env.production
+        echo "VITE_OAUTH_SERVICE_URL=https://bookmarkdown-github-oauth.ar90n.net" > web/.env.production
 
     - name: Build all targets
       run: npm run build:all
@@ -135,7 +135,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy ./dist --project-name=bookmarkdown --compatibility-date=2024-01-01
+        command: pages deploy ./dist --project-name=bookmarkdown
 
     - name: Health check deployment
       run: |
@@ -219,7 +219,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy ./dist --project-name=bookmarkdown --compatibility-date=2024-01-01
+        command: pages deploy ./dist --project-name=bookmarkdown
 
     - name: Comment PR with preview URL
       uses: actions/github-script@v7
