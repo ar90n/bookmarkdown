@@ -3,15 +3,15 @@ name = "bookmarkdown-web"
 main = "src/worker.ts"
 compatibility_date = "2024-01-15"
 
+# Custom domain configuration
+routes = [
+  { pattern = "bookmarkdown.ar90n.net", custom_domain = true }
+]
+
 # Static assets configuration
 [assets]
 directory = "../dist/web"
 binding = "ASSETS"
-
-# Custom domain configuration
-routes = [
-  { pattern = "bookmarkdown.ar90n.net/*", zone_name = "ar90n.net" }
-]
 
 # Environment variables
 [vars]
