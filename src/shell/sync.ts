@@ -94,14 +94,9 @@ export const createSyncShell = (config: SyncConfig): SyncShell => {
                   notes: bookmark.notes
                 }))
               })),
-              metadata: cat.metadata ? {
-                lastModified: cat.metadata.lastModified
-              } : undefined
+              ...(cat.metadata && { metadata: cat.metadata })
             })),
-            metadata: parsedRoot.metadata ? {
-              lastModified: parsedRoot.metadata.lastModified,
-              lastSync: parsedRoot.metadata.lastSync
-            } : undefined
+            ...(parsedRoot.metadata && { metadata: parsedRoot.metadata })
           };
           return success(root);
         } catch (error) {
@@ -264,5 +259,4 @@ export const createSyncShell = (config: SyncConfig): SyncShell => {
       syncWithConflictResolution,
       checkConflicts
     };
-  };
 };

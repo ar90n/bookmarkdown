@@ -121,7 +121,10 @@ export class MarkdownParser {
     const root: Root = {
       version: 1,
       categories: categories,
-      metadata: rootMetadata
+      metadata: rootMetadata && rootMetadata.lastModified && rootMetadata.lastSync ? {
+        lastModified: rootMetadata.lastModified,
+        lastSync: rootMetadata.lastSync
+      } : undefined
     };
     
     // Validate the result

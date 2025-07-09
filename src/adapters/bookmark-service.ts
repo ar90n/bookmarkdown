@@ -1,4 +1,4 @@
-import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats, MergeConflict, ConflictResolution } from '../types/index.js';
+import { Root, Bookmark, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats, MergeConflict, ConflictResolution } from '../types/index.js';
 import { Result, success, failure } from '../types/result.js';
 import { 
   createRoot,
@@ -12,7 +12,9 @@ import {
   updateBookmarkInRoot,
   removeBookmarkFromRoot,
   searchBookmarksInRoot,
-  getStatsFromRoot
+  getStatsFromRoot,
+  moveBookmarkToBundle,
+  moveBundleToCategory
 } from '../core/index.js';
 import { SyncShell, SyncResult } from '../shell/index.js';
 
@@ -40,6 +42,18 @@ export interface BookmarkService {
   searchBookmarks: (filter?: BookmarkFilter) => BookmarkSearchResult[];
   getStats: () => BookmarkStats;
   
+  // Move operations
+  moveBookmark: (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string) => Result<Root>;
+  moveBundle: (fromCategory: string, toCategory: string, bundleName: string) => Result<Root>;
+  
+  // Business logic operations (to replace React state usage)
+  canDragBookmark: (categoryName: string, bundleName: string, bookmarkId: string) => boolean;
+  canDropBookmark: (item: { categoryName: string; bundleName: string; bookmarkId: string }, targetCategory: string, targetBundle: string) => boolean;
+  canDropBundle: (bundleName: string, fromCategory: string, toCategory: string) => boolean;
+  getSourceBundle: (categoryName: string, bundleName: string) => { bookmarks: readonly Bookmark[]; name: string } | null;
+  hasCategories: () => boolean;
+  getCategories: () => readonly { name: string; bundles: readonly { name: string; bookmarks: readonly Bookmark[] }[] }[];
+  
   // Sync operations
   loadFromSync: (gistId?: string) => Promise<Result<Root>>;
   saveToSync: (gistId?: string, description?: string) => Promise<Result<SyncResult>>;
@@ -61,10 +75,12 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
   };
 
   return {
-    getRoot: () => currentRoot,
+    getRoot: () => {
+      return currentRoot;
+    },
     
     setRoot: (root: Root) => {
-      currentRoot = root;
+      currentRoot = JSON.parse(JSON.stringify(root));
     },
 
     addCategory: (name: string): Result<Root> => {
@@ -226,6 +242,131 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
       }
       
       return await syncShell.checkConflicts(currentRoot, gistId);
+    },
+
+    moveBookmark: (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string): Result<Root> => {
+      // Get fresh root state using getRoot() to ensure we have the latest state
+      const freshRoot = currentRoot; // Direct access since we're inside the service
+      
+      // CRITICAL FIX: Use fresh root for validation instead of global currentRoot
+      const validateBundleExistsWithRoot = (root: Root, categoryName: string, bundleName: string): boolean => {
+        const category = root.categories.find(cat => cat.name === categoryName);
+        return category?.bundles.some(bundle => bundle.name === bundleName) || false;
+      };
+      
+      // Enhanced validation with detailed error messages using fresh root
+      if (!validateBundleExistsWithRoot(freshRoot, fromCategory, fromBundle)) {
+        return failure(new Error(`Source bundle '${fromBundle}' not found in category '${fromCategory}'`));
+      }
+      
+      if (!validateBundleExistsWithRoot(freshRoot, toCategory, toBundle)) {
+        return failure(new Error(`Target bundle '${toBundle}' not found in category '${toCategory}'`));
+      }
+      
+      // Additional validation with current state information
+      const sourceCategory = freshRoot.categories.find(cat => cat.name === fromCategory);
+      const sourceBundle = sourceCategory?.bundles.find(bundle => bundle.name === fromBundle);
+      
+      if (!sourceBundle) {
+        return failure(new Error(`Source bundle '${fromBundle}' not found in category '${fromCategory}' during move operation`));
+      }
+      
+      const bookmarkExists = sourceBundle.bookmarks.some(bookmark => bookmark.id === bookmarkId);
+      if (!bookmarkExists) {
+        // Provide detailed debugging information
+        const bookmarkIds = sourceBundle.bookmarks.map(b => b.id);
+        return failure(new Error(`Bookmark with id '${bookmarkId}' not found in source bundle '${fromBundle}' in category '${fromCategory}'. Available bookmark IDs: [${bookmarkIds.join(', ')}]`));
+      }
+      
+      try {
+        // Use fresh root state for the move operation
+        currentRoot = moveBookmarkToBundle(freshRoot, fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
+        return success(currentRoot);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to move bookmark';
+        return failure(new Error(`Move operation failed: ${errorMessage}`));
+      }
+    },
+
+    moveBundle: (fromCategory: string, toCategory: string, bundleName: string): Result<Root> => {
+      if (!validateBundleExists(fromCategory, bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' not found in category '${fromCategory}'`));
+      }
+      
+      if (!validateCategoryExists(toCategory)) {
+        return failure(new Error(`Target category '${toCategory}' not found`));
+      }
+      
+      try {
+        currentRoot = moveBundleToCategory(currentRoot, fromCategory, toCategory, bundleName);
+        return success(currentRoot);
+      } catch (error) {
+        return failure(error instanceof Error ? error : new Error('Failed to move bundle'));
+      }
+    },
+
+    // Business logic operations (to replace React state usage)
+    canDragBookmark: (categoryName: string, bundleName: string, bookmarkId: string): boolean => {
+      const category = currentRoot.categories.find(cat => cat.name === categoryName);
+      const bundle = category?.bundles.find(b => b.name === bundleName);
+      const bookmarkExists = bundle?.bookmarks.some(b => b.id === bookmarkId);
+      
+      return bookmarkExists || false;
+    },
+
+    canDropBookmark: (item: { categoryName: string; bundleName: string; bookmarkId: string }, targetCategory: string, targetBundle: string): boolean => {
+      // Don't allow dropping on the same bundle
+      if (item.categoryName === targetCategory && item.bundleName === targetBundle) {
+        return false;
+      }
+      
+      // Verify source bookmark exists
+      const sourceCategory = currentRoot.categories.find(cat => cat.name === item.categoryName);
+      const sourceBundle = sourceCategory?.bundles.find(b => b.name === item.bundleName);
+      const sourceExists = sourceBundle?.bookmarks.some(b => b.id === item.bookmarkId);
+      
+      // Verify target bundle exists
+      const targetCategoryObj = currentRoot.categories.find(cat => cat.name === targetCategory);
+      const targetExists = targetCategoryObj?.bundles.some(b => b.name === targetBundle);
+      
+      return (sourceExists && targetExists) || false;
+    },
+
+    canDropBundle: (bundleName: string, fromCategory: string, toCategory: string): boolean => {
+      // Don't allow dropping on the same category
+      if (fromCategory === toCategory) {
+        return false;
+      }
+      
+      // Verify source bundle exists
+      const sourceExists = currentRoot.categories
+        .find(cat => cat.name === fromCategory)
+        ?.bundles.some(b => b.name === bundleName);
+      
+      // Verify target category exists
+      const targetExists = currentRoot.categories.some(cat => cat.name === toCategory);
+      
+      return (sourceExists && targetExists) || false;
+    },
+
+    getSourceBundle: (categoryName: string, bundleName: string): { bookmarks: readonly Bookmark[]; name: string } | null => {
+      const category = currentRoot.categories.find(cat => cat.name === categoryName);
+      const bundle = category?.bundles.find(b => b.name === bundleName);
+      
+      if (bundle) {
+        return bundle;
+      }
+      
+      return null;
+    },
+
+    hasCategories: (): boolean => {
+      const hasCategories = currentRoot.categories.length > 0;
+      return hasCategories;
+    },
+
+    getCategories: (): readonly { name: string; bundles: readonly { name: string; bookmarks: readonly Bookmark[] }[] }[] => {
+      return currentRoot.categories;
     },
   };
 };
