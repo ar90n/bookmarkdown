@@ -1,4 +1,4 @@
-import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats } from '../types/index.js';
+import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats, MergeConflict, ConflictResolution } from '../types/index.js';
 import { Result, success, failure } from '../types/result.js';
 import { 
   createRoot,
@@ -14,7 +14,7 @@ import {
   searchBookmarksInRoot,
   getStatsFromRoot
 } from '../core/index.js';
-import { SyncShell } from '../shell/index.js';
+import { SyncShell, SyncResult } from '../shell/index.js';
 
 export interface BookmarkService {
   // Data operations
@@ -42,8 +42,10 @@ export interface BookmarkService {
   
   // Sync operations
   loadFromSync: (gistId?: string) => Promise<Result<Root>>;
-  saveToSync: (gistId?: string, description?: string) => Promise<Result<{ gistId: string; updatedAt: string }>>;
-  syncWithRemote: (gistId?: string) => Promise<Result<{ gistId: string; updatedAt: string }>>;
+  saveToSync: (gistId?: string, description?: string) => Promise<Result<SyncResult>>;
+  syncWithRemote: (gistId?: string) => Promise<Result<SyncResult>>;
+  syncWithConflictResolution: (resolutions: ConflictResolution[], gistId?: string) => Promise<Result<SyncResult>>;
+  checkConflicts: (gistId?: string) => Promise<Result<MergeConflict[]>>;
 }
 
 export const createBookmarkService = (syncShell?: SyncShell): BookmarkService => {
@@ -180,7 +182,7 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
       return result;
     },
 
-    saveToSync: async (gistId?: string, description?: string): Promise<Result<{ gistId: string; updatedAt: string }>> => {
+    saveToSync: async (gistId?: string, description?: string): Promise<Result<SyncResult>> => {
       if (!syncShell) {
         return failure(new Error('Sync shell not configured'));
       }
@@ -188,12 +190,42 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
       return await syncShell.save(currentRoot, gistId, description);
     },
 
-    syncWithRemote: async (gistId?: string): Promise<Result<{ gistId: string; updatedAt: string }>> => {
+    syncWithRemote: async (gistId?: string): Promise<Result<SyncResult>> => {
       if (!syncShell) {
         return failure(new Error('Sync shell not configured'));
       }
       
-      return await syncShell.sync(currentRoot, gistId);
+      const result = await syncShell.sync(currentRoot, gistId);
+      
+      // Update current root if sync was successful and no conflicts
+      if (result.success && result.data.mergedRoot && !result.data.hasConflicts) {
+        currentRoot = result.data.mergedRoot;
+      }
+      
+      return result;
+    },
+    
+    syncWithConflictResolution: async (resolutions: ConflictResolution[], gistId?: string): Promise<Result<SyncResult>> => {
+      if (!syncShell) {
+        return failure(new Error('Sync shell not configured'));
+      }
+      
+      const result = await syncShell.syncWithConflictResolution(currentRoot, resolutions, gistId);
+      
+      // Update current root if sync was successful
+      if (result.success && result.data.mergedRoot) {
+        currentRoot = result.data.mergedRoot;
+      }
+      
+      return result;
+    },
+    
+    checkConflicts: async (gistId?: string): Promise<Result<MergeConflict[]>> => {
+      if (!syncShell) {
+        return failure(new Error('Sync shell not configured'));
+      }
+      
+      return await syncShell.checkConflicts(currentRoot, gistId);
     },
   };
 };

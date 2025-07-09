@@ -14,11 +14,18 @@ export interface Bundle {
 export interface Category {
   readonly name: string;
   readonly bundles: readonly Bundle[];
+  readonly metadata?: {
+    readonly lastModified: string; // ISO 8601 timestamp
+  };
 }
 
 export interface Root {
   readonly version: 1;
   readonly categories: readonly Category[];
+  readonly metadata?: {
+    readonly lastModified: string; // ISO 8601 timestamp
+    readonly lastSync: string;     // ISO 8601 timestamp
+  };
 }
 
 export interface BookmarkFilter {
@@ -43,3 +50,18 @@ export interface BookmarkStats {
 
 export type BookmarkInput = Omit<Bookmark, 'id'>;
 export type BookmarkUpdate = Partial<BookmarkInput>;
+
+export interface ConflictResolution {
+  readonly categoryName: string;
+  readonly localLastModified: string;
+  readonly remoteLastModified: string;
+  readonly resolution: 'local' | 'remote' | 'pending';
+}
+
+export interface MergeConflict {
+  readonly category: string;
+  readonly localData: Category;
+  readonly remoteData: Category;
+  readonly localLastModified: string;
+  readonly remoteLastModified: string;
+}

@@ -1,4 +1,6 @@
 export * from './uuid.js';
+export * from './metadata.js';
+export * from './merge.js';
 
 export function isValidUrl(url: string): boolean {
   try {

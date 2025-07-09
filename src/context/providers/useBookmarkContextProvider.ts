@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { BookmarkContextValue } from '../BookmarkContext.js';
-import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats } from '../../types/index.js';
+import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats, MergeConflict, ConflictResolution } from '../../types/index.js';
 import { BookmarkService, createBookmarkService } from '../../adapters/index.js';
 import { createRoot } from '../../core/index.js';
 import { createLocalStorageShell } from '../../shell/storage.js';
@@ -166,6 +166,13 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     try {
       const result = await service.syncWithRemote();
       if (result.success) {
+        if (result.data.hasConflicts && result.data.conflicts) {
+          // Store conflicts for UI to handle
+          // The UI should call syncWithConflictResolution after user resolves conflicts
+          setError('Sync conflicts detected. Please resolve conflicts to continue.');
+          return result.data.conflicts;
+        }
+        
         const newRoot = service.getRoot();
         setRoot(newRoot);
         setLastSyncAt(new Date());
@@ -227,6 +234,52 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
       setError(error instanceof Error ? error.message : 'Save failed');
     } finally {
       setIsLoading(false);
+    }
+  }, [service, config.accessToken]);
+
+  const syncWithConflictResolution = useCallback(async (resolutions: ConflictResolution[]) => {
+    if (!config.accessToken) {
+      setError('Authentication required for sync');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await service.syncWithConflictResolution(resolutions);
+      if (result.success) {
+        const newRoot = service.getRoot();
+        setRoot(newRoot);
+        setLastSyncAt(new Date());
+        setIsDirty(false);
+      } else {
+        setError(result.error.message);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Conflict resolution failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [service, config.accessToken]);
+
+  const checkConflicts = useCallback(async (): Promise<MergeConflict[]> => {
+    if (!config.accessToken) {
+      setError('Authentication required for sync');
+      return [];
+    }
+
+    try {
+      const result = await service.checkConflicts();
+      if (result.success) {
+        return result.data;
+      } else {
+        setError(result.error.message);
+        return [];
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Conflict check failed');
+      return [];
     }
   }, [service, config.accessToken]);
 
@@ -321,6 +374,8 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     searchBookmarks,
     getStats,
     syncWithRemote,
+    syncWithConflictResolution,
+    checkConflicts,
     loadFromRemote,
     saveToRemote,
     importData,

@@ -9,8 +9,9 @@ import {
   updateBookmarkInBundle,
   removeBookmarkFromBundle,
 } from './bundle.js';
+import { initializeCategoryMetadata } from '../utils/metadata.js';
 
-export const createCategory = (name: string): Category => ({
+export const createCategory = (name: string): Category => initializeCategoryMetadata({
   name,
   bundles: [],
 });

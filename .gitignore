@@ -96,3 +96,7 @@ temp/
 
 # CLAUDE
 claude.md
+
+# Test outputs
+playwright-report/
+test-results/

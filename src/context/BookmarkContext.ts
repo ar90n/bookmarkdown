@@ -1,4 +1,4 @@
-import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats } from '../types/index.js';
+import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResult, BookmarkStats, MergeConflict, ConflictResolution } from '../types/index.js';
 
 export interface BookmarkContextValue {
   // State
@@ -29,6 +29,8 @@ export interface BookmarkContextValue {
   
   // Sync operations
   syncWithRemote: () => Promise<void>;
+  syncWithConflictResolution: (resolutions: ConflictResolution[]) => Promise<void>;
+  checkConflicts: () => Promise<MergeConflict[]>;
   loadFromRemote: () => Promise<void>;
   saveToRemote: () => Promise<void>;
   

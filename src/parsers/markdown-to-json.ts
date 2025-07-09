@@ -9,8 +9,27 @@ export class MarkdownParser {
     let currentCategory: Category | null = null;
     let currentBundle: Bundle | null = null;
     let currentBookmark: Bookmark | null = null;
+    let rootMetadata: { lastModified?: string; lastSync?: string } | undefined;
     
-    for (let i = 0; i < lines.length; i++) {
+    // Check for YAML front matter
+    let i = 0;
+    if (lines[0] === '---') {
+      const frontMatterEnd = lines.indexOf('---', 1);
+      if (frontMatterEnd > 0) {
+        rootMetadata = {};
+        for (let j = 1; j < frontMatterEnd; j++) {
+          const line = lines[j].trim();
+          if (line.startsWith('lastModified:')) {
+            rootMetadata.lastModified = line.substring('lastModified:'.length).trim();
+          } else if (line.startsWith('lastSync:')) {
+            rootMetadata.lastSync = line.substring('lastSync:'.length).trim();
+          }
+        }
+        i = frontMatterEnd + 1;
+      }
+    }
+    
+    for (; i < lines.length; i++) {
       const line = lines[i].trim();
       
       if (line.startsWith('# ')) {
@@ -29,6 +48,18 @@ export class MarkdownParser {
         };
         currentBundle = null;
         currentBookmark = null;
+        
+        // Check for category metadata in next line
+        if (i + 1 < lines.length) {
+          const nextLine = lines[i + 1].trim();
+          const metadataMatch = nextLine.match(/<!--\s*lastModified:\s*([^-]+)\s*-->/);
+          if (metadataMatch) {
+            currentCategory.metadata = {
+              lastModified: metadataMatch[1].trim()
+            };
+            i++; // Skip the metadata line
+          }
+        }
         
       } else if (line.startsWith('## ')) {
         // Bundle header
@@ -89,7 +120,8 @@ export class MarkdownParser {
     
     const root: Root = {
       version: 1,
-      categories: categories
+      categories: categories,
+      metadata: rootMetadata
     };
     
     // Validate the result

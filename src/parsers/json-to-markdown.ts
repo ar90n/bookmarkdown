@@ -4,6 +4,15 @@ export class MarkdownGenerator {
   generate(root: Root): string {
     const lines: string[] = [];
     
+    // Add metadata as YAML front matter if present
+    if (root.metadata) {
+      lines.push('---');
+      lines.push(`lastModified: ${root.metadata.lastModified}`);
+      lines.push(`lastSync: ${root.metadata.lastSync}`);
+      lines.push('---');
+      lines.push('');
+    }
+    
     // Add header comment for empty roots
     if (root.categories.length === 0) {
       lines.push('# 📚 BookMarkDown');
@@ -37,6 +46,10 @@ export class MarkdownGenerator {
   
   private addCategory(lines: string[], category: Category): void {
     lines.push(`# 📂 ${category.name}`);
+    // Add category metadata as HTML comment if present
+    if (category.metadata) {
+      lines.push(`<!-- lastModified: ${category.metadata.lastModified} -->`);
+    }
     lines.push('');
   }
   
