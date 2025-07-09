@@ -1,13 +1,19 @@
 import { Bookmark, BookmarkInput, BookmarkUpdate, BookmarkFilter } from '../types/index.js';
 import { generateBookmarkId } from '../utils/uuid.js';
 
-export const createBookmark = (input: BookmarkInput): Bookmark => ({
-  id: generateBookmarkId(),
-  title: input.title,
-  url: input.url,
-  tags: input.tags ? [...input.tags] : undefined,
-  notes: input.notes,
-});
+export const createBookmark = (input: BookmarkInput): Bookmark => {
+  const id = generateBookmarkId();
+  const bookmark = {
+    id,
+    title: input.title,
+    url: input.url,
+    tags: input.tags ? [...input.tags] : undefined,
+    notes: input.notes,
+  };
+  
+  console.log(`[DEBUG] Created bookmark with ID: ${id}, title: "${input.title}"`);
+  return bookmark;
+};
 
 export const updateBookmark = (bookmark: Bookmark, update: BookmarkUpdate): Bookmark => {
   return {
