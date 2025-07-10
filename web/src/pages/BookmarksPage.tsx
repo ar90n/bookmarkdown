@@ -3,15 +3,36 @@ import { useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
 import { DnDProvider, DraggableBookmark, DraggableBundle, DroppableBundle, DroppableCategory } from '../components/dnd';
 import { useChromeExtension } from '../hooks/useChromeExtension';
 import { useToast } from '../hooks/useToast';
+import { useMobile } from '../hooks/useMobile';
 import { Toast } from '../components/ui/Toast';
+import { MobileMenu } from '../components/ui/MobileMenu';
+import { MoveModal } from '../components/ui/MoveModal';
 
 export const BookmarksPage: React.FC = () => {
   const bookmark = useBookmarkContext();
   const dialog = useDialogContext();
   const chromeExtension = useChromeExtension();
   const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
+  const isMobile = useMobile();
 
   const stats = bookmark.getStats();
+
+  // Move modal state
+  const [moveModal, setMoveModal] = useState<{
+    isOpen: boolean;
+    itemType: 'bookmark' | 'bundle';
+    currentCategory: string;
+    currentBundle?: string;
+    itemId: string;
+    itemName: string;
+  }>({
+    isOpen: false,
+    itemType: 'bookmark',
+    currentCategory: '',
+    currentBundle: '',
+    itemId: '',
+    itemName: ''
+  });
 
   // Collapse state management
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -153,6 +174,52 @@ export const BookmarksPage: React.FC = () => {
     }
   }, [bookmark, chromeExtension, showSuccess, showError, showInfo]);
 
+  // Mobile move handlers
+  const handleMoveBookmark = useCallback((categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => {
+    setMoveModal({
+      isOpen: true,
+      itemType: 'bookmark',
+      currentCategory: categoryName,
+      currentBundle: bundleName,
+      itemId: bookmarkId,
+      itemName: bookmarkTitle
+    });
+  }, []);
+
+  const handleMoveBundle = useCallback((categoryName: string, bundleName: string) => {
+    setMoveModal({
+      isOpen: true,
+      itemType: 'bundle',
+      currentCategory: categoryName,
+      itemId: bundleName,
+      itemName: bundleName
+    });
+  }, []);
+
+  const handleMoveConfirm = useCallback(async (targetCategory: string, targetBundle?: string) => {
+    try {
+      if (moveModal.itemType === 'bookmark') {
+        await bookmark.moveBookmark(
+          moveModal.currentCategory,
+          moveModal.currentBundle!,
+          moveModal.itemId,
+          targetCategory,
+          targetBundle!
+        );
+        showSuccess(`Moved bookmark "${moveModal.itemName}" to ${targetCategory}/${targetBundle}`);
+      } else {
+        await bookmark.moveBundle(
+          moveModal.currentCategory,
+          moveModal.itemId,
+          targetCategory
+        );
+        showSuccess(`Moved bundle "${moveModal.itemName}" to ${targetCategory}`);
+      }
+    } catch (error) {
+      showError(`Failed to move ${moveModal.itemType}`);
+    }
+  }, [moveModal, bookmark, showSuccess, showError]);
+
   return (
     <DnDProvider>
       <div className="space-y-6">
@@ -241,12 +308,27 @@ export const BookmarksPage: React.FC = () => {
                   handleDeleteBundle={handleDeleteBundle}
                   handleEditBookmark={handleEditBookmark}
                   handleDeleteBookmark={handleDeleteBookmark}
+                  isMobile={isMobile}
+                  handleMoveBookmark={handleMoveBookmark}
+                  handleMoveBundle={handleMoveBundle}
                 />
               </DroppableCategory>
             ))}
           </div>
         )}
       </div>
+
+      {/* Move Modal */}
+      <MoveModal
+        isOpen={moveModal.isOpen}
+        onClose={() => setMoveModal(prev => ({ ...prev, isOpen: false }))}
+        itemType={moveModal.itemType}
+        currentCategory={moveModal.currentCategory}
+        currentBundle={moveModal.currentBundle}
+        itemId={moveModal.itemId}
+        itemName={moveModal.itemName}
+        onMove={handleMoveConfirm}
+      />
     </DnDProvider>
   );
 };
@@ -265,6 +347,9 @@ interface CategoryComponentProps {
   handleEditBookmark: (categoryName: string, bundleName: string, bookmark: any) => void;
   handleDeleteBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   categoryDropHighlight?: boolean;
+  isMobile: boolean;
+  handleMoveBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
+  handleMoveBundle: (categoryName: string, bundleName: string) => void;
 }
 
 const CategoryComponent: React.FC<CategoryComponentProps> = ({
@@ -280,7 +365,10 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   handleDeleteBundle,
   handleEditBookmark,
   handleDeleteBookmark,
-  categoryDropHighlight
+  categoryDropHighlight,
+  isMobile,
+  handleMoveBookmark,
+  handleMoveBundle
 }) => {
   return (
     <div 
@@ -307,33 +395,42 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
             </h3>
           </div>
           <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => dialog.openBundleDialog(category.name)}
-              className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50 transition-colors"
-              title="Add Bundle"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </button>
-            <button 
-              onClick={() => handleEditCategory(category.name)}
-              className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100 transition-colors"
-              title="Edit Category"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button 
-              onClick={() => handleDeleteCategory(category.name)}
-              className="text-gray-600 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-              title="Delete Category"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            {isMobile ? (
+              <MobileMenu
+                onEdit={() => handleEditCategory(category.name)}
+                onDelete={() => handleDeleteCategory(category.name)}
+              />
+            ) : (
+              <>
+                <button 
+                  onClick={() => dialog.openBundleDialog(category.name)}
+                  className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50 transition-colors"
+                  title="Add Bundle"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => handleEditCategory(category.name)}
+                  className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100 transition-colors"
+                  title="Edit Category"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => handleDeleteCategory(category.name)}
+                  className="text-gray-600 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                  title="Delete Category"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -368,6 +465,9 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                       handleDeleteBundle={handleDeleteBundle}
                       handleEditBookmark={handleEditBookmark}
                       handleDeleteBookmark={handleDeleteBookmark}
+                      isMobile={isMobile}
+                      handleMoveBookmark={handleMoveBookmark}
+                      handleMoveBundle={handleMoveBundle}
                     />
                   </DroppableBundle>
                 </DraggableBundle>
@@ -393,6 +493,9 @@ interface BundleComponentProps {
   handleEditBookmark: (categoryName: string, bundleName: string, bookmark: any) => void;
   handleDeleteBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   bundleDropHighlight?: boolean;
+  isMobile: boolean;
+  handleMoveBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
+  handleMoveBundle: (categoryName: string, bundleName: string) => void;
 }
 
 const BundleComponent: React.FC<BundleComponentProps> = ({
@@ -406,7 +509,10 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
   handleDeleteBundle,
   handleEditBookmark,
   handleDeleteBookmark,
-  bundleDropHighlight
+  bundleDropHighlight,
+  isMobile,
+  handleMoveBookmark,
+  handleMoveBundle
 }) => {
   return (
     <div 
@@ -435,33 +541,43 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
           <div className="flex items-center space-x-3">
             <span className="text-sm text-gray-500">{bundle.bookmarks.length} bookmarks</span>
             <div className="flex items-center space-x-1">
-              <button 
-                onClick={() => dialog.openBookmarkDialog(category.name, bundle.name)}
-                className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50 transition-colors"
-                title="Add Bookmark"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </button>
-              <button 
-                onClick={() => handleEditBundle(category.name, bundle.name)}
-                className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100 transition-colors"
-                title="Edit Bundle"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-              <button 
-                onClick={() => handleDeleteBundle(category.name, bundle.name)}
-                className="text-gray-600 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
-                title="Delete Bundle"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
+              {isMobile ? (
+                <MobileMenu
+                  onMove={() => handleMoveBundle(category.name, bundle.name)}
+                  onEdit={() => handleEditBundle(category.name, bundle.name)}
+                  onDelete={() => handleDeleteBundle(category.name, bundle.name)}
+                />
+              ) : (
+                <>
+                  <button 
+                    onClick={() => dialog.openBookmarkDialog(category.name, bundle.name)}
+                    className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50 transition-colors"
+                    title="Add Bookmark"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </button>
+                  <button 
+                    onClick={() => handleEditBundle(category.name, bundle.name)}
+                    className="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-100 transition-colors"
+                    title="Edit Bundle"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteBundle(category.name, bundle.name)}
+                    className="text-gray-600 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                    title="Delete Bundle"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -489,53 +605,68 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                     categoryName={category.name} 
                     bundleName={bundle.name}
                   >
-                    <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors h-fit">
-                      <div className="flex flex-col h-full">
-                        <div className="flex-1">
-                          <a 
-                            href={bookmark.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-primary-600 hover:text-primary-700 font-medium block mb-2 line-clamp-2"
+                    <a 
+                      href={bookmark.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block hover:no-underline group"
+                    >
+                      <div className="bg-gray-50 rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 transition-all duration-200 h-fit cursor-pointer">
+                        <div className="flex flex-col h-full">
+                          <div className="flex-1">
+                            <h3 className="text-primary-600 group-hover:text-primary-700 font-medium block mb-2 line-clamp-2">
+                              {bookmark.title}
+                            </h3>
+                            <div className="text-sm text-gray-500 mb-2 truncate">{bookmark.url}</div>
+                            {bookmark.notes && (
+                              <div className="text-sm text-gray-600 mb-2 italic line-clamp-2">{bookmark.notes}</div>
+                            )}
+                            {bookmark.tags && bookmark.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-3">
+                                {bookmark.tags.map((tag) => (
+                                  <span key={tag} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div 
+                            className="flex justify-end space-x-2 pt-2 border-t border-gray-100"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {bookmark.title}
-                          </a>
-                          <div className="text-sm text-gray-500 mb-2 truncate">{bookmark.url}</div>
-                          {bookmark.notes && (
-                            <div className="text-sm text-gray-600 mb-2 italic line-clamp-2">{bookmark.notes}</div>
-                          )}
-                          {bookmark.tags && bookmark.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {bookmark.tags.map((tag) => (
-                                <span key={tag} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
-                          <button 
-                            onClick={() => handleEditBookmark(category.name, bundle.name, bookmark)}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Edit bookmark"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
-                            className="text-gray-400 hover:text-red-600"
-                            title="Delete bookmark"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                            {isMobile ? (
+                              <MobileMenu
+                                onMove={() => handleMoveBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                                onEdit={() => handleEditBookmark(category.name, bundle.name, bookmark)}
+                                onDelete={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                              />
+                            ) : (
+                              <>
+                                <button 
+                                  onClick={() => handleEditBookmark(category.name, bundle.name, bookmark)}
+                                  className="text-gray-400 hover:text-gray-600"
+                                  title="Edit bookmark"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                                  className="text-gray-400 hover:text-red-600"
+                                  title="Delete bookmark"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </a>
                   </DraggableBookmark>
                 ))}
               </div>
