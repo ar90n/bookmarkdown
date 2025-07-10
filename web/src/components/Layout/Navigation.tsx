@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuthContext, useDialogContext } from '../../contexts/AppProvider';
+import { useAuthContext, useDialogContext, useBookmarkContext } from '../../contexts/AppProvider';
+import { useChromeExtension } from '../../hooks/useChromeExtension';
+import { useToast } from '../../hooks/useToast';
 
 export const Navigation: React.FC = () => {
   const auth = useAuthContext();
   const dialog = useDialogContext();
+  const bookmark = useBookmarkContext();
+  const { showSuccess, showError, showInfo } = useToast();
+  const chromeExtension = useChromeExtension();
 
   const navItems = [
     { path: '/welcome', label: 'Welcome', icon: '🏠' },
@@ -13,6 +18,51 @@ export const Navigation: React.FC = () => {
       { path: '/settings', label: 'Settings', icon: '⚙️' },
     ] : [])
   ];
+
+  const handleImportTabs = useCallback(async () => {
+    try {
+      // First get the tabs to show count in confirmation
+      const tabs = await chromeExtension.getAllTabs();
+      if (tabs.length === 0) {
+        showError('No tabs found to import');
+        return;
+      }
+
+      // Show confirmation dialog
+      const confirmed = await dialog.openConfirmDialog({
+        title: 'Import Browser Tabs',
+        message: `Import ${tabs.length} tab${tabs.length !== 1 ? 's' : ''} to "Browser Tabs" category?`,
+        confirmText: 'Import',
+        cancelText: 'Cancel',
+        confirmButtonClass: 'bg-green-600 hover:bg-green-700'
+      });
+      
+      if (!confirmed) {
+        return;
+      }
+
+      showInfo('Importing tabs...');
+
+      const categoryName = 'Browser Tabs';
+      const bundleName = `Tabs ${new Date().toLocaleString()}`;
+      
+      await bookmark.addCategory(categoryName);
+      await bookmark.addBundle(categoryName, bundleName);
+      
+      for (const tab of tabs) {
+        await bookmark.addBookmark(categoryName, bundleName, {
+          title: tab.title,
+          url: tab.url,
+          tags: ['import', 'tabs'],
+          notes: 'Imported from browser tabs'
+        });
+      }
+      
+      showSuccess(`Successfully imported ${tabs.length} tabs as "${bundleName}"`);
+    } catch (error) {
+      showError('Failed to import tabs. Please make sure the Chrome extension is active.');
+    }
+  }, [bookmark, chromeExtension, showSuccess, showError, showInfo]);
 
   const getLinkClassName = (isActive: boolean) => {
     const baseClasses = "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200";
@@ -66,6 +116,15 @@ export const Navigation: React.FC = () => {
               <span className="text-lg">📤</span>
               <span>Export</span>
             </button>
+            {chromeExtension.isAvailable && (
+              <button 
+                onClick={handleImportTabs}
+                className="flex items-center space-x-3 px-3 py-2 w-full text-left rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+              >
+                <span className="text-lg">📑</span>
+                <span>Import Tabs</span>
+              </button>
+            )}
           </div>
         </div>
       )}

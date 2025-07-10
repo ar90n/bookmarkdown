@@ -6,8 +6,8 @@
     <title>BookMarkDown</title>
     <style>
         body {
-            width: 350px;
-            padding: 20px;
+            width: 280px;
+            padding: 16px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
         }
@@ -18,7 +18,7 @@
         }
         
         .title {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
             color: #333;
             margin-bottom: 5px;
@@ -26,19 +26,49 @@
         
         .subtitle {
             color: #666;
-            font-size: 14px;
+            font-size: 12px;
+        }
+        
+        .status-section {
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .status-label {
+            color: #666;
+        }
+        
+        .status-value {
+            font-weight: 500;
+        }
+        
+        .status-success {
+            color: #10b981;
+        }
+        
+        .status-error {
+            color: #ef4444;
         }
         
         .actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         
         .btn {
-            padding: 12px 16px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
@@ -58,57 +88,27 @@
         .btn-primary:hover {
             background: #4338ca;
         }
-        
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
-        
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
-        
-        .status {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f0f9ff;
-            border: 1px solid #0ea5e9;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #0c4a6e;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1 class="title">📚 BookMarkDown</h1>
-        <p class="subtitle">Portable bookmark management</p>
+        <p class="subtitle">Tab capture bridge</p>
+    </div>
+    
+    <div class="status-section">
+        <div class="status-item">
+            <span class="status-label">Tab capture:</span>
+            <span id="tab-status" class="status-value">Loading...</span>
+        </div>
     </div>
     
     <div class="actions">
-        <button id="add-bookmark-btn" class="btn btn-primary">
-            ➕ Add Current Page
-        </button>
-        
-        <button id="open-newtab-btn" class="btn btn-secondary">
-            📂 Open Bookmarks
-        </button>
-        
-        <button id="sync-btn" class="btn btn-secondary">
-            🔄 Sync with Gist
-        </button>
-        
-        <button id="settings-btn" class="btn btn-secondary">
-            ⚙️ Settings
+        <button id="open-webapp-btn" class="btn btn-primary">
+            🌐 Open BookMarkDown
         </button>
     </div>
     
-    <div id="status" class="status" style="display: none;">
-        Ready to sync!
-    </div>
-    
-    <script type="module" src="scripts/popup.js"></script>
+    <script src="popup.js"></script>
 </body>
 </html>

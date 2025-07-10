@@ -1,10 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import { useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
 import { DnDProvider, DraggableBookmark, DraggableBundle, DroppableBundle, DroppableCategory } from '../components/dnd';
+import { useChromeExtension } from '../hooks/useChromeExtension';
+import { useToast } from '../hooks/useToast';
+import { Toast } from '../components/ui/Toast';
 
 export const BookmarksPage: React.FC = () => {
   const bookmark = useBookmarkContext();
   const dialog = useDialogContext();
+  const chromeExtension = useChromeExtension();
+  const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
 
   const stats = bookmark.getStats();
 
@@ -42,46 +47,124 @@ export const BookmarksPage: React.FC = () => {
   }, [dialog]);
 
   const handleDeleteBookmark = useCallback(async (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => {
-    if (window.confirm(`Are you sure you want to delete "${bookmarkTitle}"?`)) {
+    const confirmed = await dialog.openConfirmDialog({
+      title: 'Delete Bookmark',
+      message: `Are you sure you want to delete "${bookmarkTitle}"?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonClass: 'bg-red-600 hover:bg-red-700'
+    });
+    
+    if (confirmed) {
       try {
         await bookmark.removeBookmark(categoryName, bundleName, bookmarkId);
       } catch (error) {
         console.error('Failed to delete bookmark:', error);
       }
     }
-  }, [bookmark]);
+  }, [bookmark, dialog]);
 
   const handleEditCategory = useCallback((categoryName: string) => {
     dialog.openCategoryEditDialog(categoryName);
   }, [dialog]);
 
   const handleDeleteCategory = useCallback(async (categoryName: string) => {
-    if (window.confirm(`Are you sure you want to delete the category "${categoryName}" and all its contents?`)) {
+    const confirmed = await dialog.openConfirmDialog({
+      title: 'Delete Category',
+      message: `Are you sure you want to delete the category "${categoryName}" and all its contents?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonClass: 'bg-red-600 hover:bg-red-700'
+    });
+    
+    if (confirmed) {
       try {
         await bookmark.removeCategory(categoryName);
       } catch (error) {
         console.error('Failed to delete category:', error);
       }
     }
-  }, [bookmark]);
+  }, [bookmark, dialog]);
 
   const handleEditBundle = useCallback((categoryName: string, bundleName: string) => {
     dialog.openBundleEditDialog(categoryName, bundleName);
   }, [dialog]);
 
   const handleDeleteBundle = useCallback(async (categoryName: string, bundleName: string) => {
-    if (window.confirm(`Are you sure you want to delete the bundle "${bundleName}" and all its bookmarks?`)) {
+    const confirmed = await dialog.openConfirmDialog({
+      title: 'Delete Bundle',
+      message: `Are you sure you want to delete the bundle "${bundleName}" and all its bookmarks?`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonClass: 'bg-red-600 hover:bg-red-700'
+    });
+    
+    if (confirmed) {
       try {
         await bookmark.removeBundle(categoryName, bundleName);
       } catch (error) {
         console.error('Failed to delete bundle:', error);
       }
     }
-  }, [bookmark]);
+  }, [bookmark, dialog]);
+
+  const handleImportTabs = useCallback(async () => {
+    try {
+      // First get the tabs to show count in confirmation
+      const tabs = await chromeExtension.getAllTabs();
+      if (tabs.length === 0) {
+        showError('No tabs found to import');
+        return;
+      }
+
+      // Show confirmation dialog
+      const confirmed = await dialog.openConfirmDialog({
+        title: 'Import Browser Tabs',
+        message: `Import ${tabs.length} tab${tabs.length !== 1 ? 's' : ''} to "Browser Tabs" category?`,
+        confirmText: 'Import',
+        cancelText: 'Cancel',
+        confirmButtonClass: 'bg-green-600 hover:bg-green-700'
+      });
+      
+      if (!confirmed) {
+        return;
+      }
+
+      showInfo('Importing tabs...');
+
+      const categoryName = 'Browser Tabs';
+      const bundleName = `Tabs ${new Date().toLocaleString()}`;
+      
+      await bookmark.addCategory(categoryName);
+      await bookmark.addBundle(categoryName, bundleName);
+      
+      for (const tab of tabs) {
+        await bookmark.addBookmark(categoryName, bundleName, {
+          title: tab.title,
+          url: tab.url,
+          tags: ['import', 'tabs'],
+          notes: 'Imported from browser tabs'
+        });
+      }
+      
+      showSuccess(`Successfully imported ${tabs.length} tabs as "${bundleName}"`);
+    } catch (error) {
+      showError('Failed to import tabs. Please make sure the Chrome extension is active.');
+    }
+  }, [bookmark, chromeExtension, showSuccess, showError, showInfo]);
 
   return (
     <DnDProvider>
       <div className="space-y-6">
+        {/* Toast notifications */}
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
         {/* Page Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -95,9 +178,14 @@ export const BookmarksPage: React.FC = () => {
             >
               Add Category
             </button>
-            <button className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-              Import
-            </button>
+            {chromeExtension.isAvailable && (
+              <button 
+                onClick={handleImportTabs}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Import Tabs
+              </button>
+            )}
           </div>
         </div>
 

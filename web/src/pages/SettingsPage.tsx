@@ -1,10 +1,11 @@
 import React from 'react';
-import { useAuthContext, useBookmarkContext } from '../contexts/AppProvider';
+import { useAuthContext, useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
 import { Button } from '../components/UI/Button';
 
 export const SettingsPage: React.FC = () => {
   const auth = useAuthContext();
   const bookmark = useBookmarkContext();
+  const dialog = useDialogContext();
 
   const handleExportMarkdown = async () => {
     try {
@@ -35,14 +36,21 @@ export const SettingsPage: React.FC = () => {
       const content = e.target?.result as string;
       if (content) {
         // TODO: Add importFromMarkdown method to context
-        console.log('Import not yet implemented in new context');
       }
     };
     reader.readAsText(file);
   };
 
   const handleReset = async () => {
-    if (window.confirm('Are you sure you want to reset all data? This action cannot be undone.')) {
+    const confirmed = await dialog.openConfirmDialog({
+      title: 'Reset All Data',
+      message: 'Are you sure you want to reset all data? This action cannot be undone.',
+      confirmText: 'Reset',
+      cancelText: 'Cancel',
+      confirmButtonClass: 'bg-red-600 hover:bg-red-700'
+    });
+    
+    if (confirmed) {
       bookmark.resetState();
     }
   };
