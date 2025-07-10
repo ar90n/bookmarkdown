@@ -145,8 +145,6 @@ export class BookmarkService {
       throw new Error('GitHub credentials not configured');
     }
 
-    // For now, just log
-    console.log('Syncing with Gist:', this.gistId);
     // In production, this will use the actual sync implementation
   }
 

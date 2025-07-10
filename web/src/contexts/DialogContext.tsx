@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Bookmark } from 'bookmarkdown';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+
+interface ConfirmDialogState {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  confirmButtonClass?: string;
+  resolve: ((result: boolean) => void) | null;
+}
 
 interface DialogContextValue {
   isCategoryDialogOpen: boolean;
@@ -31,6 +42,8 @@ interface DialogContextValue {
   isExportDialogOpen: boolean;
   openExportDialog: () => void;
   closeExportDialog: () => void;
+  confirmDialog: ConfirmDialogState;
+  openConfirmDialog: (options: Omit<ConfirmDialogState, 'isOpen' | 'resolve'>) => Promise<boolean>;
 }
 
 const DialogContext = createContext<DialogContextValue | undefined>(undefined);
@@ -61,6 +74,12 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   const [gistCreationCallback, setGistCreationCallback] = useState<((isPublic: boolean) => void) | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    resolve: null
+  });
 
   const openCategoryDialog = () => {
     setEditingCategoryName(null);
@@ -128,6 +147,28 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   const openExportDialog = () => setIsExportDialogOpen(true);
   const closeExportDialog = () => setIsExportDialogOpen(false);
 
+  const openConfirmDialog = (options: Omit<ConfirmDialogState, 'isOpen' | 'resolve'>): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmDialog({
+        ...options,
+        isOpen: true,
+        resolve
+      });
+    });
+  };
+
+  const handleConfirmDialogResult = (result: boolean) => {
+    if (confirmDialog.resolve) {
+      confirmDialog.resolve(result);
+    }
+    setConfirmDialog({
+      isOpen: false,
+      title: '',
+      message: '',
+      resolve: null
+    });
+  };
+
   return (
     <DialogContext.Provider value={{
       isCategoryDialogOpen,
@@ -159,8 +200,22 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
       isExportDialogOpen,
       openExportDialog,
       closeExportDialog,
+      confirmDialog,
+      openConfirmDialog,
     }}>
       {children}
+      {confirmDialog.isOpen && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          confirmButtonClass={confirmDialog.confirmButtonClass}
+          onConfirm={() => handleConfirmDialogResult(true)}
+          onCancel={() => handleConfirmDialogResult(false)}
+        />
+      )}
     </DialogContext.Provider>
   );
 };
