@@ -12,7 +12,7 @@ import {
   AuthContextActions,
   GitHubUser,
   AuthTokens
-} from '../../../src/context/AuthContext';
+} from '../../../web/src/lib/context/AuthContext';
 import { 
   mockFetch, 
   mockFetchError, 

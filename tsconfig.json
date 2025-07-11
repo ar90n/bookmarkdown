@@ -13,12 +13,12 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./web/src/lib",
     "resolveJsonModule": true,
     "allowImportingTsExtensions": false,
     "noEmit": false,
     "isolatedModules": true
   },
-  "include": ["src/**/*"],
+  "include": ["web/src/lib/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

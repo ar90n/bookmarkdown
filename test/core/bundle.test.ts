@@ -10,8 +10,8 @@ import {
   updateBundleByName,
   removeBundleByName,
   renameBundleByName
-} from '../../src/core/bundle.js';
-import { Bundle, BookmarkInput, BookmarkUpdate } from '../../src/types/index.js';
+} from '../../web/src/lib/core/bundle.js';
+import { Bundle, BookmarkInput, BookmarkUpdate } from '../../web/src/lib/types/index.js';
 
 describe('bundle core functions', () => {
   describe('createBundle', () => {

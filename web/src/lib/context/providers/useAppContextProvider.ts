@@ -1,0 +1,167 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { AppContextValue, AppConfig } from '../AppContext.js';
+import { useAuthContextProvider } from './useAuthContextProvider.js';
+import { useBookmarkContextProvider } from './useBookmarkContextProvider.js';
+
+export function useAppContextProvider(config: AppConfig): AppContextValue {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Create sub-contexts
+  const authContext = useAuthContextProvider({
+    ...config,
+    oauthServiceUrl: config.oauthServiceUrl
+  });
+  
+  const bookmarkContext = useBookmarkContextProvider({
+    accessToken: authContext.tokens?.accessToken,
+    storageKey: config.storageConfig?.bookmarkKey || 'bookmarkdown_data',
+    filename: 'bookmarks.md',
+    autoSave: true
+  });
+
+  // Setup auto-sync
+  useEffect(() => {
+    if (syncEnabled && config.autoSync && config.syncInterval && bookmarkContext.isDirty) {
+      const intervalMs = config.syncInterval * 60 * 1000; // Convert minutes to ms
+      
+      syncIntervalRef.current = setInterval(async () => {
+        if (bookmarkContext.isDirty) {
+          try {
+            await bookmarkContext.syncWithRemote();
+          } catch (error) {
+            console.warn('Auto-sync failed:', error);
+          }
+        }
+      }, intervalMs);
+      
+      return () => {
+        if (syncIntervalRef.current) {
+          clearInterval(syncIntervalRef.current);
+          syncIntervalRef.current = null;
+        }
+      };
+    }
+  }, [syncEnabled, config.autoSync, config.syncInterval, bookmarkContext]);
+
+  // Initialize operation
+  const initialize = useCallback(async () => {
+    if (isInitialized) return;
+
+    try {
+      // Try to refresh auth if we have stored tokens
+      if (authContext.tokens?.accessToken) {
+        await authContext.refreshAuth();
+      }
+
+      // Setup sync if authenticated
+      if (authContext.isAuthenticated && authContext.tokens?.accessToken) {
+        setSyncEnabled(true);
+        
+        // Try to sync on initialization if we have a stored GistID
+        if (config.autoSync && bookmarkContext.currentGistId) {
+          try {
+            console.log('Initializing with stored GistID:', bookmarkContext.currentGistId);
+            await bookmarkContext.loadFromRemote();
+          } catch (error) {
+            console.warn('Failed to load from remote on initialization:', error);
+            // If loading fails but we have a GistID, try syncing to handle potential conflicts
+            try {
+              await bookmarkContext.syncWithRemote();
+            } catch (syncError) {
+              console.warn('Failed to sync on initialization:', syncError);
+            }
+          }
+        } else if (config.autoSync && !bookmarkContext.currentGistId) {
+          console.log('No stored GistID found, will create new Gist on first sync');
+        }
+      }
+
+      setIsInitialized(true);
+    } catch (error) {
+      console.error('Failed to initialize app context:', error);
+      throw error;
+    }
+  }, [authContext, bookmarkContext, config.autoSync, isInitialized]);
+
+  // Reset operation
+  const reset = useCallback(async () => {
+    // Clear all state
+    authContext.resetAuth();
+    bookmarkContext.resetState();
+    setSyncEnabled(false);
+    setIsInitialized(false);
+    
+    // Clear sync interval
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+  }, [authContext, bookmarkContext]);
+
+  // Sync management
+  const enableSync = useCallback(async () => {
+    if (!authContext.isAuthenticated) {
+      throw new Error('Authentication required to enable sync');
+    }
+    
+    setSyncEnabled(true);
+    
+    // Load from remote immediately if we have a GistID
+    if (config.autoSync && bookmarkContext.currentGistId) {
+      try {
+        console.log('EnableSync: Loading from remote with GistID:', bookmarkContext.currentGistId);
+        await bookmarkContext.loadFromRemote();
+      } catch (error) {
+        console.warn('EnableSync: Failed to load from remote, will try sync:', error);
+        // If loading fails, try syncing to handle potential conflicts
+        await bookmarkContext.syncWithRemote();
+      }
+    } else if (config.autoSync && !bookmarkContext.currentGistId) {
+      console.log('EnableSync: No GistID found, will create on first sync');
+    }
+
+    // Setup auto-sync interval
+    if (config.autoSync && config.syncInterval) {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+      
+      syncIntervalRef.current = setInterval(async () => {
+        try {
+          // Only sync if there are changes and user is authenticated
+          if (bookmarkContext.isDirty && authContext.isAuthenticated) {
+            console.log('Auto-sync: syncing dirty changes...');
+            await bookmarkContext.syncWithRemote();
+          }
+        } catch (error) {
+          console.warn('Auto-sync failed:', error);
+        }
+      }, config.syncInterval * 60 * 1000); // Convert minutes to milliseconds
+    }
+  }, [authContext.isAuthenticated, bookmarkContext, config.autoSync, config.syncInterval]);
+
+  const disableSync = useCallback(() => {
+    setSyncEnabled(false);
+    
+    // Clear sync interval
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+  }, []);
+
+  const isSyncEnabled = useCallback(() => syncEnabled, [syncEnabled]);
+
+  return {
+    bookmark: bookmarkContext,
+    auth: authContext,
+    isInitialized,
+    initialize,
+    reset,
+    enableSync,
+    disableSync,
+    isSyncEnabled
+  };
+}

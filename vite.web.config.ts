@@ -25,7 +25,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'web/src'),
-      'bookmarkdown': resolve(__dirname, 'src')
+      'bookmarkdown': resolve(__dirname, 'web/src/lib')
     }
   }
 });

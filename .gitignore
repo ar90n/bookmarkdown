@@ -96,7 +96,11 @@ temp/
 
 # CLAUDE
 claude.md
+CLAUDE.md
 
 # Test outputs
 playwright-report/
 test-results/
+
+# Extension builds
+extension.tar

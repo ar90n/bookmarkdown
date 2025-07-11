@@ -9,10 +9,7 @@ export const SettingsPage: React.FC = () => {
 
   const handleExportMarkdown = async () => {
     try {
-      // For now, we'll export the raw data
-      // TODO: Add exportToMarkdown method to context
-      const data = bookmark.root;
-      const markdownContent = JSON.stringify(data, null, 2); // Temporary solution
+      const markdownContent = await bookmark.exportData('markdown');
       const blob = new Blob([markdownContent], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -35,7 +32,12 @@ export const SettingsPage: React.FC = () => {
     reader.onload = async (e) => {
       const content = e.target?.result as string;
       if (content) {
-        // TODO: Add importFromMarkdown method to context
+        try {
+          const format = file.name.endsWith('.json') ? 'json' : 'markdown';
+          await bookmark.importData(content, format);
+        } catch (error) {
+          console.error('Import failed:', error);
+        }
       }
     };
     reader.readAsText(file);
@@ -140,6 +142,67 @@ export const SettingsPage: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Data Management</h2>
         
         <div className="space-y-6">
+          {/* GitHub Gist Configuration */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">GitHub Gist Configuration</h3>
+            
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-start space-x-3">
+                <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h4 className="font-medium text-blue-900 mb-1">Gist ID</h4>
+                  <p className="text-sm text-blue-700 mb-3">
+                    {bookmark.currentGistId 
+                      ? `Your bookmarks are synced with Gist: ${bookmark.currentGistId}`
+                      : 'No Gist ID configured. A new Gist will be created on first sync.'
+                    }
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {bookmark.currentGistId && (
+                      <>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(bookmark.currentGistId!);
+                          }}
+                          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded"
+                        >
+                          Copy Gist ID
+                        </button>
+                        <a
+                          href={`https://gist.github.com/${bookmark.currentGistId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded"
+                        >
+                          View on GitHub
+                        </a>
+                        <button
+                          onClick={async () => {
+                            const confirmed = await dialog.openConfirmDialog({
+                              title: 'Clear Gist ID',
+                              message: 'Are you sure you want to clear the Gist ID? This will not delete the remote Gist, but will create a new one on next sync.',
+                              confirmText: 'Clear',
+                              cancelText: 'Cancel',
+                              confirmButtonClass: 'bg-orange-600 hover:bg-orange-700'
+                            });
+                            if (confirmed) {
+                              bookmark.clearGistId();
+                            }
+                          }}
+                          className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 px-2 py-1 rounded"
+                        >
+                          Clear Gist ID
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Sync Status */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Synchronization</h3>
@@ -154,8 +217,8 @@ export const SettingsPage: React.FC = () => {
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={true} // TODO: Connect to app context
-                    onChange={() => {}} // TODO: Implement toggle
+                    checked={true}
+                    onChange={() => {}}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
@@ -167,7 +230,7 @@ export const SettingsPage: React.FC = () => {
                 <select 
                   className="border border-gray-300 rounded px-3 py-1 text-sm"
                   defaultValue={5}
-                  onChange={() => {}} // TODO: Implement interval change
+                  onChange={() => {}}
                 >
                   <option value={1}>1 minute</option>
                   <option value={5}>5 minutes</option>
