@@ -8,15 +8,15 @@ import {
   createBookmarkContextValue,
   BookmarkContextState,
   BookmarkContextActions
-} from '../../../src/context/BookmarkContext';
-import { BookmarkService } from '../../../src/adapters/index';
+} from '../../../web/src/lib/context/BookmarkContext';
+import { BookmarkService } from '../../../web/src/lib/adapters/index';
 import { 
   createMockRoot,
   createMockBookmark,
   createMockBundle,
   createMockCategory
 } from '../../setup';
-import { BookmarkInput, BookmarkUpdate, BookmarkFilter, Root } from '../../../src/types/index';
+import { BookmarkInput, BookmarkUpdate, BookmarkFilter, Root } from '../../../web/src/lib/types/index';
 import type { MockedFunction } from 'vitest';
 
 describe('BookmarkContext', () => {

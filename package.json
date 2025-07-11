@@ -10,7 +10,7 @@
     "build:extension": "vite build --config vite.extension.config.ts",
     "build:web": "vite build --config vite.web.config.ts",
     "build:all": "npm run build && npm run build:lib && npm run build:extension && npm run build:web",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch web/src/lib/index.ts",
     "dev:web": "vite --config vite.web.config.ts",
     "start": "node dist/index.js",
     "test": "vitest",
@@ -22,9 +22,9 @@
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "lint": "eslint src --ext .ts,.tsx",
-    "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "format": "prettier --write 'src/**/*.{ts,tsx,json,md}'",
+    "lint": "eslint web/src/lib --ext .ts,.tsx",
+    "lint:fix": "eslint web/src/lib --ext .ts,.tsx --fix",
+    "format": "prettier --write 'web/src/lib/**/*.{ts,tsx,json,md}'",
     "type-check": "tsc --noEmit"
   },
   "keywords": [

@@ -279,7 +279,7 @@ export const BookmarksPage: React.FC = () => {
         )}
 
         {/* Content */}
-        {bookmark.root.categories.length === 0 ? (
+        {bookmark.root.categories.filter(category => !category.metadata?.isDeleted).length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No bookmarks yet</h2>
@@ -293,7 +293,7 @@ export const BookmarksPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {bookmark.root.categories.map((category) => (
+            {bookmark.root.categories.filter(category => !category.metadata?.isDeleted).map((category) => (
               <DroppableCategory key={category.name} categoryName={category.name}>
                 <CategoryComponent 
                   category={category}
@@ -437,7 +437,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
       
       {!collapsedCategories.has(category.name) && (
         <div className="p-6">
-          {category.bundles.length === 0 ? (
+          {category.bundles.filter(bundle => !bundle.metadata?.isDeleted).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No bundles in this category</p>
               <button 
@@ -449,7 +449,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {category.bundles.map((bundle) => {
+              {category.bundles.filter(bundle => !bundle.metadata?.isDeleted).map((bundle) => {
                 const bundleKey = `${category.name}/${bundle.name}`;
                 return (
                 <DraggableBundle key={bundle.name} bundle={bundle} categoryName={category.name}>
@@ -539,7 +539,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
             </h4>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-500">{bundle.bookmarks.length} bookmarks</span>
+            <span className="text-sm text-gray-500">{bundle.bookmarks.filter(b => !b.metadata?.isDeleted).length} bookmarks</span>
             <div className="flex items-center space-x-1">
               {isMobile ? (
                 <MobileMenu
@@ -585,7 +585,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
       
       {!collapsedBundles.has(bundleKey) && (
         <div className="p-4">
-          {bundle.bookmarks.length === 0 ? (
+          {bundle.bookmarks.filter(b => !b.metadata?.isDeleted).length === 0 ? (
             <div className="text-center py-4">
               <p className="text-gray-500 mb-2">No bookmarks in this bundle</p>
               <button 
@@ -598,7 +598,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
           ) : (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bundle.bookmarks.map((bookmark) => (
+                {bundle.bookmarks.filter(b => !b.metadata?.isDeleted).map((bookmark) => (
                   <DraggableBookmark 
                     key={bookmark.id} 
                     bookmark={bookmark} 
@@ -633,7 +633,10 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                           </div>
                           <div 
                             className="flex justify-end space-x-2 pt-2 border-t border-gray-100"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              e.preventDefault(); 
+                            }}
                           >
                             {isMobile ? (
                               <MobileMenu
@@ -644,7 +647,11 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                             ) : (
                               <>
                                 <button 
-                                  onClick={() => handleEditBookmark(category.name, bundle.name, bookmark)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleEditBookmark(category.name, bundle.name, bookmark);
+                                  }}
                                   className="text-gray-400 hover:text-gray-600"
                                   title="Edit bookmark"
                                 >
@@ -653,7 +660,11 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                                   </svg>
                                 </button>
                                 <button 
-                                  onClick={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title);
+                                  }}
                                   className="text-gray-400 hover:text-red-600"
                                   title="Delete bookmark"
                                 >

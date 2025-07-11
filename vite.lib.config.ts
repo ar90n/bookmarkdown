@@ -6,7 +6,7 @@ import dts from 'vite-plugin-dts';
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, 'src/browser.ts'),
+      entry: resolve(__dirname, 'web/src/lib/browser.ts'),
       name: 'BookMarkDown',
       fileName: (format) => `bookmarkdown.${format}.js`,
       formats: ['es', 'umd']
