@@ -8,11 +8,13 @@ A simple and portable bookmark management service using GitHub Gist as data stor
 - **Human-readable**: Stores data in Markdown format for easy reading and editing
 - **No vendor lock-in**: Uses GitHub Gist as an open platform for data storage
 - **React Web App**: Modern SPA with Tailwind CSS for beautiful UI
+- **Drag & Drop Support**: Intuitive bookmark and bundle organization with react-dnd
+- **Mobile Responsive**: Fully responsive design with automatic drag & drop disable on mobile
 - **Context API**: Centralized state management for consistent data handling
 - **Hierarchical organization**: Categories → Bundles → Bookmarks structure
 - **TypeScript support**: Full type safety with Zod schema validation
 - **Chrome extension**: Future support for browser extension (in development)
-- **Test-driven development**: Comprehensive tests with Vitest
+- **Test-driven development**: Comprehensive unit and E2E tests with Vitest and Playwright
 - **Modern build system**: Built with Vite for fast development and optimized production
 - **Real-time sync**: Automatic synchronization with GitHub Gist
 
@@ -61,6 +63,7 @@ npm install
 
 # Set up environment variables (optional for local dev)
 cp web/.env.example web/.env.local
+# Edit web/.env.local with your OAuth service URL
 
 # Start development server
 npm run dev:web
@@ -87,6 +90,7 @@ The app will open at `http://localhost:3000` with secure OAuth authentication.
 ├── web/                # React SPA with Tailwind CSS
 │   ├── src/            # React components and pages
 │   │   ├── components/ # Reusable UI components
+│   │   │   └── dnd/    # Drag & drop components
 │   │   ├── pages/      # Route pages
 │   │   └── contexts/   # React context providers
 │   ├── styles/         # Global CSS and Tailwind
@@ -97,7 +101,10 @@ The app will open at `http://localhost:3000` with secure OAuth authentication.
 │   └── package.json    # OAuth service dependencies
 ├── extension/          # Chrome extension (in development)
 │   └── ...             # Extension files
-├── test/               # Test suite (Vitest)
+├── test/               # Test suite
+│   ├── core/           # Unit tests for core logic
+│   ├── react/          # React component tests
+│   └── e2e/            # End-to-end tests (Playwright)
 ├── dist/               # Compiled outputs
 │   └── web/            # Web application build
 └── .github/workflows/  # CI/CD pipeline
@@ -110,10 +117,11 @@ The app will open at `http://localhost:3000` with secure OAuth authentication.
 #### Development
 - `npm run dev` - Development with file watching
 - `npm run dev:web` - Start SPA development server
-- `npm test` - Run test suite (66 tests)
+- `npm test` - Run all tests (unit + integration)
 - `npm run test:ui` - Run tests with UI
 - `npm run test:coverage` - Run tests with coverage
-- `npm run test:e2e` - Run E2E tests (Playwright)
+- `npm run test:e2e` - Run E2E tests with Playwright (14 tests across 7 browsers/devices)
+- `npm run test:e2e:ui` - Run E2E tests with Playwright UI mode
 
 #### Building
 - `npm run build` - Compile TypeScript
@@ -131,7 +139,7 @@ The app will open at `http://localhost:3000` with secure OAuth authentication.
 ### Running the Tests
 
 ```bash
-# Run all tests (66 tests)
+# Run unit tests
 npm test
 
 # Run tests with UI
@@ -140,9 +148,24 @@ npm run test:ui
 # Run with coverage
 npm run test:coverage
 
-# Run E2E tests
+# Run E2E tests (14 tests)
 npm run test:e2e
+
+# Run E2E tests for specific browser
+npm run test:e2e -- --project=chromium
+
+# Run E2E tests in UI mode
+npm run test:e2e:ui
 ```
+
+#### E2E Testing
+
+BookMarkDown uses Playwright for end-to-end testing across multiple browsers and devices:
+
+- **Desktop**: Chrome, Firefox, Safari, Edge
+- **Mobile**: Mobile Chrome, Mobile Safari
+- **Features tested**: Authentication, bookmark operations, responsive design
+- **Note**: Drag & drop tests are temporarily skipped due to react-dnd compatibility
 
 ## 🔐 OAuth Setup
 
@@ -181,6 +204,10 @@ Simply click "Sign in with GitHub" - no token creation needed!
    ```bash
    # Set OAuth service URL in environment
    echo "VITE_OAUTH_SERVICE_URL=https://your-oauth-service.workers.dev" > web/.env.local
+   
+   # Or use the example configuration
+   cp web/.env.example web/.env.local
+   # Edit web/.env.local with your OAuth service URL
    ```
 
 ### Security Benefits
@@ -209,7 +236,9 @@ BookMarkDown uses a **last-write-wins** approach for conflict resolution:
 4. **Progressive enhancement**: Start simple, add features as needed
 
 ### Technical Approach
-5. **Test-driven development**: Comprehensive test coverage with Vitest
+- **Component-based architecture**: Modular React components with clear separation of concerns
+- **Type-first development**: Extensive TypeScript usage with strict type checking
+- **Test-driven development**: Comprehensive unit tests with Vitest and E2E tests with Playwright
 
 ## 📄 License
 
@@ -231,9 +260,12 @@ BookMarkDown prioritizes security through:
 Contributions are welcome! Please ensure any changes maintain:
 
 - **Test coverage**: Add tests for all new functionality  
+  - Unit tests for business logic (Vitest)
+  - E2E tests for user workflows (Playwright)
 - **Type safety**: Use strict TypeScript
 - **Code quality**: Pass linting and formatting checks
 - **Documentation**: Update README and add JSDoc comments
+- **Mobile compatibility**: Test on both desktop and mobile devices
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed implementation guidelines.
 
