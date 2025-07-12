@@ -550,12 +550,12 @@ const mergeBookmarks = (
   const remoteBookmarkMap = new Map<string, Bookmark>();
   
   localBookmarks.forEach(bookmark => {
-    const key = getBookmarkContentKey(bookmark, categoryName, bundleName);
+    const key = getBookmarkContentKey(bookmark);
     localBookmarkMap.set(key, bookmark);
   });
   
   remoteBookmarks.forEach(bookmark => {
-    const key = getBookmarkContentKey(bookmark, categoryName, bundleName);
+    const key = getBookmarkContentKey(bookmark);
     remoteBookmarkMap.set(key, bookmark);
   });
   
@@ -598,7 +598,7 @@ const mergeBookmarks = (
       if (localRootNeverSynced) {
         // Never synced - keep local
         if (!isBookmarkDeleted(localBookmarkWithMeta)) {
-          const localKey = getBookmarkContentKey(localBookmark, categoryName, bundleName);
+          const localKey = getBookmarkContentKey(localBookmark);
           mergedBookmarks.set(localKey, localBookmarkWithMeta);
         }
       } else {
@@ -611,7 +611,7 @@ const mergeBookmarks = (
         } else {
           // Remote bundle wasn't modified after last sync, or bookmark is a new local addition
           if (!isBookmarkDeleted(localBookmarkWithMeta)) {
-            const localKey = getBookmarkContentKey(localBookmark, categoryName, bundleName);
+            const localKey = getBookmarkContentKey(localBookmark);
             mergedBookmarks.set(localKey, localBookmarkWithMeta);
           }
         }
@@ -621,7 +621,7 @@ const mergeBookmarks = (
       // Remote only - add to local
       const remoteBookmarkWithMeta = ensureBookmarkMetadata(remoteBookmark);
       if (!isBookmarkDeleted(remoteBookmarkWithMeta)) {
-        const remoteKey = getBookmarkContentKey(remoteBookmark, categoryName, bundleName);
+        const remoteKey = getBookmarkContentKey(remoteBookmark);
         mergedBookmarks.set(remoteKey, remoteBookmarkWithMeta);
       }
     }
