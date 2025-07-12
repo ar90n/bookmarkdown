@@ -37,7 +37,6 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@octokit/rest": "^20.0.2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-router-dom": "^5.3.3",
