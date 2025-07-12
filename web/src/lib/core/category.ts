@@ -28,6 +28,13 @@ export const updateCategoryName = (category: Category, newName: string): Categor
 });
 
 export const addBundleToCategory = (category: Category, bundleName: string): Category => {
+  // Check if bundle already exists
+  const existingBundle = category.bundles.find(bundle => bundle.name === bundleName);
+  if (existingBundle) {
+    // Bundle already exists, return unchanged category
+    return category;
+  }
+  
   const bundle = createBundle(bundleName);
   return {
     ...category,
