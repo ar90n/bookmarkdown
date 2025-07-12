@@ -11,7 +11,6 @@ import {
   addBookmarkToRoot,
   updateBookmarkInRoot,
   removeBookmarkFromRoot,
-  markBookmarkAsDeletedInRoot,
   markBundleAsDeletedInRoot,
   markCategoryAsDeletedInRoot,
   searchBookmarksInRoot,
@@ -38,6 +37,7 @@ export interface BookmarkService {
   
   // Bookmark operations (now async with transactional sync)
   addBookmark: (categoryName: string, bundleName: string, bookmark: BookmarkInput) => Promise<Result<Root>>;
+  addBookmarksBatch: (categoryName: string, bundleName: string, bookmarks: BookmarkInput[]) => Promise<Result<Root>>;
   updateBookmark: (categoryName: string, bundleName: string, bookmarkId: string, update: BookmarkUpdate) => Promise<Result<Root>>;
   removeBookmark: (categoryName: string, bundleName: string, bookmarkId: string) => Promise<Result<Root>>;
   
@@ -140,7 +140,7 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         if (!validateCategoryExists(name)) {
           return failure(new Error(`Category '${name}' not found`));
         }
-        currentRoot = markCategoryAsDeletedInRoot(currentRoot, name);
+        currentRoot = removeCategoryFromRoot(currentRoot, name);
         return success(currentRoot);
       }
       
@@ -184,7 +184,44 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Category '${newName}' already exists`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        currentRoot = renameCategoryInRoot(currentRoot, oldName, newName);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Re-validate after sync
+      if (!validateCategoryExists(oldName)) {
+        return failure(new Error(`Category '${oldName}' not found after sync`));
+      }
+      
+      if (currentRoot.categories.some(category => category.name === newName)) {
+        return failure(new Error(`Category '${newName}' already exists after sync`));
+      }
+      
+      // Perform operation
       currentRoot = renameCategoryInRoot(currentRoot, oldName, newName);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -198,7 +235,41 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Bundle '${bundleName}' already exists in category '${categoryName}'`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        currentRoot = addBundleToRoot(currentRoot, categoryName, bundleName);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if bundle already exists after sync
+      const categoryAfterSync = currentRoot.categories.find(cat => cat.name === categoryName);
+      if (categoryAfterSync?.bundles.some(bundle => bundle.name === bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' already exists in category '${categoryName}'`));
+      }
+      
+      // Perform operation
       currentRoot = addBundleToRoot(currentRoot, categoryName, bundleName);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -207,7 +278,40 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}'`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only (hard delete for immediate removal)
+        currentRoot = removeBundleFromRoot(currentRoot, categoryName, bundleName);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if bundle still exists after sync
+      if (!validateBundleExists(categoryName, bundleName)) {
+        return success(currentRoot);
+      }
+      
+      // Perform operation
       currentRoot = markBundleAsDeletedInRoot(currentRoot, categoryName, bundleName);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -221,7 +325,45 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Bundle '${newName}' already exists in category '${categoryName}'`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        currentRoot = renameBundleInRoot(currentRoot, categoryName, oldName, newName);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if old bundle still exists and new name is available after sync
+      if (!validateBundleExists(categoryName, oldName)) {
+        return failure(new Error(`Bundle '${oldName}' not found in category '${categoryName}' after sync`));
+      }
+      
+      const categoryAfterSync = currentRoot.categories.find(cat => cat.name === categoryName);
+      if (categoryAfterSync?.bundles.some(bundle => bundle.name === newName)) {
+        return failure(new Error(`Bundle '${newName}' already exists in category '${categoryName}' after sync`));
+      }
+      
+      // Perform operation
       currentRoot = renameBundleInRoot(currentRoot, categoryName, oldName, newName);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -230,7 +372,91 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}'`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        currentRoot = addBookmarkToRoot(currentRoot, categoryName, bundleName, bookmark);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if bundle still exists after sync
+      if (!validateBundleExists(categoryName, bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}' after sync`));
+      }
+      
+      // Perform operation
       currentRoot = addBookmarkToRoot(currentRoot, categoryName, bundleName, bookmark);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
+      return success(currentRoot);
+    },
+
+    addBookmarksBatch: async (categoryName: string, bundleName: string, bookmarks: BookmarkInput[]): Promise<Result<Root>> => {
+      
+      if (!validateBundleExists(categoryName, bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}'`));
+      }
+      
+      if (bookmarks.length === 0) {
+        return success(currentRoot);
+      }
+      
+      if (!syncShell) {
+        // No sync - operate locally only
+        for (const bookmark of bookmarks) {
+          currentRoot = addBookmarkToRoot(currentRoot, categoryName, bundleName, bookmark);
+        }
+        return success(currentRoot);
+      }
+      
+      // Single sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if bundle still exists after sync
+      if (!validateBundleExists(categoryName, bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}' after sync`));
+      }
+      
+      // Add all bookmarks locally (fast operation)
+      for (const bookmark of bookmarks) {
+        currentRoot = addBookmarkToRoot(currentRoot, categoryName, bundleName, bookmark);
+      }
+      
+      // Single save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -239,16 +465,76 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}'`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        currentRoot = updateBookmarkInRoot(currentRoot, categoryName, bundleName, bookmarkId, update);
+        return success(currentRoot);
+      }
+      
+      // Sync before operation
+      const syncResult = await syncShell.syncBeforeOperation(currentRoot);
+      if (!syncResult.success) {
+        return failure(new Error(`Sync failed: ${syncResult.error.message}`));
+      }
+      
+      // Update current root with synced data
+      currentRoot = syncResult.data;
+      
+      // Check if bundle still exists after sync
+      if (!validateBundleExists(categoryName, bundleName)) {
+        return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}' after sync`));
+      }
+      
+      // Perform operation
       currentRoot = updateBookmarkInRoot(currentRoot, categoryName, bundleName, bookmarkId, update);
+      
+      // Save to remote
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
     removeBookmark: async (categoryName: string, bundleName: string, bookmarkId: string): Promise<Result<Root>> => {
+      
       if (!validateBundleExists(categoryName, bundleName)) {
         return failure(new Error(`Bundle '${bundleName}' not found in category '${categoryName}'`));
       }
       
-      currentRoot = markBookmarkAsDeletedInRoot(currentRoot, categoryName, bundleName, bookmarkId);
+      
+      if (!syncShell) {
+        // No sync - operate locally only (hard delete for immediate removal)
+        
+        currentRoot = removeBookmarkFromRoot(currentRoot, categoryName, bundleName, bookmarkId);
+        
+        
+        return success(currentRoot);
+      }
+      
+      // BYPASS SYNC FOR DELETION - Use hard delete for immediate user feedback
+      
+      // Perform hard delete for immediate UI feedback
+      currentRoot = removeBookmarkFromRoot(currentRoot, categoryName, bundleName, bookmarkId);
+      
+      
+      // Save to remote without sync to persist the change
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps if available
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
       return success(currentRoot);
     },
 
@@ -319,47 +605,75 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
     },
 
     moveBookmark: async (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string): Promise<Result<Root>> => {
-      // Get fresh root state using getRoot() to ensure we have the latest state
-      const freshRoot = currentRoot; // Direct access since we're inside the service
       
-      // CRITICAL FIX: Use fresh root for validation instead of global currentRoot
+      // Helper function for validation
       const validateBundleExistsWithRoot = (root: Root, categoryName: string, bundleName: string): boolean => {
         const category = root.categories.find(cat => cat.name === categoryName);
         return category?.bundles.some(bundle => bundle.name === bundleName) || false;
       };
       
-      // Enhanced validation with detailed error messages using fresh root
-      if (!validateBundleExistsWithRoot(freshRoot, fromCategory, fromBundle)) {
+      // Initial validation
+      if (!validateBundleExistsWithRoot(currentRoot, fromCategory, fromBundle)) {
         return failure(new Error(`Source bundle '${fromBundle}' not found in category '${fromCategory}'`));
       }
       
-      if (!validateBundleExistsWithRoot(freshRoot, toCategory, toBundle)) {
+      if (!validateBundleExistsWithRoot(currentRoot, toCategory, toBundle)) {
         return failure(new Error(`Target bundle '${toBundle}' not found in category '${toCategory}'`));
       }
       
-      // Additional validation with current state information
-      const sourceCategory = freshRoot.categories.find(cat => cat.name === fromCategory);
+      // Additional validation
+      const sourceCategory = currentRoot.categories.find(cat => cat.name === fromCategory);
       const sourceBundle = sourceCategory?.bundles.find(bundle => bundle.name === fromBundle);
       
       if (!sourceBundle) {
         return failure(new Error(`Source bundle '${fromBundle}' not found in category '${fromCategory}' during move operation`));
       }
       
-      const bookmarkExists = sourceBundle.bookmarks.some(bookmark => bookmark.id === bookmarkId);
+      
+      // Check only active (non-deleted) bookmarks
+      const activeBookmarks = sourceBundle.bookmarks.filter(bookmark => !bookmark.metadata?.isDeleted);
+      
+      const bookmarkExists = activeBookmarks.some(bookmark => bookmark.id === bookmarkId);
+      
       if (!bookmarkExists) {
-        // Provide detailed debugging information
-        const bookmarkIds = sourceBundle.bookmarks.map(b => b.id);
-        return failure(new Error(`Bookmark with id '${bookmarkId}' not found in source bundle '${fromBundle}' in category '${fromCategory}'. Available bookmark IDs: [${bookmarkIds.join(', ')}]`));
+        const activeBookmarkIds = activeBookmarks.map(b => b.id);
+        return failure(new Error(`Bookmark with id '${bookmarkId}' not found in source bundle '${fromBundle}' in category '${fromCategory}'. Available active bookmark IDs: [${activeBookmarkIds.join(', ')}]`));
       }
       
+      
+      if (!syncShell) {
+        // No sync - operate locally only
+        try {
+          currentRoot = moveBookmarkToBundle(currentRoot, fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
+          return success(currentRoot);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to move bookmark';
+          return failure(new Error(`Move operation failed: ${errorMessage}`));
+        }
+      }
+      
+      // BYPASS SYNC FOR MOVE - Use direct move for immediate user feedback
+      
+      // Perform move operation directly
       try {
-        // Use fresh root state for the move operation
-        currentRoot = moveBookmarkToBundle(freshRoot, fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
-        return success(currentRoot);
+        currentRoot = moveBookmarkToBundle(currentRoot, fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to move bookmark';
         return failure(new Error(`Move operation failed: ${errorMessage}`));
       }
+      
+      // Save to remote without sync to persist the change
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps if available
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
+      return success(currentRoot);
     },
 
     moveBundle: async (fromCategory: string, toCategory: string, bundleName: string): Promise<Result<Root>> => {
@@ -371,12 +685,37 @@ export const createBookmarkService = (syncShell?: SyncShell): BookmarkService =>
         return failure(new Error(`Target category '${toCategory}' not found`));
       }
       
+      if (!syncShell) {
+        // No sync - operate locally only
+        try {
+          currentRoot = moveBundleToCategory(currentRoot, fromCategory, toCategory, bundleName);
+          return success(currentRoot);
+        } catch (error) {
+          return failure(error instanceof Error ? error : new Error('Failed to move bundle'));
+        }
+      }
+      
+      // BYPASS SYNC FOR MOVE - Use direct move for immediate user feedback
+      
+      // Perform move operation directly
       try {
         currentRoot = moveBundleToCategory(currentRoot, fromCategory, toCategory, bundleName);
-        return success(currentRoot);
       } catch (error) {
         return failure(error instanceof Error ? error : new Error('Failed to move bundle'));
       }
+      
+      // Save to remote without sync to persist the change
+      const saveResult = await syncShell.saveAfterOperation(currentRoot);
+      if (!saveResult.success) {
+        return failure(new Error(`Failed to save: ${saveResult.error.message}`));
+      }
+      
+      // Update with synced timestamps if available
+      if (saveResult.data.mergedRoot) {
+        currentRoot = saveResult.data.mergedRoot;
+      }
+      
+      return success(currentRoot);
     },
 
     // Business logic operations (to replace React state usage)

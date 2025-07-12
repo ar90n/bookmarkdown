@@ -80,7 +80,6 @@ export const createSyncShell = (config: SyncConfig): SyncShell => {
     // Priority 4: Search for existing Gist
     const searchResult = await gistClient.findByFilename(config.filename || DEFAULT_FILENAME);
     if (searchResult.success && searchResult.data) {
-      console.log(`Found existing gist through search with ID: ${searchResult.data.id}`);
       return searchResult.data.id;
     }
     
@@ -246,7 +245,6 @@ export const createSyncShell = (config: SyncConfig): SyncShell => {
           if (searchResult.success && searchResult.data) {
             // Found existing gist, update it instead of creating new one
             targetGistId = searchResult.data.id;
-            console.log(`Found existing gist with ID: ${targetGistId}, updating instead of creating new`);
             const updateResult = await gistClient.update(targetGistId, markdownContent, description);
             return mapResult(updateResult, (result) => ({
               gistId: result.id,
@@ -264,7 +262,6 @@ export const createSyncShell = (config: SyncConfig): SyncShell => {
               if (retrySearchResult.success && retrySearchResult.data) {
                 // Found gist created by another tab
                 targetGistId = retrySearchResult.data.id;
-                console.log(`Found gist created by another tab with ID: ${targetGistId}`);
                 const updateResult = await gistClient.update(targetGistId, markdownContent, description);
                 return mapResult(updateResult, (result) => ({
                   gistId: result.id,

@@ -130,6 +130,7 @@ export const removeBookmarkFromRoot = (
   bundleName: string, 
   bookmarkId: string
 ): Root => {
+  
   const updatedRoot = {
     ...root,
     categories: updateCategoryByName(
@@ -138,6 +139,7 @@ export const removeBookmarkFromRoot = (
       category => updateCategoryMetadata(removeBookmarkFromCategory(category, bundleName, bookmarkId))
     ),
   };
+  
   return updateRootMetadata(updatedRoot, getCurrentTimestamp());
 };
 
@@ -147,6 +149,7 @@ export const markBookmarkAsDeletedInRoot = (
   bundleName: string, 
   bookmarkId: string
 ): Root => {
+  
   const updatedRoot = {
     ...root,
     categories: updateCategoryByName(
@@ -155,6 +158,7 @@ export const markBookmarkAsDeletedInRoot = (
       category => updateCategoryMetadata(markBookmarkAsDeletedInCategory(category, bundleName, bookmarkId))
     ),
   };
+  
   return updateRootMetadata(updatedRoot, getCurrentTimestamp());
 };
 
@@ -257,6 +261,7 @@ export const moveBookmarkToBundle = (
   toBundle: string,
   bookmarkId: string
 ): Root => {
+  
   // Don't move if source and target are the same
   if (fromCategory === toCategory && fromBundle === toBundle) {
     return root;

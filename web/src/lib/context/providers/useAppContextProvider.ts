@@ -62,7 +62,6 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
         // Try to sync on initialization if we have a stored GistID
         if (config.autoSync && bookmarkContext.currentGistId) {
           try {
-            console.log('Initializing with stored GistID:', bookmarkContext.currentGistId);
             await bookmarkContext.loadFromRemote();
           } catch (error) {
             console.warn('Failed to load from remote on initialization:', error);
@@ -74,7 +73,7 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
             }
           }
         } else if (config.autoSync && !bookmarkContext.currentGistId) {
-          console.log('No stored GistID found, will create new Gist on first sync');
+          // No GistID stored - new installation
         }
       }
 
@@ -111,7 +110,6 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     // Load from remote immediately if we have a GistID
     if (config.autoSync && bookmarkContext.currentGistId) {
       try {
-        console.log('EnableSync: Loading from remote with GistID:', bookmarkContext.currentGistId);
         await bookmarkContext.loadFromRemote();
       } catch (error) {
         console.warn('EnableSync: Failed to load from remote, will try sync:', error);
@@ -119,7 +117,7 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
         await bookmarkContext.syncWithRemote();
       }
     } else if (config.autoSync && !bookmarkContext.currentGistId) {
-      console.log('EnableSync: No GistID found, will create on first sync');
+      // No GistID stored - will create on first save
     }
 
     // Setup auto-sync interval
@@ -132,7 +130,6 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
         try {
           // Only sync if there are changes and user is authenticated
           if (bookmarkContext.isDirty && authContext.isAuthenticated) {
-            console.log('Auto-sync: syncing dirty changes...');
             await bookmarkContext.syncWithRemote();
           }
         } catch (error) {

@@ -228,9 +228,9 @@ describe('Transactional Merge Algorithm', () => {
       ]
     });
 
-    // Test merge
+    // Test merge - use EPOCH for userLastSynced since local was never synced
     const result = mergeRoots(localRoot, remoteRoot, {
-      userLastSynced: '2023-01-01T00:00:00Z'
+      userLastSynced: '1970-01-01T00:00:00.000Z'
     });
     
     expect(result.hasConflicts).toBe(false);
@@ -241,5 +241,181 @@ describe('Transactional Merge Algorithm', () => {
     const mergedBookmarks = result.mergedRoot.categories[0].bundles[0].bookmarks;
     expect(mergedBookmarks).toHaveLength(1);
     expect(mergedBookmarks[0].title).toBe('Local Only Bookmark');
+  });
+
+  it('should handle move operations without creating duplicates', () => {
+    // Simulate a bookmark that was moved between bundles on remote
+    const localRoot: Root = initializeRootMetadata({
+      version: 1,
+      categories: [
+        {
+          name: 'Test Category',
+          bundles: [
+            {
+              name: 'Source Bundle',
+              bookmarks: [
+                {
+                  id: 'moved-bookmark',
+                  title: 'Moved Bookmark',
+                  url: 'https://moved.com',
+                  metadata: {
+                    lastModified: '2023-01-01T00:00:00Z'
+                  }
+                }
+              ],
+              metadata: {
+                lastModified: '2023-01-01T00:00:00Z'
+              }
+            },
+            {
+              name: 'Target Bundle',
+              bookmarks: [],
+              metadata: {
+                lastModified: '2023-01-01T00:00:00Z'
+              }
+            }
+          ],
+          metadata: {
+            lastModified: '2023-01-01T00:00:00Z'
+          }
+        }
+      ]
+    });
+
+    // Remote has the bookmark moved to Target Bundle
+    const remoteRoot: Root = initializeRootMetadata({
+      version: 1,
+      categories: [
+        {
+          name: 'Test Category',
+          bundles: [
+            {
+              name: 'Source Bundle',
+              bookmarks: [], // Bookmark moved away
+              metadata: {
+                lastModified: '2023-01-02T00:00:00Z' // Updated after move
+              }
+            },
+            {
+              name: 'Target Bundle',
+              bookmarks: [
+                {
+                  id: 'moved-bookmark-new-id', // Different ID after move
+                  title: 'Moved Bookmark',
+                  url: 'https://moved.com',
+                  metadata: {
+                    lastModified: '2023-01-02T00:00:00Z'
+                  }
+                }
+              ],
+              metadata: {
+                lastModified: '2023-01-02T00:00:00Z' // Updated after move
+              }
+            }
+          ],
+          metadata: {
+            lastModified: '2023-01-02T00:00:00Z'
+          }
+        }
+      ]
+    });
+
+    const result = mergeRoots(localRoot, remoteRoot, {
+      userLastSynced: '2023-01-01T00:00:00Z'
+    });
+
+    expect(result.hasConflicts).toBe(false);
+    
+    const sourceBundle = result.mergedRoot.categories[0].bundles[0];
+    const targetBundle = result.mergedRoot.categories[0].bundles[1];
+    
+    // Source bundle should be empty (bookmark moved away and detected as deleted)
+    expect(sourceBundle.bookmarks).toHaveLength(0);
+    
+    // Target bundle should have the bookmark (moved from remote)
+    expect(targetBundle.bookmarks).toHaveLength(1);
+    expect(targetBundle.bookmarks[0].title).toBe('Moved Bookmark');
+    
+    // Total should be 1, not 2 (no duplication)
+    const totalBookmarks = sourceBundle.bookmarks.length + targetBundle.bookmarks.length;
+    expect(totalBookmarks).toBe(1);
+  });
+
+  it('should detect conflicting modifications and prefer newer timestamp', () => {
+    // Both local and remote modified the same bookmark
+    const localRoot: Root = initializeRootMetadata({
+      version: 1,
+      categories: [
+        {
+          name: 'Test Category',
+          bundles: [
+            {
+              name: 'Test Bundle',
+              bookmarks: [
+                {
+                  id: 'conflict-bookmark',
+                  title: 'Local Modified Title',
+                  url: 'https://conflict.com',
+                  notes: 'Local notes',
+                  metadata: {
+                    lastModified: '2023-01-01T00:00:00Z' // Older
+                  }
+                }
+              ],
+              metadata: {
+                lastModified: '2023-01-01T00:00:00Z'
+              }
+            }
+          ],
+          metadata: {
+            lastModified: '2023-01-01T00:00:00Z'
+          }
+        }
+      ]
+    });
+
+    const remoteRoot: Root = initializeRootMetadata({
+      version: 1,
+      categories: [
+        {
+          name: 'Test Category',
+          bundles: [
+            {
+              name: 'Test Bundle',
+              bookmarks: [
+                {
+                  id: 'conflict-bookmark-remote',
+                  title: 'Remote Modified Title',
+                  url: 'https://conflict.com',
+                  notes: 'Remote notes',
+                  metadata: {
+                    lastModified: '2023-01-02T00:00:00Z' // Newer
+                  }
+                }
+              ],
+              metadata: {
+                lastModified: '2023-01-02T00:00:00Z'
+              }
+            }
+          ],
+          metadata: {
+            lastModified: '2023-01-02T00:00:00Z'
+          }
+        }
+      ]
+    });
+
+    const result = mergeRoots(localRoot, remoteRoot, {
+      userLastSynced: '2023-01-01T00:00:00Z'
+    });
+
+    expect(result.hasConflicts).toBe(false);
+    
+    const mergedBookmarks = result.mergedRoot.categories[0].bundles[0].bookmarks;
+    expect(mergedBookmarks).toHaveLength(1);
+    
+    // Should prefer remote version (newer timestamp)
+    expect(mergedBookmarks[0].title).toBe('Remote Modified Title');
+    expect(mergedBookmarks[0].notes).toBe('Remote notes');
   });
 });

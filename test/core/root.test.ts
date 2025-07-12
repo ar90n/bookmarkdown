@@ -75,6 +75,47 @@ describe('root core functions', () => {
         expect(updated.categories).toEqual([]);
         expect(updated).not.toBe(root); // still creates new object
       });
+
+      it('should remove category with all bundles and bookmarks', () => {
+        const root: Root = {
+          version: 1,
+          categories: [
+            {
+              name: 'Category to Delete',
+              bundles: [
+                {
+                  name: 'Bundle 1',
+                  bookmarks: [
+                    { id: '1', title: 'Bookmark 1', url: 'https://example1.com' },
+                    { id: '2', title: 'Bookmark 2', url: 'https://example2.com' }
+                  ]
+                },
+                {
+                  name: 'Bundle 2',
+                  bookmarks: [
+                    { id: '3', title: 'Bookmark 3', url: 'https://example3.com' }
+                  ]
+                }
+              ]
+            },
+            {
+              name: 'Other Category',
+              bundles: []
+            }
+          ]
+        };
+
+        const updated = removeCategoryFromRoot(root, 'Category to Delete');
+
+        // Category should be completely removed
+        expect(updated.categories).toHaveLength(1);
+        expect(updated.categories[0].name).toBe('Other Category');
+        
+        // Verify original structure is preserved (immutability)
+        expect(root.categories).toHaveLength(2);
+        expect(root.categories[0].bundles).toHaveLength(2);
+        expect(root.categories[0].bundles[0].bookmarks).toHaveLength(2);
+      });
     });
 
     describe('renameCategoryInRoot', () => {
@@ -129,6 +170,44 @@ describe('root core functions', () => {
 
         expect(updated.categories[0].bundles).toHaveLength(1);
         expect(updated.categories[0].bundles[0].name).toBe('Bundle 2');
+      });
+
+      it('should remove bundle with all bookmarks', () => {
+        const root: Root = {
+          version: 1,
+          categories: [
+            {
+              name: 'Test Category',
+              bundles: [
+                {
+                  name: 'Bundle to Delete',
+                  bookmarks: [
+                    { id: '1', title: 'Bookmark 1', url: 'https://example1.com' },
+                    { id: '2', title: 'Bookmark 2', url: 'https://example2.com' },
+                    { id: '3', title: 'Bookmark 3', url: 'https://example3.com' }
+                  ]
+                },
+                {
+                  name: 'Other Bundle',
+                  bookmarks: [
+                    { id: '4', title: 'Bookmark 4', url: 'https://example4.com' }
+                  ]
+                }
+              ]
+            }
+          ]
+        };
+
+        const updated = removeBundleFromRoot(root, 'Test Category', 'Bundle to Delete');
+
+        // Bundle should be completely removed
+        expect(updated.categories[0].bundles).toHaveLength(1);
+        expect(updated.categories[0].bundles[0].name).toBe('Other Bundle');
+        expect(updated.categories[0].bundles[0].bookmarks).toHaveLength(1);
+        
+        // Verify original structure is preserved (immutability)
+        expect(root.categories[0].bundles).toHaveLength(2);
+        expect(root.categories[0].bundles[0].bookmarks).toHaveLength(3);
       });
     });
 

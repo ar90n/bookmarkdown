@@ -3,11 +3,8 @@ import {
   getCategoryLastModified, 
   getBundleLastModified,
   getBookmarkLastModified,
-  getRootLastSynced,
-  updateRootMetadata, 
   getCurrentTimestamp,
   isNewerThan,
-  ensureRootMetadata,
   ensureRootMetadataWithoutTimestamp,
   ensureCategoryMetadata,
   ensureBundleMetadata,
@@ -32,7 +29,7 @@ export interface MergeOptions {
 }
 
 /**
- * Content-based key for bookmarks (URL + title)
+ * Content-based key for bookmarks (URL + title only, location-independent)
  */
 const getBookmarkContentKey = (bookmark: Bookmark): string => {
   return `${bookmark.url}||${bookmark.title}`;
@@ -57,7 +54,7 @@ export const mergeRoots = (
   const deviceLastSynced = userLastSynced || '1970-01-01T00:00:00.000Z';
   
   // Determine if there are actual content differences before merge
-  const hasContentDifferences = !compareRootsContent(localWithMeta, remoteWithMeta);
+  // (Currently only used for logging, can be removed in future if not needed)
   
   // Merge categories using transactional algorithm with soft delete support
   const mergedCategories = mergeCategories(
@@ -553,12 +550,12 @@ const mergeBookmarks = (
   const remoteBookmarkMap = new Map<string, Bookmark>();
   
   localBookmarks.forEach(bookmark => {
-    const key = getBookmarkContentKey(bookmark);
+    const key = getBookmarkContentKey(bookmark, categoryName, bundleName);
     localBookmarkMap.set(key, bookmark);
   });
   
   remoteBookmarks.forEach(bookmark => {
-    const key = getBookmarkContentKey(bookmark);
+    const key = getBookmarkContentKey(bookmark, categoryName, bundleName);
     remoteBookmarkMap.set(key, bookmark);
   });
   
@@ -591,18 +588,32 @@ const mergeBookmarks = (
       }
       
     } else if (localBookmark && !remoteBookmark) {
-      // Local only - check if deleted remotely
+      // Local only - check if deleted remotely using container timestamps
       const localBookmarkWithMeta = ensureBookmarkMetadata(localBookmark);
+      const remoteBundleWithMeta = ensureBundleMetadata(remoteBundle);
       
-      if (new Date(userLastSynced).getTime() === new Date('1970-01-01T00:00:00.000Z').getTime()) {
+      // Check if this was never synced by looking at root metadata
+      const localRootNeverSynced = new Date(userLastSynced).getTime() === new Date('1970-01-01T00:00:00.000Z').getTime();
+      
+      if (localRootNeverSynced) {
         // Never synced - keep local
         if (!isBookmarkDeleted(localBookmarkWithMeta)) {
-          mergedBookmarks.set(contentKey, localBookmarkWithMeta);
+          const localKey = getBookmarkContentKey(localBookmark, categoryName, bundleName);
+          mergedBookmarks.set(localKey, localBookmarkWithMeta);
         }
       } else {
-        // Local only bookmark - treat as new addition, not deletion
-        if (!isBookmarkDeleted(localBookmarkWithMeta)) {
-          mergedBookmarks.set(contentKey, localBookmarkWithMeta);
+        // Check if remote bundle was modified after user's last sync
+        const remoteBundleLastModified = getBundleLastModified(remoteBundleWithMeta);
+        
+        if (isNewerThan(remoteBundleLastModified, userLastSynced)) {
+          // Remote bundle was modified after last sync AND bookmark is missing from remote
+          // This indicates the bookmark was deleted remotely - DO NOT include it
+        } else {
+          // Remote bundle wasn't modified after last sync, or bookmark is a new local addition
+          if (!isBookmarkDeleted(localBookmarkWithMeta)) {
+            const localKey = getBookmarkContentKey(localBookmark, categoryName, bundleName);
+            mergedBookmarks.set(localKey, localBookmarkWithMeta);
+          }
         }
       }
       
@@ -610,7 +621,8 @@ const mergeBookmarks = (
       // Remote only - add to local
       const remoteBookmarkWithMeta = ensureBookmarkMetadata(remoteBookmark);
       if (!isBookmarkDeleted(remoteBookmarkWithMeta)) {
-        mergedBookmarks.set(contentKey, remoteBookmarkWithMeta);
+        const remoteKey = getBookmarkContentKey(remoteBookmark, categoryName, bundleName);
+        mergedBookmarks.set(remoteKey, remoteBookmarkWithMeta);
       }
     }
   }

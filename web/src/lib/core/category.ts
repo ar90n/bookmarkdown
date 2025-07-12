@@ -148,6 +148,22 @@ export const markBundleAsDeletedInCategory = (
 
 export const markCategoryAsDeleted = (category: Category): Category => ({
   ...category,
+  bundles: category.bundles.map(bundle => ({
+    ...bundle,
+    bookmarks: bundle.bookmarks.map(bookmark => ({
+      ...bookmark,
+      metadata: {
+        ...bookmark.metadata,
+        lastModified: getCurrentTimestamp(),
+        isDeleted: true,
+      }
+    })),
+    metadata: {
+      ...bundle.metadata,
+      lastModified: getCurrentTimestamp(),
+      isDeleted: true,
+    }
+  })),
   metadata: {
     ...category.metadata,
     lastModified: getCurrentTimestamp(),

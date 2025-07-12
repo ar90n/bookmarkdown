@@ -7,6 +7,8 @@ import { useMobile } from '../hooks/useMobile';
 import { Toast } from '../components/ui/Toast';
 import { MobileMenu } from '../components/ui/MobileMenu';
 import { MoveModal } from '../components/ui/MoveModal';
+import { filterActiveBookmarks } from '../lib/core/bookmark';
+import { filterActiveBundles, filterActiveCategories } from '../lib/utils/metadata';
 
 export const BookmarksPage: React.FC = () => {
   const bookmark = useBookmarkContext();
@@ -80,8 +82,9 @@ export const BookmarksPage: React.FC = () => {
       try {
         await bookmark.removeBookmark(categoryName, bundleName, bookmarkId);
       } catch (error) {
-        console.error('Failed to delete bookmark:', error);
+        console.error('🖱️ UI: Failed to delete bookmark:', error);
       }
+    } else {
     }
   }, [bookmark, dialog]);
 
@@ -159,14 +162,15 @@ export const BookmarksPage: React.FC = () => {
       await bookmark.addCategory(categoryName);
       await bookmark.addBundle(categoryName, bundleName);
       
-      for (const tab of tabs) {
-        await bookmark.addBookmark(categoryName, bundleName, {
-          title: tab.title,
-          url: tab.url,
-          tags: ['import', 'tabs'],
-          notes: 'Imported from browser tabs'
-        });
-      }
+      // Batch import all tabs at once to avoid API rate limits
+      const bookmarkInputs = tabs.map(tab => ({
+        title: tab.title,
+        url: tab.url,
+        tags: ['import', 'tabs'],
+        notes: 'Imported from browser tabs'
+      }));
+      
+      await bookmark.addBookmarksBatch(categoryName, bundleName, bookmarkInputs);
       
       showSuccess(`Successfully imported ${tabs.length} tabs as "${bundleName}"`);
     } catch (error) {
@@ -199,13 +203,15 @@ export const BookmarksPage: React.FC = () => {
   const handleMoveConfirm = useCallback(async (targetCategory: string, targetBundle?: string) => {
     try {
       if (moveModal.itemType === 'bookmark') {
+        
         await bookmark.moveBookmark(
           moveModal.currentCategory,
           moveModal.currentBundle!,
-          moveModal.itemId,
           targetCategory,
-          targetBundle!
+          targetBundle!,
+          moveModal.itemId
         );
+        
         showSuccess(`Moved bookmark "${moveModal.itemName}" to ${targetCategory}/${targetBundle}`);
       } else {
         await bookmark.moveBundle(
@@ -279,7 +285,7 @@ export const BookmarksPage: React.FC = () => {
         )}
 
         {/* Content */}
-        {bookmark.root.categories.filter(category => !category.metadata?.isDeleted).length === 0 ? (
+        {filterActiveCategories(bookmark.root.categories).length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No bookmarks yet</h2>
@@ -293,7 +299,7 @@ export const BookmarksPage: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {bookmark.root.categories.filter(category => !category.metadata?.isDeleted).map((category) => (
+            {filterActiveCategories(bookmark.root.categories).map((category) => (
               <DroppableCategory key={category.name} categoryName={category.name}>
                 <CategoryComponent 
                   category={category}
@@ -437,7 +443,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
       
       {!collapsedCategories.has(category.name) && (
         <div className="p-6">
-          {category.bundles.filter(bundle => !bundle.metadata?.isDeleted).length === 0 ? (
+          {filterActiveBundles(category.bundles).length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No bundles in this category</p>
               <button 
@@ -449,7 +455,7 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {category.bundles.filter(bundle => !bundle.metadata?.isDeleted).map((bundle) => {
+              {filterActiveBundles(category.bundles).map((bundle) => {
                 const bundleKey = `${category.name}/${bundle.name}`;
                 return (
                 <DraggableBundle key={bundle.name} bundle={bundle} categoryName={category.name}>
@@ -539,7 +545,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
             </h4>
           </div>
           <div className="flex items-center space-x-3">
-            <span className="text-sm text-gray-500">{bundle.bookmarks.filter(b => !b.metadata?.isDeleted).length} bookmarks</span>
+            <span className="text-sm text-gray-500">{filterActiveBookmarks(bundle.bookmarks).length} bookmarks</span>
             <div className="flex items-center space-x-1">
               {isMobile ? (
                 <MobileMenu
@@ -585,7 +591,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
       
       {!collapsedBundles.has(bundleKey) && (
         <div className="p-4">
-          {bundle.bookmarks.filter(b => !b.metadata?.isDeleted).length === 0 ? (
+          {filterActiveBookmarks(bundle.bookmarks).length === 0 ? (
             <div className="text-center py-4">
               <p className="text-gray-500 mb-2">No bookmarks in this bundle</p>
               <button 
@@ -598,7 +604,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
           ) : (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {bundle.bookmarks.filter(b => !b.metadata?.isDeleted).map((bookmark) => (
+                {filterActiveBookmarks(bundle.bookmarks).map((bookmark) => (
                   <DraggableBookmark 
                     key={bookmark.id} 
                     bookmark={bookmark} 
