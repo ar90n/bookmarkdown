@@ -329,6 +329,11 @@ export const moveBookmarkToBundle = (
       if (category.name === toCategory) {
         const updatedBundles = category.bundles.map(bundle => {
           if (bundle.name === toBundle) {
+            // Check if bookmark already exists in target bundle (prevent duplicates)
+            const alreadyExists = bundle.bookmarks.some(b => b.id === bookmarkId);
+            if (alreadyExists) {
+              return bundle; // Return unchanged if already exists
+            }
             return {
               ...bundle,
               bookmarks: [...bundle.bookmarks, bookmarkToAdd]
