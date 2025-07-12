@@ -46,7 +46,7 @@ export const updateBookmarkInBundle = (
 
 export const removeBookmarkFromBundle = (bundle: Bundle, bookmarkId: string): Bundle => ({
   ...bundle,
-  bookmarks: markBookmarkAsDeleted(bundle.bookmarks, bookmarkId),
+  bookmarks: removeBookmarkById(bundle.bookmarks, bookmarkId),
   metadata: {
     ...bundle.metadata,
     lastModified: getCurrentTimestamp(),
@@ -64,6 +64,14 @@ export const markBookmarkAsDeletedInBundle = (bundle: Bundle, bookmarkId: string
 
 export const markBundleAsDeleted = (bundle: Bundle): Bundle => ({
   ...bundle,
+  bookmarks: bundle.bookmarks.map(bookmark => ({
+    ...bookmark,
+    metadata: {
+      ...bookmark.metadata,
+      lastModified: getCurrentTimestamp(),
+      isDeleted: true,
+    }
+  })),
   metadata: {
     ...bundle.metadata,
     lastModified: getCurrentTimestamp(),

@@ -9,7 +9,8 @@ import {
   addBundle,
   updateBundleByName,
   removeBundleByName,
-  renameBundleByName
+  renameBundleByName,
+  markBundleAsDeleted
 } from '../../web/src/lib/core/bundle.js';
 import { Bundle, BookmarkInput, BookmarkUpdate } from '../../web/src/lib/types/index.js';
 
@@ -129,8 +130,19 @@ describe('bundle core functions', () => {
 
       const updated = removeBookmarkFromBundle(bundle, '2');
 
+      // Should have 2 bookmarks after hard delete
       expect(updated.bookmarks).toHaveLength(2);
-      expect(updated.bookmarks.map(b => b.id)).toEqual(['1', '3']);
+      
+      // Bookmark '2' should be completely removed
+      const deletedBookmark = updated.bookmarks.find(b => b.id === '2');
+      expect(deletedBookmark).toBeUndefined();
+      
+      // Other bookmarks should not be marked as deleted
+      const activeBookmarks = updated.bookmarks.filter(b => b.id !== '2');
+      activeBookmarks.forEach(bookmark => {
+        expect(bookmark.metadata?.isDeleted).toBeUndefined();
+      });
+      
       expect(bundle.bookmarks).toHaveLength(3); // immutability
     });
 
@@ -229,6 +241,61 @@ describe('bundle core functions', () => {
 
         expect(result).toEqual(bundles);
         expect(result).not.toBe(bundles); // still creates new array
+      });
+    });
+
+    describe('markBundleAsDeleted', () => {
+      it('should mark bundle and all contained bookmarks as deleted', () => {
+        const bundle: Bundle = {
+          name: 'Test Bundle',
+          bookmarks: [
+            {
+              id: 'bookmark1',
+              title: 'Bookmark 1',
+              url: 'https://example1.com',
+              metadata: { lastModified: '2023-01-01T00:00:00.000Z' }
+            },
+            {
+              id: 'bookmark2', 
+              title: 'Bookmark 2',
+              url: 'https://example2.com',
+              metadata: { lastModified: '2023-01-01T00:00:00.000Z' }
+            }
+          ],
+          metadata: { lastModified: '2023-01-01T00:00:00.000Z' }
+        };
+
+        const result = markBundleAsDeleted(bundle);
+
+        // Bundle should be marked as deleted
+        expect(result.metadata?.isDeleted).toBe(true);
+        expect(result.metadata?.lastModified).not.toBe('2023-01-01T00:00:00.000Z');
+
+        // All bookmarks should be marked as deleted
+        expect(result.bookmarks).toHaveLength(2);
+        result.bookmarks.forEach(bookmark => {
+          expect(bookmark.metadata?.isDeleted).toBe(true);
+          expect(bookmark.metadata?.lastModified).not.toBe('2023-01-01T00:00:00.000Z');
+        });
+
+        // Original bundle should remain unchanged
+        expect(bundle.metadata?.isDeleted).toBeUndefined();
+        bundle.bookmarks.forEach(bookmark => {
+          expect(bookmark.metadata?.isDeleted).toBeUndefined();
+        });
+      });
+
+      it('should handle empty bundle', () => {
+        const bundle: Bundle = {
+          name: 'Empty Bundle',
+          bookmarks: [],
+          metadata: { lastModified: '2023-01-01T00:00:00.000Z' }
+        };
+
+        const result = markBundleAsDeleted(bundle);
+
+        expect(result.metadata?.isDeleted).toBe(true);
+        expect(result.bookmarks).toHaveLength(0);
       });
     });
   });

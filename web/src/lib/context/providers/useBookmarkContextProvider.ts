@@ -87,11 +87,17 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
   
   // 状態更新の統一関数
   const updateState = useCallback((markDirty: boolean = true) => {
-    if (!service.current) return;
+    if (!service.current) {
+      return;
+    }
+    
     const newRoot = service.current.getRoot();
     setRoot(newRoot);
+    
     if (markDirty) {
       setIsDirty(true);
+    } else {
+      setIsDirty(false);
     }
     
     // localStorage更新
@@ -121,7 +127,6 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
         // Listen for messages from other tabs
         broadcastChannel.current.onmessage = (event) => {
           if (event.data.type === 'GIST_CREATED' && event.data.gistId) {
-            console.log(`Received GIST_CREATED broadcast with ID: ${event.data.gistId}`);
             // Update local gist ID if we don't have one
             if (!currentGistId) {
               saveGistId(event.data.gistId);
@@ -195,6 +200,10 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
   // Bookmark operations
   const addBookmark = useCallback(async (categoryName: string, bundleName: string, bookmark: BookmarkInput) => {
     await handleOperation(() => service.current!.addBookmark(categoryName, bundleName, bookmark));
+  }, [handleOperation]);
+
+  const addBookmarksBatch = useCallback(async (categoryName: string, bundleName: string, bookmarks: BookmarkInput[]) => {
+    await handleOperation(() => service.current!.addBookmarksBatch(categoryName, bundleName, bookmarks));
   }, [handleOperation]);
 
   const updateBookmark = useCallback(async (categoryName: string, bundleName: string, bookmarkId: string, update: BookmarkUpdate) => {
@@ -306,7 +315,6 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     setIsLoading(true);
     setError(null);
 
-    console.log('SyncWithRemote: Starting sync with GistID:', currentGistId);
 
     try {
       if (!service.current) throw new Error('Service not initialized');
@@ -480,6 +488,7 @@ export function useBookmarkContextProvider(config: BookmarkContextConfig): Bookm
     removeBundle,
     renameBundle,
     addBookmark,
+    addBookmarksBatch,
     updateBookmark,
     removeBookmark,
     moveBookmark,

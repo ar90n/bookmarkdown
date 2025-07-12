@@ -17,7 +17,6 @@
 import { createBookmarkService } from './adapters/index.js';
 import { createSyncShell } from './shell/index.js';
 
-console.log('BookMarkDown - Starting application...');
 
 // Factory function for creating bookmark service with sync capability
 export const createBookmarkApp = (config?: {

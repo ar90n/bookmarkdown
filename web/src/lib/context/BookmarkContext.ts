@@ -20,6 +20,7 @@ export interface BookmarkContextValue {
   
   // Bookmark operations
   addBookmark: (categoryName: string, bundleName: string, bookmark: BookmarkInput) => Promise<void>;
+  addBookmarksBatch: (categoryName: string, bundleName: string, bookmarks: BookmarkInput[]) => Promise<void>;
   updateBookmark: (categoryName: string, bundleName: string, bookmarkId: string, update: BookmarkUpdate) => Promise<void>;
   removeBookmark: (categoryName: string, bundleName: string, bookmarkId: string) => Promise<void>;
   
