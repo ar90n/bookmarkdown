@@ -119,7 +119,7 @@ jobs:
       run: npm run build:web
 
     - name: Run E2E tests
-      run: npx playwright test --project=${{ matrix.browser }}
+      run: npm run test:e2e -- --project=${{ matrix.browser }}
 
     - name: Upload test results
       if: failure()
