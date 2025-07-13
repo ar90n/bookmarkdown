@@ -188,12 +188,16 @@ test/
   - [x] Cycle 5: exists操作の実装
   - [x] Cycle 6: findByFilename操作の実装
   - [x] Cycle 7: getCommits操作の実装
-- [ ] Phase 2: 実装とGist API統合
-  - [ ] Cycle 8: FetchGistRepository 基本構造
-  - [ ] Cycle 9: create操作のAPI実装
-  - [ ] Cycle 10: read/update操作のAPI実装
-  - [ ] Cycle 11: 検索操作のAPI実装
-  - [ ] Cycle 12: コミット履歴のAPI実装
+- [x] Phase 2: 実装とGist API統合
+  - [x] Cycle 8: FetchGistRepository 基本構造
+  - [x] Cycle 9: create操作のAPI実装
+  - [x] Cycle 10: read/update操作のAPI実装
+  - [x] Cycle 11: 検索操作のAPI実装
+  - [x] Cycle 12: コミット履歴のAPI実装
   - [ ] Cycle 13: lastModifiedの削除
 - [ ] Phase 3: SyncShell改修
+  - [ ] Cycle 14: GistRepositoryへの移行
+  - [ ] Cycle 15: マージ処理の削除
+  - [ ] Cycle 16: 競合処理の簡素化
+  - [ ] Cycle 17: トランザクション操作の更新
 - [ ] Phase 4: UI統合
