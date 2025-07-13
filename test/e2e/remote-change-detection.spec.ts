@@ -10,8 +10,7 @@ test.describe('Remote Change Detection', () => {
   let etagCounter = 1;
   let hasRemoteChanges = false;
 
-  // Skip these tests if not using V2 context
-  test.skip(!process.env.VITE_USE_V2_CONTEXT, 'RemoteChangeDetector only available in V2 context');
+  // Note: These tests require V2 context to be enabled (VITE_USE_V2_CONTEXT=true)
 
   // Helper to mock authentication and API
   async function setupMocks(page: Page) {
@@ -124,6 +123,14 @@ test.describe('Remote Change Detection', () => {
     // Navigate to the app
     await page.goto('/');
     
+    // Check if V2 context is enabled
+    const isV2Enabled = await page.evaluate(() => {
+      // @ts-ignore
+      return window.__VITE_USE_V2_CONTEXT__ || import.meta.env.VITE_USE_V2_CONTEXT === 'true';
+    });
+    
+    console.log('V2 Context enabled:', isV2Enabled);
+    
     // Set mock token in localStorage to simulate authentication
     await page.evaluate(() => {
       localStorage.setItem('access_token', 'test-token-123');
@@ -134,6 +141,9 @@ test.describe('Remote Change Detection', () => {
 
     // Wait for the app to initialize
     await page.waitForTimeout(2000);
+    
+    // Log captured console messages for debugging
+    console.log('Captured console logs:', consoleLogs);
 
     // Check that no remote changes have been detected yet
     expect(consoleLogs).not.toContain('Remote changes detected!');
