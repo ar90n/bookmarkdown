@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDrop } from 'react-dnd';
-import { useBookmarkContext } from '../../contexts/AppProviderV2';
+import { useBookmarkContext } from '../../contexts/AppProvider';
 
 interface DroppableCategoryProps {
   categoryName: string;

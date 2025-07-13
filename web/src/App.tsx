@@ -16,11 +16,11 @@
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { AppProvider } from './contexts/AppProviderV2';
+import { AppProvider } from './contexts/AppProvider';
 import { Layout } from './components/Layout/Layout';
 import { WelcomePage } from './pages/WelcomePage';
 import { BookmarksPage } from './pages/BookmarksPage';
-import { SettingsPage } from './pages/SettingsPageV2';
+import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { RootRedirect } from './components/Auth/RootRedirect';

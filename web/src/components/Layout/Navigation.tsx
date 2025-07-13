@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useAuthContext, useDialogContext, useBookmarkContext } from '../../contexts/AppProviderV2';
+import { useAuthContext, useDialogContext, useBookmarkContext } from '../../contexts/AppProvider';
 import { useChromeExtension } from '../../hooks/useChromeExtension';
 import { useToast } from '../../hooks/useToast';
 

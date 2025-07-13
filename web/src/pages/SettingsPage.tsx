@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuthContext, useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
 import { Button } from '../components/UI/Button';
+import { SyncStatus } from '../components/ui/SyncStatus';
+import { 
+  CloudArrowUpIcon, 
+  DocumentDuplicateIcon, 
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  TrashIcon,
+  InformationCircleIcon
+} from '@heroicons/react/24/outline';
 
 export const SettingsPage: React.FC = () => {
   const auth = useAuthContext();
   const bookmark = useBookmarkContext();
   const dialog = useDialogContext();
+  const [isImporting, setIsImporting] = useState(false);
+  
+  // Get V2-specific info
+  const gistInfo = bookmark.getGistInfo?.() || {};
+  const isV2 = Boolean(bookmark.getGistInfo);
 
   const handleExportMarkdown = async () => {
     try {
@@ -21,6 +35,25 @@ export const SettingsPage: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
+      bookmark.setError('Failed to export bookmarks');
+    }
+  };
+
+  const handleExportJSON = async () => {
+    try {
+      const jsonContent = await bookmark.exportData('json');
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bookmarks.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      bookmark.setError('Failed to export bookmarks');
     }
   };
 
@@ -28,6 +61,7 @@ export const SettingsPage: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setIsImporting(true);
     const reader = new FileReader();
     reader.onload = async (e) => {
       const content = e.target?.result as string;
@@ -37,6 +71,9 @@ export const SettingsPage: React.FC = () => {
           await bookmark.importData(content, format);
         } catch (error) {
           console.error('Import failed:', error);
+          bookmark.setError(`Failed to import ${file.name}`);
+        } finally {
+          setIsImporting(false);
         }
       }
     };
@@ -48,45 +85,50 @@ export const SettingsPage: React.FC = () => {
       title: 'Reset All Data',
       message: 'Are you sure you want to reset all data? This action cannot be undone.',
       confirmText: 'Reset',
-      cancelText: 'Cancel',
-      confirmButtonClass: 'bg-red-600 hover:bg-red-700'
+      confirmVariant: 'danger'
     });
-    
+
     if (confirmed) {
       bookmark.resetState();
+      bookmark.clearGistId();
+    }
+  };
+
+  const handleClearGistId = async () => {
+    const confirmed = await dialog.openConfirmDialog({
+      title: 'Clear Gist Configuration',
+      message: 'This will unlink your bookmarks from the current Gist. You can create a new Gist or link to a different one later.',
+      confirmText: 'Clear',
+      confirmVariant: 'danger'
+    });
+
+    if (confirmed) {
+      bookmark.clearGistId();
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Page Header */}
+    <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage your account and application preferences</p>
+        <p className="mt-2 text-gray-600">Manage your account and bookmark data</p>
       </div>
+
+      {/* V2 Feature Flag Indicator */}
+      {isV2 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <InformationCircleIcon className="h-5 w-5 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">
+              Using V2 sync engine with etag-based version control
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Account Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
-        
-        {auth.user && (
-          <div className="flex items-center space-x-4 mb-6">
-            <img
-              src={auth.user.avatar_url}
-              alt={auth.user.login}
-              className="w-16 h-16 rounded-full"
-            />
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">
-                {auth.user.name || auth.user.login}
-              </h3>
-              <p className="text-gray-600">@{auth.user.login}</p>
-              {auth.user.email && (
-                <p className="text-gray-600">{auth.user.email}</p>
-              )}
-            </div>
-          </div>
-        )}
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Account</h2>
 
         <div className="space-y-4">
           <div>
@@ -94,10 +136,33 @@ export const SettingsPage: React.FC = () => {
               Authentication Status
             </label>
             <div className="flex items-center">
-              <div className="w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-              <span className="text-sm text-gray-600">Connected to GitHub</span>
+              <div className={`w-3 h-3 rounded-full mr-2 ${auth.isAuthenticated ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+              <span className="text-sm text-gray-600">
+                {auth.isAuthenticated ? 'Connected to GitHub' : 'Not connected'}
+              </span>
             </div>
           </div>
+
+          {auth.user && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                GitHub User
+              </label>
+              <div className="flex items-center gap-3">
+                {auth.user.avatar_url && (
+                  <img 
+                    src={auth.user.avatar_url} 
+                    alt={auth.user.name || auth.user.login}
+                    className="w-8 h-8 rounded-full"
+                  />
+                )}
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{auth.user.name || auth.user.login}</p>
+                  <p className="text-xs text-gray-500">@{auth.user.login}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {auth.tokens?.scopes && (
             <div>
@@ -113,239 +178,172 @@ export const SettingsPage: React.FC = () => {
               </div>
             </div>
           )}
-
-          {auth.lastLoginAt && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Last Login
-              </label>
-              <p className="text-sm text-gray-600">
-                {auth.lastLoginAt.toLocaleString()}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="pt-4 border-t border-gray-200 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => auth.logout()}
-            className="text-red-600 border-red-300 hover:bg-red-50"
-          >
-            Sign Out
-          </Button>
+          {auth.isAuthenticated ? (
+            <Button
+              variant="outline"
+              onClick={() => auth.logout()}
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              Sign Out
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() => auth.login()}
+            >
+              Sign In with GitHub
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Sync Status Section (V2) */}
+      {isV2 && auth.isAuthenticated && (
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Sync Status</h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <SyncStatus />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => bookmark.syncWithRemote()}
+                disabled={bookmark.isLoading}
+              >
+                <CloudArrowUpIcon className="h-4 w-4 mr-1" />
+                Sync Now
+              </Button>
+            </div>
+            
+            {gistInfo.gistId && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                <p className="text-xs text-gray-600 mb-1">Gist ID</p>
+                <div className="flex items-center justify-between">
+                  <code className="text-sm font-mono text-gray-800">{gistInfo.gistId}</code>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(gistInfo.gistId!)}
+                    className="text-xs text-primary-600 hover:text-primary-700"
+                  >
+                    <DocumentDuplicateIcon className="h-4 w-4" />
+                  </button>
+                </div>
+                {gistInfo.etag && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-600">Version</p>
+                    <code className="text-xs font-mono text-gray-700">{gistInfo.etag}</code>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Data Management Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Data Management</h2>
         
         <div className="space-y-6">
-          {/* GitHub Gist Configuration */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">GitHub Gist Configuration</h3>
-            
-            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-start space-x-3">
-                <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h4 className="font-medium text-blue-900 mb-1">Gist ID</h4>
-                  <p className="text-sm text-blue-700 mb-3">
-                    {bookmark.currentGistId 
-                      ? `Your bookmarks are synced with Gist: ${bookmark.currentGistId}`
-                      : 'No Gist ID configured. A new Gist will be created on first sync.'
-                    }
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {bookmark.currentGistId && (
-                      <>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(bookmark.currentGistId!);
-                          }}
-                          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded"
-                        >
-                          Copy Gist ID
-                        </button>
-                        <a
-                          href={`https://gist.github.com/${bookmark.currentGistId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded"
-                        >
-                          View on GitHub
-                        </a>
-                        <button
-                          onClick={async () => {
-                            const confirmed = await dialog.openConfirmDialog({
-                              title: 'Clear Gist ID',
-                              message: 'Are you sure you want to clear the Gist ID? This will not delete the remote Gist, but will create a new one on next sync.',
-                              confirmText: 'Clear',
-                              cancelText: 'Cancel',
-                              confirmButtonClass: 'bg-orange-600 hover:bg-orange-700'
-                            });
-                            if (confirmed) {
-                              bookmark.clearGistId();
-                            }
-                          }}
-                          className="text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 px-2 py-1 rounded"
-                        >
-                          Clear Gist ID
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sync Status */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Synchronization</h3>
-            
-            {/* Auto Sync Settings */}
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h4 className="font-medium text-gray-900">Auto Sync</h4>
-                  <p className="text-sm text-gray-600">Automatically sync your changes at regular intervals</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={() => {}}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-                </label>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">Sync every:</span>
-                <select 
-                  className="border border-gray-300 rounded px-3 py-1 text-sm"
-                  defaultValue={5}
-                  onChange={() => {}}
-                >
-                  <option value={1}>1 minute</option>
-                  <option value={5}>5 minutes</option>
-                  <option value={10}>10 minutes</option>
-                  <option value={30}>30 minutes</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Manual Sync */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600">
-                  {bookmark.lastSyncAt 
-                    ? `Last synced: ${bookmark.lastSyncAt.toLocaleString()}`
-                    : 'Never synced'
-                  }
-                </p>
-                {bookmark.isDirty && (
-                  <p className="text-amber-600 text-sm">You have unsaved changes</p>
-                )}
-              </div>
-              <Button
-                onClick={() => bookmark.syncWithRemote()}
-                disabled={bookmark.isLoading}
-                isLoading={bookmark.isLoading}
-              >
-                Sync Now
-              </Button>
-            </div>
-          </div>
-
           {/* Import/Export */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Import & Export</h3>
-            <p className="text-gray-600 mb-4">
-              Export your bookmarks as Markdown or import from a file
-            </p>
-            <div className="flex space-x-4">
-              <Button
-                variant="outline"
-                onClick={handleExportMarkdown}
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export Markdown
-              </Button>
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".md,.markdown,.txt"
-                  onChange={handleImportFile}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <Button variant="outline">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  Import File
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Import & Export</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Export</label>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleExportMarkdown}
+                    className="w-full justify-start"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                    Export as Markdown
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportJSON}
+                    className="w-full justify-start"
+                  >
+                    <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Import</label>
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".md,.json"
+                    onChange={handleImportFile}
+                    className="hidden"
+                    disabled={isImporting}
+                  />
+                  <Button
+                    variant="outline"
+                    disabled={isImporting}
+                    className="w-full justify-start"
+                    onClick={(e) => {
+                      const input = e.currentTarget.parentElement?.querySelector('input[type="file"]');
+                      input?.click();
+                    }}
+                  >
+                    <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+                    {isImporting ? 'Importing...' : 'Import from File'}
+                  </Button>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">Supports .md and .json files</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div>
+            <h3 className="text-lg font-medium text-red-900 mb-4">Danger Zone</h3>
+            
+            <div className="space-y-3">
+              {bookmark.currentGistId && (
+                <div className="flex items-center justify-between p-3 border border-red-200 rounded-md">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Clear Gist Configuration</p>
+                    <p className="text-xs text-gray-500">Unlink from current Gist</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleClearGistId}
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex items-center justify-between p-3 border border-red-200 rounded-md">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Reset All Data</p>
+                  <p className="text-xs text-gray-500">Delete all bookmarks and settings</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReset}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <TrashIcon className="h-4 w-4 mr-1" />
+                  Reset
                 </Button>
               </div>
             </div>
           </div>
-
         </div>
       </div>
-
-      {/* Statistics Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Statistics</h2>
-        
-        {(() => {
-          const stats = bookmark.getStats();
-          return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</div>
-                <div className="text-sm text-gray-500">Categories</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.bundlesCount}</div>
-                <div className="text-sm text-gray-500">Bundles</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.bookmarksCount}</div>
-                <div className="text-sm text-gray-500">Bookmarks</div>
-              </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl font-bold text-gray-900">{stats.tagsCount}</div>
-                <div className="text-sm text-gray-500">Unique Tags</div>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Danger Zone */}
-      <div className="bg-white rounded-lg border border-red-200 p-6">
-        <h2 className="text-xl font-semibold text-red-900 mb-4">Danger Zone</h2>
-        
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Reset All Data</h3>
-          <p className="text-gray-600 mb-4">
-            This will permanently delete all your local bookmarks. Remote data in GitHub Gist will not be affected.
-          </p>
-          <Button
-            variant="destructive"
-            onClick={handleReset}
-          >
-            Reset Local Data
-          </Button>
-        </div>
-      </div>
-
     </div>
   );
 };

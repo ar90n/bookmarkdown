@@ -44,11 +44,11 @@ export const AppProvider: React.FC<AppProviderProps> = ({
       authKey: 'bookmarkdown_auth'
     },
     scopes: ['gist', 'user:email'],
-    oauthServiceUrl: import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:8787', // Default to local dev
+    oauthServiceUrl: import.meta.env.VITE_OAUTH_SERVICE_URL || 'http://localhost:8787',
     ...config
   };
   
-  // Use the new hook-based context
+  // Use the V2 hook-based context
   const appContext = useAppContextProvider(defaultConfig);
   const [isInitialized, setIsInitialized] = useState(false);
 
