@@ -1,0 +1,87 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { SyncStatus } from '../../src/components/ui/SyncStatus';
+import React from 'react';
+
+// Mock the context
+const mockBookmarkContext = {
+  isDirty: false,
+  isLoading: false,
+  lastSyncAt: null,
+  error: null,
+  getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' })
+};
+
+vi.mock('../../src/contexts/AppProvider', () => ({
+  useBookmarkContext: () => mockBookmarkContext
+}));
+
+describe('SyncStatus', () => {
+  it('should show synced status when not dirty', () => {
+    mockBookmarkContext.isDirty = false;
+    mockBookmarkContext.lastSyncAt = new Date();
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Synced/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sync-icon')).toHaveClass('text-green-600');
+  });
+  
+  it('should show pending changes when dirty', () => {
+    mockBookmarkContext.isDirty = true;
+    mockBookmarkContext.lastSyncAt = new Date();
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Changes pending/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sync-icon')).toHaveClass('text-yellow-600');
+  });
+  
+  it('should show syncing when loading', () => {
+    mockBookmarkContext.isLoading = true;
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Syncing/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sync-icon')).toHaveClass('animate-spin');
+  });
+  
+  it('should show error state', () => {
+    mockBookmarkContext.error = 'Network error';
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Sync error/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sync-icon')).toHaveClass('text-red-600');
+  });
+  
+  it('should show never synced state', () => {
+    mockBookmarkContext.isDirty = false;
+    mockBookmarkContext.lastSyncAt = null;
+    mockBookmarkContext.error = null;
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Not synced/i)).toBeInTheDocument();
+    expect(screen.getByTestId('sync-icon')).toHaveClass('text-gray-400');
+  });
+  
+  it('should format last sync time', () => {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    mockBookmarkContext.lastSyncAt = fiveMinutesAgo;
+    mockBookmarkContext.isDirty = false;
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/5 minutes ago/i)).toBeInTheDocument();
+  });
+  
+  it('should show etag info in tooltip', () => {
+    mockBookmarkContext.getGistInfo = () => ({ gistId: 'test-123', etag: 'abc123' });
+    
+    render(<SyncStatus />);
+    
+    const statusElement = screen.getByTestId('sync-status');
+    expect(statusElement).toHaveAttribute('title', expect.stringContaining('abc123'));
+  });
+});
