@@ -48,7 +48,7 @@ export interface GistRepository {
   /**
    * Check if the Gist has been updated since last read/update
    */
-  isUpdated(): Promise<Result<boolean>>;
+  hasRemoteUpdate(): Promise<Result<boolean>>;
 }
 
 /**

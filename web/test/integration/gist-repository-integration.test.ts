@@ -46,10 +46,10 @@ describe('GistRepository Integration', () => {
       );
       
       // Step 3: Check if updated (should be false)
-      const isUpdatedResult1 = await repository.isUpdated();
-      expect(isUpdatedResult1.success).toBe(true);
-      if (!isUpdatedResult1.success) return;
-      expect(isUpdatedResult1.data).toBe(false);
+      const hasRemoteUpdateResult1 = await repository.hasRemoteUpdate();
+      expect(hasRemoteUpdateResult1.success).toBe(true);
+      if (!hasRemoteUpdateResult1.success) return;
+      expect(hasRemoteUpdateResult1.data).toBe(false);
       
       // Step 4: Update the data
       const updatedRoot = RootEntity.fromRoot(readResult.data)
@@ -73,10 +73,10 @@ describe('GistRepository Integration', () => {
       MockGistRepository.simulateConcurrentModification(repository.gistId);
       
       // Step 7: Check if updated (should be true)
-      const isUpdatedResult2 = await repository.isUpdated();
-      expect(isUpdatedResult2.success).toBe(true);
-      if (!isUpdatedResult2.success) return;
-      expect(isUpdatedResult2.data).toBe(true);
+      const hasRemoteUpdateResult2 = await repository.hasRemoteUpdate();
+      expect(hasRemoteUpdateResult2.success).toBe(true);
+      if (!hasRemoteUpdateResult2.success) return;
+      expect(hasRemoteUpdateResult2.data).toBe(true);
     });
     
     it('should find existing repository by filename', async () => {
@@ -148,10 +148,10 @@ describe('GistRepository Integration', () => {
       expect(update1.success).toBe(true);
       
       // Repo2 should detect the update
-      const isUpdated = await repo2.isUpdated();
-      expect(isUpdated.success).toBe(true);
-      if (!isUpdated.success) return;
-      expect(isUpdated.data).toBe(true);
+      const hasRemoteUpdate = await repo2.hasRemoteUpdate();
+      expect(hasRemoteUpdate.success).toBe(true);
+      if (!hasRemoteUpdate.success) return;
+      expect(hasRemoteUpdate.data).toBe(true);
       
       // Repo2 reads the updated data
       const read2Updated = await repo2.read();
