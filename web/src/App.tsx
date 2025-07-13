@@ -16,7 +16,8 @@
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { AppProvider } from './contexts/AppProvider';
+import { AppProvider as AppProviderV1 } from './contexts/AppProvider';
+import { AppProvider as AppProviderV2 } from './contexts/AppProviderV2';
 import { Layout } from './components/Layout/Layout';
 import { WelcomePage } from './pages/WelcomePage';
 import { BookmarksPage } from './pages/BookmarksPage';
@@ -24,6 +25,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { RootRedirect } from './components/Auth/RootRedirect';
+
+// Use V2 if environment variable is set
+const AppProvider = import.meta.env.VITE_USE_V2_CONTEXT === 'true' ? AppProviderV2 : AppProviderV1;
 
 export const App: React.FC = () => {
   return (
