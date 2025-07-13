@@ -384,9 +384,9 @@ export class FetchGistRepository implements GistRepository {
   }
   
   /**
-   * Check if the Gist has been updated since last read/update
+   * Check if the Gist has remote changes since last read/update
    */
-  async hasRemoteUpdate(): Promise<Result<boolean>> {
+  async hasRemoteChanges(): Promise<Result<boolean>> {
     try {
       const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
       

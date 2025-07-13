@@ -23,7 +23,7 @@ describe('GistRepository Interface', () => {
         return { success: true as const, data: root };
       }
       
-      async hasRemoteUpdate() {
+      async hasRemoteChanges() {
         return { success: true as const, data: false };
       }
     }
@@ -33,7 +33,7 @@ describe('GistRepository Interface', () => {
     expect(repository.etag).toBeDefined();
     expect(repository.read).toBeDefined();
     expect(repository.update).toBeDefined();
-    expect(repository.hasRemoteUpdate).toBeDefined();
+    expect(repository.hasRemoteChanges).toBeDefined();
   });
   
   // Test that the factory interface is properly defined
@@ -45,7 +45,7 @@ describe('GistRepository Interface', () => {
           etag: 'new-etag',
           read: async () => ({ success: true as const, data: { version: 1, categories: [] } }),
           update: async (root: Root) => ({ success: true as const, data: root }),
-          hasRemoteUpdate: async () => ({ success: true as const, data: false })
+          hasRemoteChanges: async () => ({ success: true as const, data: false })
         };
         return { success: true as const, data: repo };
       }

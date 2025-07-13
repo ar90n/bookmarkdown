@@ -203,9 +203,9 @@ describe('MockGistRepository', () => {
       });
     });
     
-    describe('hasRemoteUpdate', () => {
+    describe('hasRemoteChanges', () => {
       it('should return false when no updates', async () => {
-        const result = await repository.hasRemoteUpdate();
+        const result = await repository.hasRemoteChanges();
         
         expect(result.success).toBe(true);
         if (result.success) {
@@ -217,7 +217,7 @@ describe('MockGistRepository', () => {
         // Simulate concurrent modification
         MockGistRepository.simulateConcurrentModification(repository.gistId);
         
-        const result = await repository.hasRemoteUpdate();
+        const result = await repository.hasRemoteChanges();
         
         expect(result.success).toBe(true);
         if (result.success) {
@@ -246,10 +246,10 @@ describe('MockGistRepository', () => {
       await repo1.update(RootEntity.create().addCategory('Cat1').toRoot());
       
       // repo2 should detect the update
-      const hasRemoteUpdate = await repo2.hasRemoteUpdate();
-      expect(hasRemoteUpdate.success).toBe(true);
-      if (hasRemoteUpdate.success) {
-        expect(hasRemoteUpdate.data).toBe(true);
+      const hasRemoteChanges = await repo2.hasRemoteChanges();
+      expect(hasRemoteChanges.success).toBe(true);
+      if (hasRemoteChanges.success) {
+        expect(hasRemoteChanges.data).toBe(true);
       }
     });
   });
