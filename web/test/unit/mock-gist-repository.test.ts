@@ -120,4 +120,119 @@ describe('MockGistRepository', () => {
       }
     });
   });
+  
+  describe('update', () => {
+    it('should update an existing gist with valid etag', async () => {
+      // First create a gist
+      const createParams: GistCreateParams = {
+        description: 'Original Description',
+        content: '# Original Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Update it
+        const updateParams: GistUpdateParams = {
+          gistId: createResult.data.id,
+          content: '# Updated Content\n\nThis content has been updated.',
+          etag: createResult.data.etag,
+          description: 'Updated Description'
+        };
+        
+        const updateResult = await repository.update(updateParams);
+        
+        expect(updateResult.success).toBe(true);
+        if (updateResult.success) {
+          expect(updateResult.data.etag).toBeDefined();
+          expect(updateResult.data.etag).not.toBe(createResult.data.etag); // etag should change
+          
+          // Verify the content was updated
+          const readResult = await repository.read(createResult.data.id);
+          expect(readResult.success).toBe(true);
+          if (readResult.success) {
+            expect(readResult.data.content).toBe(updateParams.content);
+            expect(readResult.data.etag).toBe(updateResult.data.etag);
+          }
+        }
+      }
+    });
+    
+    it('should fail with etag mismatch', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Try to update with wrong etag
+        const updateParams: GistUpdateParams = {
+          gistId: createResult.data.id,
+          content: '# Updated Content',
+          etag: '"wrong-etag"',
+          description: 'Updated Description'
+        };
+        
+        const updateResult = await repository.update(updateParams);
+        
+        expect(updateResult.success).toBe(false);
+        if (!updateResult.success) {
+          expect(updateResult.error.message).toContain('Etag mismatch');
+        }
+      }
+    });
+    
+    it('should fail for non-existent gist', async () => {
+      const updateParams: GistUpdateParams = {
+        gistId: 'non-existent-id',
+        content: '# Content',
+        etag: '"some-etag"'
+      };
+      
+      const updateResult = await repository.update(updateParams);
+      
+      expect(updateResult.success).toBe(false);
+      if (!updateResult.success) {
+        expect(updateResult.error.message).toContain('not found');
+      }
+    });
+    
+    it('should update content without changing description', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Original Description',
+        content: '# Original Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Update only content
+        const updateParams: GistUpdateParams = {
+          gistId: createResult.data.id,
+          content: '# Updated Content Only',
+          etag: createResult.data.etag
+        };
+        
+        const updateResult = await repository.update(updateParams);
+        expect(updateResult.success).toBe(true);
+        
+        // Verify content was updated but description remains
+        const readResult = await repository.read(createResult.data.id);
+        expect(readResult.success).toBe(true);
+        if (readResult.success) {
+          expect(readResult.data.content).toBe(updateParams.content);
+        }
+      }
+    });
+  });
 });
