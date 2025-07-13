@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AppProvider } from '../../src/contexts/AppProviderV2';
+import { useAppContext } from '../../src/contexts/AppProviderV2';
 import React from 'react';
 
 // Mock modules
@@ -69,7 +70,6 @@ describe('AppProviderV2', () => {
   
   it('should provide app context to children', async () => {
     const TestComponent = () => {
-      const { useAppContext } = require('../../src/contexts/AppProviderV2');
       const context = useAppContext();
       
       return (
@@ -102,7 +102,6 @@ describe('AppProviderV2', () => {
     };
     
     const TestComponent = () => {
-      const { useAppContext } = require('../../src/contexts/AppProviderV2');
       const { config } = useAppContext();
       
       return (

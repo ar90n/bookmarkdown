@@ -1,42 +1,67 @@
 import { describe, it, expect } from 'vitest';
-import type { GistRepository, GistContent, GistCreateParams, GistUpdateParams, GistReadResult, GistCommit } from '../../src/lib/repositories/gist-repository.js';
+import type { 
+  GistRepository, 
+  GistRepositoryFactory,
+  GistRepositoryConfig,
+  CreateRepositoryParams 
+} from '../../src/lib/repositories/gist-repository.js';
+import { Root } from '../../src/lib/types/bookmark.js';
 
 describe('GistRepository Interface', () => {
-  // This test verifies that the interface is properly defined
-  // by attempting to implement it
-  it('should be implementable with all required methods', () => {
+  // Test that the instance interface is properly defined
+  it('should define instance interface with all required methods', () => {
     class TestRepository implements GistRepository {
-      async create(params: GistCreateParams) {
-        return { success: true as const, data: { id: 'test', etag: 'test-etag' } };
+      readonly gistId = 'test-gist-id';
+      readonly etag = 'test-etag';
+      
+      async read() {
+        const root: Root = { version: 1, categories: [] };
+        return { success: true as const, data: root };
       }
       
-      async read(gistId: string) {
-        return { success: true as const, data: { id: gistId, content: '', etag: 'test-etag' } };
+      async update(root: Root, description?: string) {
+        return { success: true as const, data: root };
       }
       
-      async update(params: GistUpdateParams) {
-        return { success: true as const, data: { etag: 'new-etag' } };
-      }
-      
-      async exists(gistId: string) {
-        return { success: true as const, data: true };
-      }
-      
-      async findByFilename(filename: string) {
-        return { success: true as const, data: null };
-      }
-      
-      async getCommits(gistId: string) {
-        return { success: true as const, data: [] };
+      async isUpdated() {
+        return { success: true as const, data: false };
       }
     }
     
     const repository = new TestRepository();
-    expect(repository.create).toBeDefined();
+    expect(repository.gistId).toBeDefined();
+    expect(repository.etag).toBeDefined();
     expect(repository.read).toBeDefined();
     expect(repository.update).toBeDefined();
-    expect(repository.exists).toBeDefined();
-    expect(repository.findByFilename).toBeDefined();
-    expect(repository.getCommits).toBeDefined();
+    expect(repository.isUpdated).toBeDefined();
+  });
+  
+  // Test that the factory interface is properly defined
+  it('should define factory interface with all required static methods', () => {
+    class TestRepositoryFactory implements GistRepositoryFactory {
+      async create(config: GistRepositoryConfig, params: CreateRepositoryParams) {
+        const repo: GistRepository = {
+          gistId: params.gistId || 'new-gist-id',
+          etag: 'new-etag',
+          read: async () => ({ success: true as const, data: { version: 1, categories: [] } }),
+          update: async (root: Root) => ({ success: true as const, data: root }),
+          isUpdated: async () => ({ success: true as const, data: false })
+        };
+        return { success: true as const, data: repo };
+      }
+      
+      async exists(config: GistRepositoryConfig, gistId: string) {
+        return { success: true as const, data: true };
+      }
+      
+      async findByFilename(config: GistRepositoryConfig, filename: string) {
+        return { success: true as const, data: null };
+      }
+    }
+    
+    const factory = new TestRepositoryFactory();
+    expect(factory.create).toBeDefined();
+    expect(factory.exists).toBeDefined();
+    expect(factory.findByFilename).toBeDefined();
   });
 });

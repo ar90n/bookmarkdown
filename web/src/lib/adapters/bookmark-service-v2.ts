@@ -238,7 +238,7 @@ export const createBookmarkServiceV2 = (syncShell?: GistSyncShell): BookmarkServ
         return success(false);
       }
       
-      return syncShell.hasRemoteChanges();
+      return syncShell.isRemoteUpdated();
     },
 
     forceReload: async (): Promise<Result<Root>> => {
@@ -246,7 +246,8 @@ export const createBookmarkServiceV2 = (syncShell?: GistSyncShell): BookmarkServ
         return failure(new Error('Sync not configured'));
       }
       
-      const result = await syncShell.forceReload();
+      // Force reload by just loading again
+      const result = await syncShell.load();
       if (result.success) {
         updateRoot(result.data);
       }

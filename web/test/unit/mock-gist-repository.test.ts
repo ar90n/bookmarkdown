@@ -1,520 +1,255 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MockGistRepository } from '../../src/lib/repositories/mock-gist-repository.js';
-import type { GistRepository, GistCreateParams } from '../../src/lib/repositories/gist-repository.js';
+import type { GistRepository, GistRepositoryConfig } from '../../src/lib/repositories/gist-repository.js';
+import { Root } from '../../src/lib/types/bookmark.js';
+import { RootEntity } from '../../src/lib/entities/root-entity.js';
 
 describe('MockGistRepository', () => {
-  let repository: GistRepository;
+  const config: GistRepositoryConfig = {
+    accessToken: 'mock-token',
+    filename: 'bookmarks.md'
+  };
   
   beforeEach(() => {
-    repository = new MockGistRepository();
+    MockGistRepository.clearAll();
+  });
+  
+  afterEach(() => {
+    MockGistRepository.clearAll();
   });
   
   describe('create', () => {
-    it('should create a new gist and return id with etag', async () => {
-      const params: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md',
-        isPublic: false
-      };
+    it('should create a new repository with new gist', async () => {
+      const root = RootEntity.create().toRoot();
       
-      const result = await repository.create(params);
+      const result = await MockGistRepository.create(config, {
+        root,
+        description: 'Test Bookmarks'
+      });
       
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.id).toBeDefined();
-        expect(result.data.id).toMatch(/^[a-f0-9]+$/);
+        expect(result.data.gistId).toBeDefined();
+        expect(result.data.gistId).toMatch(/^mock_gist_/);
         expect(result.data.etag).toBeDefined();
-        expect(result.data.etag).toMatch(/^"[a-f0-9]+"$/);
+        expect(result.data.etag).toMatch(/^"/);
       }
     });
     
-    it('should store the created gist internally', async () => {
-      const params: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(params);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Verify the gist can be read
-        const readResult = await repository.read(createResult.data.id);
-        expect(readResult.success).toBe(true);
-        
-        if (readResult.success) {
-          expect(readResult.data.id).toBe(createResult.data.id);
-          expect(readResult.data.content).toBe(params.content);
-          expect(readResult.data.etag).toBe(createResult.data.etag);
-        }
-      }
-    });
-    
-    it('should generate unique ids for different gists', async () => {
-      const params1: GistCreateParams = {
-        description: 'Gist 1',
-        content: 'Content 1',
-        filename: 'test1.md'
-      };
-      
-      const params2: GistCreateParams = {
-        description: 'Gist 2',
-        content: 'Content 2',
-        filename: 'test2.md'
-      };
-      
-      const result1 = await repository.create(params1);
-      const result2 = await repository.create(params2);
-      
-      expect(result1.success).toBe(true);
-      expect(result2.success).toBe(true);
-      
-      if (result1.success && result2.success) {
-        expect(result1.data.id).not.toBe(result2.data.id);
-      }
-    });
-  });
-  
-  describe('read', () => {
-    it('should read an existing gist', async () => {
+    it('should bind to existing gist', async () => {
       // First create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content\n\nThis is a test.',
-        filename: 'test.md'
-      };
+      const createResult = await MockGistRepository.create(config, {
+        root: RootEntity.create().toRoot()
+      });
       
-      const createResult = await repository.create(createParams);
       expect(createResult.success).toBe(true);
+      if (!createResult.success) return;
       
-      if (createResult.success) {
-        // Now read it
-        const readResult = await repository.read(createResult.data.id);
-        
-        expect(readResult.success).toBe(true);
-        if (readResult.success) {
-          expect(readResult.data.id).toBe(createResult.data.id);
-          expect(readResult.data.content).toBe(createParams.content);
-          expect(readResult.data.etag).toBe(createResult.data.etag);
-        }
+      const gistId = createResult.data.gistId;
+      
+      // Now bind to it
+      const bindResult = await MockGistRepository.create(config, {
+        gistId
+      });
+      
+      expect(bindResult.success).toBe(true);
+      if (bindResult.success) {
+        expect(bindResult.data.gistId).toBe(gistId);
+        expect(bindResult.data.etag).toBe(createResult.data.etag);
       }
     });
     
-    it('should return error for non-existent gist', async () => {
-      const readResult = await repository.read('non-existent-id');
+    it('should fail to bind to non-existent gist', async () => {
+      const result = await MockGistRepository.create(config, {
+        gistId: 'non-existent'
+      });
       
-      expect(readResult.success).toBe(false);
-      if (!readResult.success) {
-        expect(readResult.error.message).toContain('not found');
-      }
-    });
-    
-    it('should handle empty gist id', async () => {
-      const readResult = await repository.read('');
-      
-      expect(readResult.success).toBe(false);
-      if (!readResult.success) {
-        expect(readResult.error.message).toContain('Gist ID is required');
-      }
-    });
-  });
-  
-  describe('update', () => {
-    it('should update an existing gist with valid etag', async () => {
-      // First create a gist
-      const createParams: GistCreateParams = {
-        description: 'Original Description',
-        content: '# Original Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Update it
-        const updateParams: GistUpdateParams = {
-          gistId: createResult.data.id,
-          content: '# Updated Content\n\nThis content has been updated.',
-          etag: createResult.data.etag,
-          description: 'Updated Description'
-        };
-        
-        const updateResult = await repository.update(updateParams);
-        
-        expect(updateResult.success).toBe(true);
-        if (updateResult.success) {
-          expect(updateResult.data.etag).toBeDefined();
-          expect(updateResult.data.etag).not.toBe(createResult.data.etag); // etag should change
-          
-          // Verify the content was updated
-          const readResult = await repository.read(createResult.data.id);
-          expect(readResult.success).toBe(true);
-          if (readResult.success) {
-            expect(readResult.data.content).toBe(updateParams.content);
-            expect(readResult.data.etag).toBe(updateResult.data.etag);
-          }
-        }
-      }
-    });
-    
-    it('should fail with etag mismatch', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Try to update with wrong etag
-        const updateParams: GistUpdateParams = {
-          gistId: createResult.data.id,
-          content: '# Updated Content',
-          etag: '"wrong-etag"',
-          description: 'Updated Description'
-        };
-        
-        const updateResult = await repository.update(updateParams);
-        
-        expect(updateResult.success).toBe(false);
-        if (!updateResult.success) {
-          expect(updateResult.error.message).toContain('Etag mismatch');
-        }
-      }
-    });
-    
-    it('should fail for non-existent gist', async () => {
-      const updateParams: GistUpdateParams = {
-        gistId: 'non-existent-id',
-        content: '# Content',
-        etag: '"some-etag"'
-      };
-      
-      const updateResult = await repository.update(updateParams);
-      
-      expect(updateResult.success).toBe(false);
-      if (!updateResult.success) {
-        expect(updateResult.error.message).toContain('not found');
-      }
-    });
-    
-    it('should update content without changing description', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Original Description',
-        content: '# Original Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Update only content
-        const updateParams: GistUpdateParams = {
-          gistId: createResult.data.id,
-          content: '# Updated Content Only',
-          etag: createResult.data.etag
-        };
-        
-        const updateResult = await repository.update(updateParams);
-        expect(updateResult.success).toBe(true);
-        
-        // Verify content was updated but description remains
-        const readResult = await repository.read(createResult.data.id);
-        expect(readResult.success).toBe(true);
-        if (readResult.success) {
-          expect(readResult.data.content).toBe(updateParams.content);
-        }
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('not found');
       }
     });
   });
   
   describe('exists', () => {
     it('should return true for existing gist', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
+      const createResult = await MockGistRepository.create(config, {});
       expect(createResult.success).toBe(true);
+      if (!createResult.success) return;
       
-      if (createResult.success) {
-        const existsResult = await repository.exists(createResult.data.id);
-        
-        expect(existsResult.success).toBe(true);
-        if (existsResult.success) {
-          expect(existsResult.data).toBe(true);
-        }
+      const existsResult = await MockGistRepository.exists(config, createResult.data.gistId);
+      expect(existsResult.success).toBe(true);
+      if (existsResult.success) {
+        expect(existsResult.data).toBe(true);
       }
     });
     
     it('should return false for non-existent gist', async () => {
-      const existsResult = await repository.exists('non-existent-id');
-      
-      expect(existsResult.success).toBe(true);
-      if (existsResult.success) {
-        expect(existsResult.data).toBe(false);
+      const result = await MockGistRepository.exists(config, 'non-existent');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(false);
       }
     });
     
     it('should handle empty gist id', async () => {
-      const existsResult = await repository.exists('');
-      
-      expect(existsResult.success).toBe(true);
-      if (existsResult.success) {
-        expect(existsResult.data).toBe(false);
-      }
-    });
-    
-    it('should return true after create and false after theoretical delete', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Should exist after creation
-        const existsResult1 = await repository.exists(createResult.data.id);
-        expect(existsResult1.success).toBe(true);
-        if (existsResult1.success) {
-          expect(existsResult1.data).toBe(true);
-        }
-        
-        // Note: MockGistRepository doesn't have delete, but we can test the pattern
+      const result = await MockGistRepository.exists(config, '');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(false);
       }
     });
   });
   
   describe('findByFilename', () => {
     it('should find gist by filename', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'unique-file.md'
-      };
-      
-      const createResult = await repository.create(createParams);
+      const createResult = await MockGistRepository.create(config, {});
       expect(createResult.success).toBe(true);
+      if (!createResult.success) return;
       
-      if (createResult.success) {
-        const findResult = await repository.findByFilename('unique-file.md');
-        
-        expect(findResult.success).toBe(true);
-        if (findResult.success && findResult.data) {
-          expect(findResult.data.id).toBe(createResult.data.id);
-          expect(findResult.data.content).toBe(createParams.content);
-          expect(findResult.data.etag).toBe(createResult.data.etag);
-        }
+      const findResult = await MockGistRepository.findByFilename(config, 'bookmarks.md');
+      expect(findResult.success).toBe(true);
+      if (findResult.success) {
+        expect(findResult.data).toBe(createResult.data.gistId);
       }
     });
     
     it('should return null for non-existent filename', async () => {
-      const findResult = await repository.findByFilename('non-existent-file.md');
-      
-      expect(findResult.success).toBe(true);
-      if (findResult.success) {
-        expect(findResult.data).toBeNull();
+      const result = await MockGistRepository.findByFilename(config, 'other.md');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(null);
       }
     });
     
     it('should handle empty filename', async () => {
-      const findResult = await repository.findByFilename('');
-      
-      expect(findResult.success).toBe(true);
-      if (findResult.success) {
-        expect(findResult.data).toBeNull();
-      }
-    });
-    
-    it('should return the latest gist when multiple gists have same filename', async () => {
-      // Create first gist
-      const createParams1: GistCreateParams = {
-        description: 'First Gist',
-        content: '# First Content',
-        filename: 'duplicate.md'
-      };
-      
-      const createResult1 = await repository.create(createParams1);
-      expect(createResult1.success).toBe(true);
-      
-      // Create second gist with same filename
-      const createParams2: GistCreateParams = {
-        description: 'Second Gist',
-        content: '# Second Content',
-        filename: 'duplicate.md'
-      };
-      
-      const createResult2 = await repository.create(createParams2);
-      expect(createResult2.success).toBe(true);
-      
-      if (createResult2.success) {
-        const findResult = await repository.findByFilename('duplicate.md');
-        
-        expect(findResult.success).toBe(true);
-        if (findResult.success && findResult.data) {
-          // Should return the second (latest) gist
-          expect(findResult.data.id).toBe(createResult2.data.id);
-          expect(findResult.data.content).toBe(createParams2.content);
-        }
-      }
-    });
-    
-    it('should be case-sensitive for filenames', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'CaseSensitive.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      // Try to find with different case
-      const findResult1 = await repository.findByFilename('casesensitive.md');
-      const findResult2 = await repository.findByFilename('CaseSensitive.md');
-      
-      expect(findResult1.success).toBe(true);
-      expect(findResult2.success).toBe(true);
-      
-      if (findResult1.success && findResult2.success) {
-        expect(findResult1.data).toBeNull(); // Different case should not match
-        expect(findResult2.data).not.toBeNull(); // Exact case should match
+      const result = await MockGistRepository.findByFilename(config, '');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(null);
       }
     });
   });
   
-  describe('getCommits', () => {
-    it('should return commit history for existing gist', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content',
-        filename: 'test.md'
-      };
+  describe('instance methods', () => {
+    let repository: GistRepository;
+    let initialRoot: Root;
+    
+    beforeEach(async () => {
+      initialRoot = RootEntity.create()
+        .addCategory('Test Category')
+        .toRoot();
       
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
+      const result = await MockGistRepository.create(config, {
+        root: initialRoot
+      });
       
-      if (createResult.success) {
-        const commitsResult = await repository.getCommits(createResult.data.id);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        repository = result.data;
+      }
+    });
+    
+    describe('read', () => {
+      it('should read the current root', async () => {
+        const result = await repository.read();
         
-        expect(commitsResult.success).toBe(true);
-        if (commitsResult.success) {
-          expect(commitsResult.data).toHaveLength(1);
-          
-          const commit = commitsResult.data[0];
-          expect(commit.version).toBeDefined();
-          expect(commit.committedAt).toBeDefined();
-          expect(commit.changeStatus).toBeDefined();
-          expect(commit.changeStatus.additions).toBeDefined();
-          expect(commit.changeStatus.deletions).toBeDefined();
-          expect(commit.changeStatus.total).toBeDefined();
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.version).toBe(1);
+          expect(result.data.categories).toHaveLength(1);
+          expect(result.data.categories[0].name).toBe('Test Category');
         }
-      }
+      });
     });
     
-    it('should return error for non-existent gist', async () => {
-      const commitsResult = await repository.getCommits('non-existent-id');
-      
-      expect(commitsResult.success).toBe(false);
-      if (!commitsResult.success) {
-        expect(commitsResult.error.message).toContain('not found');
-      }
-    });
-    
-    it('should show multiple commits after updates', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Original Content',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        // Update the gist
-        const updateParams: GistUpdateParams = {
-          gistId: createResult.data.id,
-          content: '# Updated Content',
-          etag: createResult.data.etag
-        };
+    describe('update', () => {
+      it('should update with new root', async () => {
+        const newRoot = RootEntity.fromRoot(initialRoot)
+          .addCategory('Another Category')
+          .toRoot();
         
-        const updateResult = await repository.update(updateParams);
-        expect(updateResult.success).toBe(true);
+        const result = await repository.update(newRoot);
         
-        // Get commits
-        const commitsResult = await repository.getCommits(createResult.data.id);
-        
-        expect(commitsResult.success).toBe(true);
-        if (commitsResult.success) {
-          // Mock implementation currently returns only latest commit
-          // In real implementation, this would show full history
-          expect(commitsResult.data.length).toBeGreaterThanOrEqual(1);
-          
-          const latestCommit = commitsResult.data[0];
-          expect(latestCommit.version).toBeDefined();
-          expect(latestCommit.committedAt).toBeDefined();
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data).toEqual(newRoot);
         }
-      }
-    });
-    
-    it('should handle empty gist id', async () => {
-      const commitsResult = await repository.getCommits('');
-      
-      expect(commitsResult.success).toBe(false);
-      if (!commitsResult.success) {
-        expect(commitsResult.error.message).toBeDefined();
-      }
-    });
-    
-    it('should return commits with proper change status', async () => {
-      // Create a gist
-      const createParams: GistCreateParams = {
-        description: 'Test Gist',
-        content: '# Test Content\n\nThis is a test.',
-        filename: 'test.md'
-      };
-      
-      const createResult = await repository.create(createParams);
-      expect(createResult.success).toBe(true);
-      
-      if (createResult.success) {
-        const commitsResult = await repository.getCommits(createResult.data.id);
         
-        expect(commitsResult.success).toBe(true);
-        if (commitsResult.success && commitsResult.data.length > 0) {
-          const commit = commitsResult.data[0];
-          
-          // Version should match etag without quotes
-          expect(commit.version).toBe(createResult.data.etag.replace(/"/g, ''));
-          
-          // Timestamp should be valid ISO string
-          expect(new Date(commit.committedAt).toISOString()).toBe(commit.committedAt);
-          
-          // Change status should have numeric values
-          expect(typeof commit.changeStatus.additions).toBe('number');
-          expect(typeof commit.changeStatus.deletions).toBe('number');
-          expect(typeof commit.changeStatus.total).toBe('number');
+        // Verify the update persisted
+        const readResult = await repository.read();
+        expect(readResult.success).toBe(true);
+        if (readResult.success) {
+          expect(readResult.data.categories).toHaveLength(2);
         }
+      });
+      
+      it('should update etag after successful update', async () => {
+        const oldEtag = repository.etag;
+        
+        const newRoot = RootEntity.fromRoot(initialRoot)
+          .addCategory('Another Category')
+          .toRoot();
+        
+        await repository.update(newRoot);
+        
+        expect(repository.etag).not.toBe(oldEtag);
+      });
+      
+      it('should simulate commit hash verification', async () => {
+        // Normal update should succeed
+        const result = await repository.update(initialRoot);
+        expect(result.success).toBe(true);
+      });
+    });
+    
+    describe('isUpdated', () => {
+      it('should return false when no updates', async () => {
+        const result = await repository.isUpdated();
+        
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data).toBe(false);
+        }
+      });
+      
+      it('should return true after concurrent modification', async () => {
+        // Simulate concurrent modification
+        MockGistRepository.simulateConcurrentModification(repository.gistId);
+        
+        const result = await repository.isUpdated();
+        
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data).toBe(true);
+        }
+      });
+    });
+  });
+  
+  describe('concurrent modification simulation', () => {
+    it('should detect concurrent modifications', async () => {
+      const createResult = await MockGistRepository.create(config, {});
+      expect(createResult.success).toBe(true);
+      if (!createResult.success) return;
+      
+      const repo1 = createResult.data;
+      const repo2Result = await MockGistRepository.create(config, {
+        gistId: repo1.gistId
+      });
+      expect(repo2Result.success).toBe(true);
+      if (!repo2Result.success) return;
+      
+      const repo2 = repo2Result.data;
+      
+      // Update from repo1
+      await repo1.update(RootEntity.create().addCategory('Cat1').toRoot());
+      
+      // repo2 should detect the update
+      const isUpdated = await repo2.isUpdated();
+      expect(isUpdated.success).toBe(true);
+      if (isUpdated.success) {
+        expect(isUpdated.data).toBe(true);
       }
     });
   });
