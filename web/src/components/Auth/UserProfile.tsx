@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuthContext } from '../../contexts/AppProvider';
+import { useAuthContext } from '../../contexts/AppProviderV2';
 import { Button } from '../UI/Button';
 
 export const UserProfile: React.FC = () => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext, useBookmarkContext } from '../../contexts/AppProvider';
+import { useAuthContext, useBookmarkContext } from '../../contexts/AppProviderV2';
 import { Button } from '../UI/Button';
 import { UserProfile } from '../Auth/UserProfile';
 import { SyncStatusWithActions } from '../ui/SyncStatusWithActions';
