@@ -157,6 +157,15 @@ export class MockGistRepository implements GistRepository {
       return failure(new Error(`Gist ${this.gistId} not found`));
     }
     
+    // Check if our etag matches the current gist's etag
+    if (this._etag !== gist.etag) {
+      return failure(new Error(
+        'Concurrent modification detected. ' +
+        'Another process modified the Gist during update. ' +
+        'Please reload and try again.'
+      ));
+    }
+    
     // Get current commit hash
     const beforeCommitHash = gist.commits[0].version;
     
