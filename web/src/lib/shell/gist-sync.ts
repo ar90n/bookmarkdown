@@ -7,6 +7,7 @@ import {
 } from '../repositories/gist-repository.js';
 import { FetchGistRepository } from '../repositories/fetch-gist-repository.js';
 import { MockGistRepository } from '../repositories/mock-gist-repository.js';
+import { RemoteChangeDetector } from '../services/remote-change-detector.js';
 
 export interface GistSyncConfig {
   readonly repositoryConfig: GistRepositoryConfig;
@@ -26,6 +27,7 @@ export interface GistSyncResult {
  */
 export class GistSyncShell {
   private repository?: GistRepository;
+  private detector?: RemoteChangeDetector;
   private readonly repositoryConfig: GistRepositoryConfig;
   private readonly useMock: boolean;
   
@@ -72,6 +74,16 @@ export class GistSyncShell {
       }
       
       this.repository = repoResult.data;
+      
+      // Create and start remote change detector
+      this.detector = new RemoteChangeDetector({
+        repository: this.repository,
+        onChangeDetected: () => {
+          console.log('Remote changes detected!');
+        }
+      });
+      this.detector.start();
+      
       return success(undefined);
     } catch (error) {
       return failure(new Error(`Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`));
@@ -177,9 +189,43 @@ export class GistSyncShell {
       
       shell.repository = repoResult.data;
       
+      // Create and start remote change detector
+      shell.detector = new RemoteChangeDetector({
+        repository: shell.repository,
+        onChangeDetected: () => {
+          console.log('Remote changes detected!');
+        }
+      });
+      shell.detector.start();
+      
       return success(shell);
     } catch (error) {
       return failure(new Error(`Failed to create new gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
+  }
+  
+  /**
+   * Start remote change detection
+   */
+  startChangeDetection(): void {
+    if (this.detector && !this.detector.isRunning()) {
+      this.detector.start();
+    }
+  }
+  
+  /**
+   * Stop remote change detection
+   */
+  stopChangeDetection(): void {
+    if (this.detector && this.detector.isRunning()) {
+      this.detector.stop();
+    }
+  }
+  
+  /**
+   * Check if change detection is running
+   */
+  isChangeDetectionRunning(): boolean {
+    return this.detector?.isRunning() ?? false;
   }
 }

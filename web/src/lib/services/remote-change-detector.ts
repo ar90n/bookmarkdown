@@ -18,7 +18,7 @@ export class RemoteChangeDetector {
   
   constructor(config: RemoteChangeDetectorConfig) {
     this.repository = config.repository;
-    this.intervalMs = config.intervalMs ?? 30000; // Default: 30 seconds
+    this.intervalMs = config.intervalMs ?? 10000; // Default: 10 seconds
     this.onChangeDetected = config.onChangeDetected;
   }
   
