@@ -31,7 +31,11 @@ export class RemoteChangeDetector {
     }
     
     this.running = true;
-    // TODO: Implement polling logic
+    
+    // Start polling for changes
+    this.intervalId = setInterval(() => {
+      this.checkForChanges();
+    }, this.intervalMs);
   }
   
   /**
@@ -55,5 +59,21 @@ export class RemoteChangeDetector {
    */
   isRunning(): boolean {
     return this.running;
+  }
+  
+  /**
+   * Check for remote changes
+   */
+  private async checkForChanges(): Promise<void> {
+    try {
+      const result = await this.repository.hasRemoteChanges();
+      
+      if (result.success && result.data && this.onChangeDetected) {
+        this.onChangeDetected();
+      }
+    } catch (error) {
+      // Silently ignore errors to keep the detector running
+      console.error('Error checking for remote changes:', error);
+    }
   }
 }
