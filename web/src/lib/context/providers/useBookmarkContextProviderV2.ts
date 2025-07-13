@@ -4,7 +4,6 @@ import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter, BookmarkSearchResu
 import { createBookmarkServiceV2, BookmarkServiceV2 } from '../../adapters/bookmark-service-v2.js';
 import { createRoot } from '../../core/index.js';
 import { GistSyncShell } from '../../shell/gist-sync.js';
-import { createGistRepository } from '../../repositories/index.js';
 import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
 
@@ -51,51 +50,58 @@ export function useBookmarkContextProviderV2(config: BookmarkContextV2Config): B
   
   // Initialize service
   useEffect(() => {
-    let syncShell: GistSyncShell | undefined;
-    
-    if (config.createSyncShell) {
-      // For testing
-      syncShell = config.createSyncShell();
-    } else if (config.accessToken) {
-      // Production: create real sync shell
-      const repository = createGistRepository({
-        mode: 'fetch',
-        accessToken: config.accessToken,
-        filename: config.filename || 'bookmarks.md'
-      });
+    const initializeService = async () => {
+      let syncShell: GistSyncShell | undefined;
       
-      syncShell = new GistSyncShell({
-        repository,
-        gistId: currentGistId,
-        description: 'BookMarkDown - Bookmark Collection'
-      });
-    }
-    
-    if (!service.current) {
-      service.current = createBookmarkServiceV2(syncShell);
-      setRoot(service.current.getRoot());
-    } else {
-      // Update existing service with new sync shell
-      const newService = createBookmarkServiceV2(syncShell);
-      // Copy current data to new service
-      const currentRoot = service.current.getRoot();
-      if (currentRoot.categories.length > 0) {
-        // Import current data to new service
-        const markdown = generator.current.generate(currentRoot);
-        const parsedRoot = parser.current.parse(markdown);
-        parsedRoot.categories.forEach(category => {
-          newService.addCategory(category.name);
-          category.bundles.forEach(bundle => {
-            newService.addBundle(category.name, bundle.name);
-            bundle.bookmarks.forEach(bookmark => {
-              newService.addBookmark(category.name, bundle.name, bookmark);
+      if (config.createSyncShell) {
+        // For testing
+        syncShell = config.createSyncShell();
+      } else if (config.accessToken) {
+        // Production: create real sync shell
+        syncShell = new GistSyncShell({
+          repositoryConfig: {
+            accessToken: config.accessToken,
+            filename: config.filename || 'bookmarks.md'
+          },
+          gistId: currentGistId,
+          useMock: false
+        });
+        
+        // Initialize the shell to start remote change detection
+        const initResult = await syncShell.initialize(currentGistId);
+        if (!initResult.success) {
+          console.error('Failed to initialize GistSyncShell:', initResult.error);
+        }
+      }
+      
+      if (!service.current) {
+        service.current = createBookmarkServiceV2(syncShell);
+        setRoot(service.current.getRoot());
+      } else {
+        // Update existing service with new sync shell
+        const newService = createBookmarkServiceV2(syncShell);
+        // Copy current data to new service
+        const currentRoot = service.current.getRoot();
+        if (currentRoot.categories.length > 0) {
+          // Import current data to new service
+          const markdown = generator.current.generate(currentRoot);
+          const parsedRoot = parser.current.parse(markdown);
+          parsedRoot.categories.forEach(category => {
+            newService.addCategory(category.name);
+            category.bundles.forEach(bundle => {
+              newService.addBundle(category.name, bundle.name);
+              bundle.bookmarks.forEach(bookmark => {
+                newService.addBookmark(category.name, bundle.name, bookmark);
+              });
             });
           });
-        });
+        }
+        service.current = newService;
+        setRoot(service.current.getRoot());
       }
-      service.current = newService;
-      setRoot(service.current.getRoot());
-    }
+    };
+    
+    initializeService();
   }, [config.accessToken, currentGistId, config.filename, config.createSyncShell]);
   
   // Initialize BroadcastChannel
