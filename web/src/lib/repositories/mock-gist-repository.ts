@@ -236,7 +236,7 @@ export class MockGistRepository implements GistRepository {
   /**
    * Check if the Gist has been updated
    */
-  async isUpdated(): Promise<Result<boolean>> {
+  async hasRemoteUpdate(): Promise<Result<boolean>> {
     const gist = MockGistRepository.gists.get(this.gistId);
     if (!gist) {
       return failure(new Error(`Gist ${this.gistId} not found`));

@@ -127,7 +127,7 @@ export class GistSyncShell {
     }
     
     try {
-      return await this.repository.isUpdated();
+      return await this.repository.hasRemoteUpdate();
     } catch (error) {
       return failure(new Error(`Failed to check remote: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
