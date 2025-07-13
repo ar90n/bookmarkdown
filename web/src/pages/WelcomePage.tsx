@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../contexts/AppProviderV2';
+import { useAuthContext } from '../contexts/AppProvider';
 import { Button } from '../components/UI/Button';
 import { Navigation } from '../components/Layout/Navigation';
 import { Header } from '../components/Layout/Header';
