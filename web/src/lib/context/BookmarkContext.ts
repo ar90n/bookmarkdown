@@ -60,6 +60,9 @@ export interface BookmarkContextValue {
   getSourceBundle: (categoryName: string, bundleName: string) => { bookmarks: readonly Bookmark[]; name: string } | null;
   hasCategories: () => boolean;
   getCategories: () => readonly { name: string; bundles: readonly { name: string; bookmarks: readonly Bookmark[] }[] }[];
+  
+  // V2 additions
+  getGistInfo?: () => { gistId?: string; etag?: string };
 }
 
 // Factory function removed - use useBookmarkContextProvider hook instead
