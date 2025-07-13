@@ -6,12 +6,26 @@ import type { Root } from '../../src/lib/types/index.js';
 
 describe('BookmarkServiceV2', () => {
   let service: ReturnType<typeof createBookmarkServiceV2>;
-  let repository: MockGistRepository;
   let syncShell: GistSyncShell;
   
-  beforeEach(() => {
-    repository = new MockGistRepository();
-    syncShell = new GistSyncShell({ repository });
+  const mockConfig = {
+    accessToken: 'test-token',
+    filename: 'bookmarks.md'
+  };
+  
+  beforeEach(async () => {
+    // Clear mock data
+    MockGistRepository.clearAll();
+    
+    // Create sync shell with mock repository
+    syncShell = new GistSyncShell({
+      repositoryConfig: mockConfig,
+      useMock: true
+    });
+    
+    // Initialize sync shell
+    await syncShell.initialize();
+    
     service = createBookmarkServiceV2(syncShell);
   });
   
@@ -313,13 +327,12 @@ describe('BookmarkServiceV2', () => {
       service.addCategory('Development');
       await service.saveToRemote();
       
-      // Simulate external change
+      // Get gist info
       const gistInfo = service.getGistInfo();
-      await repository.update({
-        gistId: gistInfo.gistId!,
-        content: '# External Change',
-        etag: gistInfo.etag!
-      });
+      expect(gistInfo.gistId).toBeDefined();
+      
+      // Simulate external change by using MockGistRepository directly
+      MockGistRepository.simulateConcurrentModification(gistInfo.gistId!);
       
       // Check for changes
       const hasChanges = await service.hasRemoteChanges();
