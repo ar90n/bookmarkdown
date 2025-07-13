@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthContext } from '../contexts/AppProvider';
+import { useAuthContext } from '../contexts/AppProviderV2';
 import { Button } from '../components/UI/Button';
 
 export const LoginPage: React.FC = () => {
