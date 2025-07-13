@@ -16,21 +16,14 @@
 
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { AppProvider as AppProviderV1 } from './contexts/AppProvider';
-import { AppProvider as AppProviderV2 } from './contexts/AppProviderV2';
+import { AppProvider } from './contexts/AppProviderV2';
 import { Layout } from './components/Layout/Layout';
 import { WelcomePage } from './pages/WelcomePage';
 import { BookmarksPage } from './pages/BookmarksPage';
-import { SettingsPage as SettingsPageV1 } from './pages/SettingsPage';
-import { SettingsPage as SettingsPageV2 } from './pages/SettingsPageV2';
+import { SettingsPage } from './pages/SettingsPageV2';
 import { LoginPage } from './pages/LoginPage';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { RootRedirect } from './components/Auth/RootRedirect';
-
-// Use V2 if environment variable is set
-const useV2 = import.meta.env.VITE_USE_V2_CONTEXT === 'true';
-const AppProvider = useV2 ? AppProviderV2 : AppProviderV1;
-const SettingsPage = useV2 ? SettingsPageV2 : SettingsPageV1;
 
 export const App: React.FC = () => {
   return (
