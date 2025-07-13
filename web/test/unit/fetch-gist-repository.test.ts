@@ -332,4 +332,137 @@ describe('FetchGistRepository', () => {
       }
     });
   });
+  
+  describe('exists', () => {
+    it('should return true for existing gist', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200
+      } as Response);
+      
+      const result = await repository.exists('abc123');
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(true);
+      }
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/gists/abc123',
+        expect.objectContaining({
+          method: 'HEAD'
+        })
+      );
+    });
+    
+    it('should return false for non-existent gist', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404
+      } as Response);
+      
+      const result = await repository.exists('non-existent');
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBe(false);
+      }
+    });
+  });
+  
+  describe('findByFilename', () => {
+    it('should find gist by filename', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      
+      // Mock list gists response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            id: 'gist1',
+            files: { 'other.md': {} }
+          },
+          {
+            id: 'gist2',
+            files: { 'bookmarks.md': {} }
+          }
+        ]
+      } as Response);
+      
+      // Mock read gist response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'etag': '"found-etag"' }),
+        json: async () => ({
+          id: 'gist2',
+          files: {
+            'bookmarks.md': {
+              content: '# Found Content'
+            }
+          }
+        })
+      } as Response);
+      
+      const result = await repository.findByFilename('bookmarks.md');
+      
+      expect(result.success).toBe(true);
+      if (result.success && result.data) {
+        expect(result.data.id).toBe('gist2');
+        expect(result.data.content).toBe('# Found Content');
+      }
+    });
+    
+    it('should return null when file not found', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => []
+      } as Response);
+      
+      const result = await repository.findByFilename('not-found.md');
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toBeNull();
+      }
+    });
+  });
+  
+  describe('getCommits', () => {
+    it('should get commit history', async () => {
+      const mockCommits = [
+        {
+          version: 'abc123',
+          committed_at: '2024-01-01T00:00:00Z',
+          change_status: {
+            additions: 10,
+            deletions: 5,
+            total: 15
+          }
+        }
+      ];
+      
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => mockCommits
+      } as Response);
+      
+      const result = await repository.getCommits('gist123');
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toHaveLength(1);
+        expect(result.data[0].version).toBe('abc123');
+        expect(result.data[0].committedAt).toBe('2024-01-01T00:00:00Z');
+        expect(result.data[0].changeStatus.additions).toBe(10);
+      }
+    });
+  });
 });
