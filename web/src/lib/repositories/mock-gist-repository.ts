@@ -146,10 +146,17 @@ export class MockGistRepository implements GistRepository {
   }
   
   private generateId(): string {
-    return Math.random().toString(16).substring(2);
+    // Generate a more realistic gist-like ID
+    return Array.from({ length: 32 }, () => 
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
   }
   
   private generateEtag(): string {
-    return `"${Math.random().toString(16).substring(2)}"`;
+    // Generate etag based on content hash simulation
+    const hash = Array.from({ length: 40 }, () => 
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+    return `"${hash}"`;
   }
 }
