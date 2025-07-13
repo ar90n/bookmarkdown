@@ -299,4 +299,104 @@ describe('MockGistRepository', () => {
       }
     });
   });
+  
+  describe('findByFilename', () => {
+    it('should find gist by filename', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'unique-file.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        const findResult = await repository.findByFilename('unique-file.md');
+        
+        expect(findResult.success).toBe(true);
+        if (findResult.success && findResult.data) {
+          expect(findResult.data.id).toBe(createResult.data.id);
+          expect(findResult.data.content).toBe(createParams.content);
+          expect(findResult.data.etag).toBe(createResult.data.etag);
+        }
+      }
+    });
+    
+    it('should return null for non-existent filename', async () => {
+      const findResult = await repository.findByFilename('non-existent-file.md');
+      
+      expect(findResult.success).toBe(true);
+      if (findResult.success) {
+        expect(findResult.data).toBeNull();
+      }
+    });
+    
+    it('should handle empty filename', async () => {
+      const findResult = await repository.findByFilename('');
+      
+      expect(findResult.success).toBe(true);
+      if (findResult.success) {
+        expect(findResult.data).toBeNull();
+      }
+    });
+    
+    it('should return the latest gist when multiple gists have same filename', async () => {
+      // Create first gist
+      const createParams1: GistCreateParams = {
+        description: 'First Gist',
+        content: '# First Content',
+        filename: 'duplicate.md'
+      };
+      
+      const createResult1 = await repository.create(createParams1);
+      expect(createResult1.success).toBe(true);
+      
+      // Create second gist with same filename
+      const createParams2: GistCreateParams = {
+        description: 'Second Gist',
+        content: '# Second Content',
+        filename: 'duplicate.md'
+      };
+      
+      const createResult2 = await repository.create(createParams2);
+      expect(createResult2.success).toBe(true);
+      
+      if (createResult2.success) {
+        const findResult = await repository.findByFilename('duplicate.md');
+        
+        expect(findResult.success).toBe(true);
+        if (findResult.success && findResult.data) {
+          // Should return the second (latest) gist
+          expect(findResult.data.id).toBe(createResult2.data.id);
+          expect(findResult.data.content).toBe(createParams2.content);
+        }
+      }
+    });
+    
+    it('should be case-sensitive for filenames', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'CaseSensitive.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      // Try to find with different case
+      const findResult1 = await repository.findByFilename('casesensitive.md');
+      const findResult2 = await repository.findByFilename('CaseSensitive.md');
+      
+      expect(findResult1.success).toBe(true);
+      expect(findResult2.success).toBe(true);
+      
+      if (findResult1.success && findResult2.success) {
+        expect(findResult1.data).toBeNull(); // Different case should not match
+        expect(findResult2.data).not.toBeNull(); // Exact case should match
+      }
+    });
+  });
 });
