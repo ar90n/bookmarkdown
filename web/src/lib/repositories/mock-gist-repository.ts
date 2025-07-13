@@ -125,13 +125,30 @@ export class MockGistRepository implements GistRepository {
   }
   
   async findByFilename(filename: string): Promise<Result<GistReadResult | null>> {
-    const gistId = this.gistsByFilename.get(filename);
-    
-    if (!gistId) {
-      return success(null);
+    try {
+      // Validate input
+      if (!filename || filename.trim() === '') {
+        return success(null);
+      }
+      
+      const gistId = this.gistsByFilename.get(filename);
+      
+      if (!gistId) {
+        return success(null);
+      }
+      
+      // Use read method to get full gist data
+      const readResult = await this.read(gistId);
+      
+      // If read fails, return null instead of propagating the error
+      if (!readResult.success) {
+        return success(null);
+      }
+      
+      return readResult;
+    } catch (error) {
+      return failure(new Error(`Failed to find gist by filename: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
-    
-    return this.read(gistId);
   }
   
   async getCommits(gistId: string): Promise<Result<GistCommit[]>> {
