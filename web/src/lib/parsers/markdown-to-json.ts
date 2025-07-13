@@ -6,22 +6,13 @@ export class MarkdownParser {
   parse(markdown: string): Root {
     const lines = markdown.split('\n');
     
-    let rootMetadata: { lastModified?: string; lastSynced?: string } | undefined;
-    
-    // Check for YAML front matter
+    // Skip YAML front matter if present (for backward compatibility)
     let i = 0;
     if (lines[0] === '---') {
       const frontMatterEnd = lines.indexOf('---', 1);
       if (frontMatterEnd > 0) {
-        rootMetadata = {};
-        for (let j = 1; j < frontMatterEnd; j++) {
-          const line = lines[j].trim();
-          if (line.startsWith('lastModified:')) {
-            rootMetadata.lastModified = line.substring('lastModified:'.length).trim();
-          }
-          // lastSynced is NOT parsed from Gist - it's local-only state managed by localStorage
-          // Ignore any lastSync/lastSynced lines in the YAML for backward compatibility
-        }
+        // Skip the entire YAML front matter section
+        // We no longer parse lastModified from content
         i = frontMatterEnd + 1;
       }
     }
@@ -46,9 +37,10 @@ export class MarkdownParser {
     } | null = null;
     
     for (; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const line = lines[i];
+      const trimmedLine = line.trim();
       
-      if (line.startsWith('# ')) {
+      if (trimmedLine.startsWith('# ')) {
         // Save previous data before starting new category
         if (currentBookmarkData && currentBundleData) {
           currentBundleData.bookmarks = [...currentBundleData.bookmarks, this.createBookmark(currentBookmarkData)];
@@ -62,25 +54,21 @@ export class MarkdownParser {
           categories.push(this.createCategory(currentCategoryData));
         }
         
-        const categoryName = this.extractCategoryName(line);
+        const categoryName = this.extractCategoryName(trimmedLine);
         currentCategoryData = {
           name: categoryName,
           bundles: []
         };
         
-        // Check for category metadata in next line
+        // Skip category metadata comments if present (for backward compatibility)
         if (i + 1 < lines.length) {
           const nextLine = lines[i + 1].trim();
-          const metadataMatch = nextLine.match(/<!--\s*lastModified:\s*([^-]+)\s*-->/);
-          if (metadataMatch) {
-            currentCategoryData.metadata = {
-              lastModified: metadataMatch[1].trim()
-            };
-            i++; // Skip the metadata line
+          if (nextLine.match(/<!--\s*lastModified:\s*([^-]+)\s*-->/)) {
+            i++; // Skip the metadata line - we no longer parse it
           }
         }
         
-      } else if (line.startsWith('## ')) {
+      } else if (trimmedLine.startsWith('## ')) {
         // Save previous bundle data before starting new bundle
         if (currentBookmarkData && currentBundleData) {
           currentBundleData.bookmarks = [...currentBundleData.bookmarks, this.createBookmark(currentBookmarkData)];
@@ -90,19 +78,19 @@ export class MarkdownParser {
           currentCategoryData.bundles = [...currentCategoryData.bundles, this.createBundle(currentBundleData)];
         }
         
-        const bundleName = this.extractBundleName(line);
+        const bundleName = this.extractBundleName(trimmedLine);
         currentBundleData = {
           name: bundleName,
           bookmarks: []
         };
         
-      } else if (line.startsWith('- [')) {
+      } else if (trimmedLine.startsWith('- [')) {
         // Save previous bookmark before starting new one
         if (currentBookmarkData && currentBundleData) {
           currentBundleData.bookmarks = [...currentBundleData.bookmarks, this.createBookmark(currentBookmarkData)];
         }
         
-        const bookmarkInfo = this.extractBookmarkInfo(line);
+        const bookmarkInfo = this.extractBookmarkInfo(trimmedLine);
         if (bookmarkInfo) {
           currentBookmarkData = {
             id: generateBookmarkId(),
@@ -141,12 +129,11 @@ export class MarkdownParser {
     const root: Root = {
       version: 1,
       categories: categories,
-      metadata: rootMetadata && rootMetadata.lastModified ? {
-        lastModified: rootMetadata.lastModified,
-        lastSynced: new Date().toISOString(), // Set parse time as lastSynced
-      } : {
+      // Always create metadata with current timestamps
+      // We no longer parse lastModified from content
+      metadata: {
         lastModified: new Date().toISOString(),
-        lastSynced: new Date().toISOString(), // Default metadata with parse time
+        lastSynced: new Date().toISOString()
       }
     };
     

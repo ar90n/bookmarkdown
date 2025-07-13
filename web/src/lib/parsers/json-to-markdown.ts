@@ -4,14 +4,8 @@ export class MarkdownGenerator {
   generate(root: Root): string {
     const lines: string[] = [];
     
-    // Add metadata as YAML front matter if present
-    if (root.metadata) {
-      lines.push('---');
-      lines.push(`lastModified: ${root.metadata.lastModified}`);
-      // lastSynced is NOT stored in Gist - it's local-only state managed by localStorage
-      lines.push('---');
-      lines.push('');
-    }
+    // No longer output metadata to content
+    // lastModified and lastSynced are managed externally via etag
     
     // Add header comment for empty roots
     if (root.categories.length === 0) {
@@ -33,12 +27,11 @@ export class MarkdownGenerator {
       for (const bundle of activeBundles) {
         this.addBundle(lines, bundle);
         
-        for (const bookmark of bundle.bookmarks) {
-          // Skip deleted bookmarks
-          if (bookmark.metadata?.isDeleted) {
-            continue;
-          }
-          this.addBookmark(lines, bookmark);
+        const activeBookmarks = bundle.bookmarks.filter(b => !b.metadata?.isDeleted);
+        for (let i = 0; i < activeBookmarks.length; i++) {
+          const bookmark = activeBookmarks[i];
+          const isLastBookmark = i === activeBookmarks.length - 1;
+          this.addBookmark(lines, bookmark, isLastBookmark);
         }
         
         // Add empty line after each bundle
@@ -56,10 +49,8 @@ export class MarkdownGenerator {
   
   private addCategory(lines: string[], category: Category): void {
     lines.push(`# ${category.name}`);
-    // Add category metadata as HTML comment if present
-    if (category.metadata) {
-      lines.push(`<!-- lastModified: ${category.metadata.lastModified} -->`);
-    }
+    // No longer output category metadata
+    // Timestamps are managed externally via etag
     lines.push('');
   }
   
@@ -68,7 +59,7 @@ export class MarkdownGenerator {
     lines.push('');
   }
   
-  private addBookmark(lines: string[], bookmark: Bookmark): void {
+  private addBookmark(lines: string[], bookmark: Bookmark, isLastBookmark: boolean): void {
     // Add the main bookmark line
     lines.push(`- [${bookmark.title}](${bookmark.url})`);
     
@@ -83,7 +74,9 @@ export class MarkdownGenerator {
       lines.push(`  - notes: ${bookmark.notes}`);
     }
     
-    // Add empty line after bookmark
-    lines.push('');
+    // Add empty line after bookmark only if it's not the last one
+    if (!isLastBookmark) {
+      lines.push('');
+    }
   }
 }
