@@ -152,24 +152,33 @@ export class MockGistRepository implements GistRepository {
   }
   
   async getCommits(gistId: string): Promise<Result<GistCommit[]>> {
-    const gist = this.gists.get(gistId);
-    
-    if (!gist) {
-      return failure(new Error(`Gist ${gistId} not found`));
-    }
-    
-    // Mock commit history
-    return success([
-      {
-        version: gist.etag.replace(/"/g, ''),
-        committedAt: gist.updatedAt,
-        changeStatus: {
-          additions: 0,
-          deletions: 0,
-          total: 0
-        }
+    try {
+      // Validate input
+      if (!gistId || gistId.trim() === '') {
+        return failure(new Error('Gist ID is required'));
       }
-    ]);
+      
+      const gist = this.gists.get(gistId);
+      
+      if (!gist) {
+        return failure(new Error(`Gist ${gistId} not found`));
+      }
+      
+      // Mock commit history - in real implementation, this would track full history
+      return success([
+        {
+          version: gist.etag.replace(/"/g, ''),
+          committedAt: gist.updatedAt,
+          changeStatus: {
+            additions: 0,
+            deletions: 0,
+            total: 0
+          }
+        }
+      ]);
+    } catch (error) {
+      return failure(new Error(`Failed to get commits: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   private generateId(): string {
