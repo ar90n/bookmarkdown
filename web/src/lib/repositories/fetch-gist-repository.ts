@@ -108,13 +108,110 @@ export class FetchGistRepository implements GistRepository {
   }
   
   async read(gistId: string): Promise<Result<GistReadResult>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      // Validate parameters
+      if (!gistId || gistId.trim() === '') {
+        return failure(new Error('Gist ID is required'));
+      }
+      
+      // Make API request
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.gist(gistId)}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders()
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await this.handleApiError(response);
+        return failure(error);
+      }
+      
+      // Extract etag from headers
+      const etag = response.headers.get('etag');
+      if (!etag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      // Parse response
+      const gistData = await response.json();
+      
+      // Find the file content
+      const file = gistData.files?.[this.filename];
+      if (!file || !file.content) {
+        return failure(new Error(`File ${this.filename} not found in gist`));
+      }
+      
+      return success({
+        id: gistData.id,
+        content: file.content,
+        etag: etag
+      });
+    } catch (error) {
+      return failure(new Error(`Failed to read gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async update(params: GistUpdateParams): Promise<Result<GistUpdateResult>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      // Validate parameters
+      if (!params.gistId || params.gistId.trim() === '') {
+        return failure(new Error('Gist ID is required'));
+      }
+      
+      if (!params.content || params.content.trim() === '') {
+        return failure(new Error('Content is required'));
+      }
+      
+      if (!params.etag || params.etag.trim() === '') {
+        return failure(new Error('Etag is required for updates'));
+      }
+      
+      // Prepare request body
+      const requestBody: any = {
+        files: {
+          [this.filename]: {
+            content: params.content
+          }
+        }
+      };
+      
+      // Add description if provided
+      if (params.description !== undefined) {
+        requestBody.description = params.description;
+      }
+      
+      // Make API request with If-Match header for etag validation
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.gist(params.gistId)}`,
+        {
+          method: 'PATCH',
+          headers: this.getHeaders({
+            'Content-Type': 'application/json',
+            'If-Match': params.etag
+          }),
+          body: JSON.stringify(requestBody)
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await this.handleApiError(response);
+        return failure(error);
+      }
+      
+      // Extract new etag from headers
+      const newEtag = response.headers.get('etag');
+      if (!newEtag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      return success({
+        etag: newEtag
+      });
+    } catch (error) {
+      return failure(new Error(`Failed to update gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async exists(gistId: string): Promise<Result<boolean>> {
@@ -145,6 +242,28 @@ export class FetchGistRepository implements GistRepository {
   }
   
   /**
+   * Make an API request and handle common errors
+   */
+  private async makeRequest(
+    url: string, 
+    options: RequestInit
+  ): Promise<{ response: Response; etag: string }> {
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      const error = await this.handleApiError(response);
+      throw error;
+    }
+    
+    const etag = response.headers.get('etag');
+    if (!etag) {
+      throw new Error('No etag received from API');
+    }
+    
+    return { response, etag };
+  }
+  
+  /**
    * Handle API errors consistently
    */
   private async handleApiError(response: Response): Promise<Error> {
@@ -160,6 +279,8 @@ export class FetchGistRepository implements GistRepository {
           return new Error(`Permission denied: ${message}`);
         case 404:
           return new Error(`Not found: ${message}`);
+        case 412:
+          return new Error(`Precondition Failed: ${message}`);
         case 422:
           return new Error(`Invalid request: ${message}`);
         default:

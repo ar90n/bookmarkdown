@@ -175,4 +175,161 @@ describe('FetchGistRepository', () => {
       }
     });
   });
+  
+  describe('read', () => {
+    it('should read a gist via API', async () => {
+      const mockGistResponse = {
+        id: 'abc123',
+        files: {
+          'bookmarks.md': {
+            filename: 'bookmarks.md',
+            content: '# Test Content\n\nThis is test content.'
+          }
+        }
+      };
+      
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          'etag': '"read-etag-456"'
+        }),
+        json: async () => mockGistResponse
+      } as Response);
+      
+      const result = await repository.read('abc123');
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.id).toBe('abc123');
+        expect(result.data.content).toBe('# Test Content\n\nThis is test content.');
+        expect(result.data.etag).toBe('"read-etag-456"');
+      }
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/gists/abc123',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token'
+          })
+        })
+      );
+    });
+    
+    it('should handle 404 errors', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: async () => ({ message: 'Not Found' })
+      } as Response);
+      
+      const result = await repository.read('non-existent');
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Not found');
+      }
+    });
+    
+    it('should validate gist id', async () => {
+      const result = await repository.read('');
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Gist ID is required');
+      }
+    });
+  });
+  
+  describe('update', () => {
+    it('should update a gist with etag validation', async () => {
+      const mockGistResponse = {
+        id: 'abc123',
+        files: {
+          'bookmarks.md': {
+            filename: 'bookmarks.md',
+            content: '# Updated Content'
+          }
+        }
+      };
+      
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({
+          'etag': '"new-etag-789"'
+        }),
+        json: async () => mockGistResponse
+      } as Response);
+      
+      const params = {
+        gistId: 'abc123',
+        content: '# Updated Content',
+        etag: '"old-etag-456"',
+        description: 'Updated Description'
+      };
+      
+      const result = await repository.update(params);
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.etag).toBe('"new-etag-789"');
+      }
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/gists/abc123',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token',
+            'If-Match': '"old-etag-456"'
+          }),
+          body: expect.stringContaining('"description":"Updated Description"')
+        })
+      );
+    });
+    
+    it('should handle etag mismatch (412 Precondition Failed)', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 412,
+        statusText: 'Precondition Failed',
+        json: async () => ({ message: 'Precondition Failed' })
+      } as Response);
+      
+      const params = {
+        gistId: 'abc123',
+        content: '# Updated Content',
+        etag: '"wrong-etag"'
+      };
+      
+      const result = await repository.update(params);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Precondition Failed');
+      }
+    });
+    
+    it('should validate parameters', async () => {
+      const params = {
+        gistId: 'abc123',
+        content: '',
+        etag: '"some-etag"'
+      };
+      
+      const result = await repository.update(params);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Content is required');
+      }
+    });
+  });
 });
