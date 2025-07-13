@@ -64,4 +64,115 @@ describe('FetchGistRepository', () => {
       expect(repo).toBeDefined();
     });
   });
+  
+  describe('create', () => {
+    it('should create a new gist via API', async () => {
+      const mockGistResponse = {
+        id: 'abc123',
+        files: {
+          'bookmarks.md': {
+            filename: 'bookmarks.md',
+            content: '# Test Content'
+          }
+        },
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z'
+      };
+      
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 201,
+        headers: new Headers({
+          'etag': '"mock-etag-123"'
+        }),
+        json: async () => mockGistResponse
+      } as Response);
+      
+      const params = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: mockFilename,
+        isPublic: false
+      };
+      
+      const result = await repository.create(params);
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.id).toBe('abc123');
+        expect(result.data.etag).toBe('"mock-etag-123"');
+      }
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/gists',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Bearer test-token',
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          }),
+          body: expect.stringContaining('"description":"Test Gist"')
+        })
+      );
+    });
+    
+    it('should handle API errors', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({ message: 'Bad credentials' })
+      } as Response);
+      
+      const params = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: mockFilename
+      };
+      
+      const result = await repository.create(params);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Authentication failed');
+        expect(result.error.message).toContain('Bad credentials');
+      }
+    });
+    
+    it('should handle network errors', async () => {
+      const mockFetch = vi.mocked(global.fetch);
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      
+      const params = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: mockFilename
+      };
+      
+      const result = await repository.create(params);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Network error');
+      }
+    });
+    
+    it('should validate parameters', async () => {
+      const params = {
+        description: 'Test Gist',
+        content: '',
+        filename: mockFilename
+      };
+      
+      const result = await repository.create(params);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Content is required');
+      }
+    });
+  });
 });

@@ -51,8 +51,60 @@ export class FetchGistRepository implements GistRepository {
   }
   
   async create(params: GistCreateParams): Promise<Result<GistCreateResult>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      // Validate parameters
+      if (!params.content || params.content.trim() === '') {
+        return failure(new Error('Content is required'));
+      }
+      
+      if (!params.description || params.description.trim() === '') {
+        return failure(new Error('Description is required'));
+      }
+      
+      // Prepare request body
+      const requestBody = {
+        description: params.description,
+        public: params.isPublic ?? false,
+        files: {
+          [params.filename]: {
+            content: params.content
+          }
+        }
+      };
+      
+      // Make API request
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.gists}`,
+        {
+          method: 'POST',
+          headers: this.getHeaders({
+            'Content-Type': 'application/json'
+          }),
+          body: JSON.stringify(requestBody)
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await this.handleApiError(response);
+        return failure(error);
+      }
+      
+      // Extract etag from headers
+      const etag = response.headers.get('etag');
+      if (!etag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      // Parse response
+      const gistData = await response.json();
+      
+      return success({
+        id: gistData.id,
+        etag: etag
+      });
+    } catch (error) {
+      return failure(new Error(`Failed to create gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async read(gistId: string): Promise<Result<GistReadResult>> {
@@ -98,7 +150,21 @@ export class FetchGistRepository implements GistRepository {
   private async handleApiError(response: Response): Promise<Error> {
     try {
       const errorData = await response.json();
-      return new Error(errorData.message || `API error: ${response.status}`);
+      const message = errorData.message || `API error: ${response.status}`;
+      
+      // Add specific error context
+      switch (response.status) {
+        case 401:
+          return new Error(`Authentication failed: ${message}`);
+        case 403:
+          return new Error(`Permission denied: ${message}`);
+        case 404:
+          return new Error(`Not found: ${message}`);
+        case 422:
+          return new Error(`Invalid request: ${message}`);
+        default:
+          return new Error(message);
+      }
     } catch {
       return new Error(`API error: ${response.status} ${response.statusText}`);
     }
