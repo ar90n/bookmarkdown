@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SyncStatus } from '../../src/components/ui/SyncStatus';
 import React from 'react';
 
 // Mock the context
-const mockBookmarkContext = {
+let mockBookmarkContext = {
   isDirty: false,
   isLoading: false,
   lastSyncAt: null,
@@ -15,6 +15,17 @@ const mockBookmarkContext = {
 vi.mock('../../src/contexts/AppProvider', () => ({
   useBookmarkContext: () => mockBookmarkContext
 }));
+
+// Reset mock before each test
+beforeEach(() => {
+  mockBookmarkContext = {
+    isDirty: false,
+    isLoading: false,
+    lastSyncAt: null,
+    error: null,
+    getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' })
+  };
+});
 
 describe('SyncStatus', () => {
   it('should show synced status when not dirty', () => {

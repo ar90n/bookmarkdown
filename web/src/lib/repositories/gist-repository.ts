@@ -1,99 +1,74 @@
 import { Result } from '../types/result.js';
+import { Root } from '../types/bookmark.js';
 
 /**
- * Represents a Gist with content and version information
+ * Configuration for Repository
  */
-export interface GistContent {
-  readonly id: string;
-  readonly content: string;
-  readonly etag: string;
-}
-
-/**
- * Parameters for creating a new Gist
- */
-export interface GistCreateParams {
-  readonly description: string;
-  readonly content: string;
+export interface GistRepositoryConfig {
+  readonly accessToken: string;
   readonly filename: string;
-  readonly isPublic?: boolean;
+  readonly apiBaseUrl?: string;
 }
 
 /**
- * Result of creating a new Gist
+ * Parameters for creating a Repository instance
  */
-export interface GistCreateResult {
-  readonly id: string;
-  readonly etag: string;
+export interface CreateRepositoryParams {
+  readonly gistId?: string;      // If provided, use existing Gist
+  readonly root?: Root;           // Initial data for new Gist
+  readonly description?: string;  // Description for new Gist
+  readonly isPublic?: boolean;    // Public/private for new Gist
 }
 
 /**
- * Parameters for updating an existing Gist
- */
-export interface GistUpdateParams {
-  readonly gistId: string;
-  readonly content: string;
-  readonly etag: string;
-  readonly description?: string;
-}
-
-/**
- * Result of updating a Gist
- */
-export interface GistUpdateResult {
-  readonly etag: string;
-}
-
-/**
- * Result of reading a Gist
- */
-export interface GistReadResult extends GistContent {}
-
-/**
- * Represents a commit in the Gist history
- */
-export interface GistCommit {
-  readonly version: string;
-  readonly committedAt: string;
-  readonly changeStatus: {
-    readonly additions: number;
-    readonly deletions: number;
-    readonly total: number;
-  };
-}
-
-/**
- * Repository interface for Gist operations
- * Provides version-safe operations using etags
+ * Repository instance bound to a specific Gist
  */
 export interface GistRepository {
   /**
-   * Creates a new Gist
+   * The Gist ID this repository is bound to
    */
-  create(params: GistCreateParams): Promise<Result<GistCreateResult>>;
+  readonly gistId: string;
   
   /**
-   * Reads an existing Gist
+   * Current etag (version identifier)
    */
-  read(gistId: string): Promise<Result<GistReadResult>>;
+  readonly etag: string;
   
   /**
-   * Updates an existing Gist with etag validation
+   * Read the latest Root from Gist
    */
-  update(params: GistUpdateParams): Promise<Result<GistUpdateResult>>;
+  read(): Promise<Result<Root>>;
   
   /**
-   * Checks if a Gist exists
+   * Update Gist with new Root data
+   * Performs commit hash verification to detect concurrent modifications
    */
-  exists(gistId: string): Promise<Result<boolean>>;
+  update(root: Root, description?: string): Promise<Result<Root>>;
   
   /**
-   * Finds a Gist by filename
+   * Check if the Gist has been updated since last read/update
    */
-  findByFilename(filename: string): Promise<Result<GistReadResult | null>>;
+  isUpdated(): Promise<Result<boolean>>;
+}
+
+/**
+ * Factory interface for creating Repository instances
+ */
+export interface GistRepositoryFactory {
+  /**
+   * Create a Repository instance
+   * - If gistId is provided, binds to existing Gist
+   * - Otherwise creates a new Gist
+   */
+  create(config: GistRepositoryConfig, params: CreateRepositoryParams): Promise<Result<GistRepository>>;
   
   /**
-   * Gets the commit history for a Gist
+   * Check if a Gist exists
    */
-  getCommits(gistId: string): Promise<Result<GistCommit[]>>;
+  exists(config: GistRepositoryConfig, gistId: string): Promise<Result<boolean>>;
+  
+  /**
+   * Find Gist ID by filename
+   */
+  findByFilename(config: GistRepositoryConfig, filename: string): Promise<Result<string | null>>;
 }

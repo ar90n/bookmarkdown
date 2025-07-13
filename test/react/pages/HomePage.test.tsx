@@ -26,13 +26,23 @@ vi.mock('../../../web/src/contexts/AppProvider', () => ({
   useAuthContext: () => mockAuthContext,
   useAppContext: () => ({
     auth: mockAuthContext,
-    bookmark: {},
+    bookmark: {
+      getStats: vi.fn(() => ({ totalBookmarks: 0, totalCategories: 0, totalBundles: 0 }))
+    },
     initialize: vi.fn(),
   }),
-  useBookmarkContext: () => ({}),
+  useBookmarkContext: () => ({
+    getStats: vi.fn(() => ({ totalBookmarks: 0, totalCategories: 0, totalBundles: 0 }))
+  }),
+  useDialogContext: () => ({
+    openDialog: vi.fn(),
+    closeDialog: vi.fn(),
+    isOpen: false,
+    currentDialog: null,
+  }),
 }));
 
-import { HomePage } from '../../../web/src/pages/HomePage';
+import { WelcomePage as HomePage } from '../../../web/src/pages/WelcomePage';
 
 describe('HomePage', () => {
   const renderHomePage = () => {
@@ -47,7 +57,7 @@ describe('HomePage', () => {
     renderHomePage();
     
     expect(screen.getByRole('heading', { name: 'BookMarkDown' })).toBeInTheDocument();
-    expect(screen.getByText(/A simple and portable bookmark management service/)).toBeInTheDocument();
+    expect(screen.getByText(/A simple, powerful bookmark manager that stores your data in GitHub Gists using human-readable Markdown format/)).toBeInTheDocument();
   });
 
   it('should show "Get Started" button when user is not authenticated', () => {
@@ -58,48 +68,42 @@ describe('HomePage', () => {
     expect(screen.queryByRole('link', { name: 'View My Bookmarks' })).not.toBeInTheDocument();
   });
 
-  it('should show "View My Bookmarks" button when user is authenticated', () => {
+  it('should show navigation sidebar when user is authenticated', () => {
     // Temporarily set authenticated to true
     mockAuthContext.isAuthenticated = true;
     
     renderHomePage();
     
-    expect(screen.getByRole('link', { name: 'View My Bookmarks' })).toBeInTheDocument();
+    // When authenticated, navigation is shown in the sidebar
+    expect(screen.getByRole('link', { name: /Bookmarks/ })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Get Started' })).not.toBeInTheDocument();
     
     // Reset for other tests
     mockAuthContext.isAuthenticated = false;
   });
 
-  it('should always show "View Source" button', () => {
-    renderHomePage();
-    
-    const sourceLink = screen.getByRole('link', { name: /View Source/ });
-    expect(sourceLink).toBeInTheDocument();
-    expect(sourceLink).toHaveAttribute('href', 'https://github.com/bookmarkdown/bookmarkdown');
-    expect(sourceLink).toHaveAttribute('target', '_blank');
-  });
+  // Removed test for View Source button as it no longer exists in the WelcomePage
 
   it('should display features section', () => {
     renderHomePage();
     
-    expect(screen.getByText('Human-Readable')).toBeInTheDocument();
+    expect(screen.getByText('Markdown Format')).toBeInTheDocument();
     expect(screen.getByText('GitHub Sync')).toBeInTheDocument();
-    expect(screen.getByText('Functional Architecture')).toBeInTheDocument();
+    expect(screen.getByText('Organized Structure')).toBeInTheDocument();
     
     // Check feature descriptions
-    expect(screen.getByText(/All bookmarks are stored in clean Markdown format/)).toBeInTheDocument();
-    expect(screen.getByText(/Sync your bookmarks across devices using GitHub Gist/)).toBeInTheDocument();
-    expect(screen.getByText(/Built with functional programming principles/)).toBeInTheDocument();
+    expect(screen.getByText(/Your bookmarks are stored in clean, human-readable Markdown format/)).toBeInTheDocument();
+    expect(screen.getByText(/Automatically sync your bookmarks across all devices using GitHub Gists/)).toBeInTheDocument();
+    expect(screen.getByText(/Organize bookmarks with categories and bundles/)).toBeInTheDocument();
   });
 
   it('should display data structure section', () => {
     renderHomePage();
     
-    expect(screen.getByRole('heading', { name: 'Simple Data Structure' })).toBeInTheDocument();
-    expect(screen.getByText(/Clean hierarchy:/)).toBeInTheDocument();
-    expect(screen.getByText('Development Tools')).toBeInTheDocument();
-    expect(screen.getByText('Terminal')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Example Bookmark Structure' })).toBeInTheDocument();
+    // The structure content is now shown as code snippets
+    expect(screen.getByText(/Development/)).toBeInTheDocument();
+    expect(screen.getByText(/Frontend/)).toBeInTheDocument();
   });
 
   it('should display how it works section', () => {
@@ -109,50 +113,31 @@ describe('HomePage', () => {
     
     // Check all 4 steps
     expect(screen.getByText('Sign In')).toBeInTheDocument();
-    expect(screen.getByText('Organize')).toBeInTheDocument();
     expect(screen.getByText('Add Bookmarks')).toBeInTheDocument();
-    expect(screen.getByText('Sync')).toBeInTheDocument();
+    expect(screen.getByText('Auto Sync')).toBeInTheDocument();
+    expect(screen.getByText('Access Anywhere')).toBeInTheDocument();
     
     // Check step descriptions
-    expect(screen.getByText(/Connect with your GitHub account/)).toBeInTheDocument();
-    expect(screen.getByText(/Create categories and bundles/)).toBeInTheDocument();
-    expect(screen.getByText(/Save URLs with tags and notes/)).toBeInTheDocument();
-    expect(screen.getByText(/Automatically sync across devices/)).toBeInTheDocument();
+    expect(screen.getByText('Connect with your GitHub account')).toBeInTheDocument();
+    expect(screen.getByText('Organize with categories and bundles')).toBeInTheDocument();
+    expect(screen.getByText('Changes sync automatically to GitHub')).toBeInTheDocument();
+    expect(screen.getByText('View on any device or directly in GitHub')).toBeInTheDocument();
   });
 
-  it('should show call to action section when user is not authenticated', () => {
-    renderHomePage();
-    
-    expect(screen.getByRole('heading', { name: 'Ready to Get Started?' })).toBeInTheDocument();
-    expect(screen.getByText(/Join developers who value human-readable data/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Sign In with GitHub' })).toBeInTheDocument();
-  });
-
-  it('should hide call to action section when user is authenticated', () => {
-    mockAuthContext.isAuthenticated = true;
-    renderHomePage();
-    
-    expect(screen.queryByRole('heading', { name: 'Ready to Get Started?' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Sign In with GitHub' })).not.toBeInTheDocument();
-    
-    mockAuthContext.isAuthenticated = false; // Reset
-  });
+  // Removed tests for call to action section as it no longer exists in the WelcomePage
 
   it('should have correct navigation links', () => {
     renderHomePage();
     
     const getStartedLink = screen.getByRole('link', { name: 'Get Started' });
     expect(getStartedLink.closest('a')).toHaveAttribute('href', '/login');
-    
-    const signInLink = screen.getByRole('link', { name: 'Sign In with GitHub' });
-    expect(signInLink.closest('a')).toHaveAttribute('href', '/login');
   });
 
   it('should have correct navigation link for authenticated users', () => {
     mockAuthContext.isAuthenticated = true;
     renderHomePage();
     
-    const bookmarksLink = screen.getByRole('link', { name: 'View My Bookmarks' });
+    const bookmarksLink = screen.getByRole('link', { name: /Bookmarks/ });
     expect(bookmarksLink.closest('a')).toHaveAttribute('href', '/bookmarks');
     
     mockAuthContext.isAuthenticated = false; // Reset
@@ -167,11 +152,7 @@ describe('HomePage', () => {
     // Feature icons
     expect(screen.getByText('📝')).toBeInTheDocument();
     expect(screen.getByText('🔄')).toBeInTheDocument();
-    expect(screen.getByText('⚛️')).toBeInTheDocument();
-    
-    // Data structure icons
-    expect(screen.getByText('📂')).toBeInTheDocument();
-    expect(screen.getByText('🧳')).toBeInTheDocument();
+    expect(screen.getByText('🏗️')).toBeInTheDocument();
   });
 
   it('should have proper accessibility structure', () => {
@@ -182,16 +163,12 @@ describe('HomePage', () => {
     expect(mainHeading.tagName).toBe('H1');
     
     const sectionHeadings = screen.getAllByRole('heading', { level: 2 });
-    expect(sectionHeadings).toHaveLength(3); // Simple Data Structure, How It Works, Ready to Get Started
+    expect(sectionHeadings).toHaveLength(2); // How It Works, Example Bookmark Structure
     
-    // Check that buttons are properly labeled
-    const buttons = screen.getAllByRole('button');
-    buttons.forEach(button => {
-      expect(button).toHaveAccessibleName();
+    // Check that interactive elements are properly labeled
+    const links = screen.getAllByRole('link');
+    links.forEach(link => {
+      expect(link).toHaveAccessibleName();
     });
-    
-    // Check that links have proper attributes
-    const externalLink = screen.getByRole('link', { name: /View Source/ });
-    expect(externalLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

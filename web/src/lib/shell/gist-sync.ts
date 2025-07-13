@@ -1,12 +1,17 @@
 import { Root } from '../types/index.js';
 import { Result, success, failure } from '../types/result.js';
-import { GistRepository } from '../repositories/gist-repository.js';
-import { MarkdownParser, MarkdownGenerator } from '../parsers/index.js';
+import { 
+  GistRepository, 
+  GistRepositoryConfig,
+  CreateRepositoryParams
+} from '../repositories/gist-repository.js';
+import { FetchGistRepository } from '../repositories/fetch-gist-repository.js';
+import { MockGistRepository } from '../repositories/mock-gist-repository.js';
 
 export interface GistSyncConfig {
-  readonly repository: GistRepository;
+  readonly repositoryConfig: GistRepositoryConfig;
   readonly gistId?: string;
-  readonly description?: string;
+  readonly useMock?: boolean;
 }
 
 export interface GistSyncResult {
@@ -16,60 +21,73 @@ export interface GistSyncResult {
 }
 
 /**
- * New sync shell using GistRepository with remote-first approach
- * No merge processing - remote is always the source of truth
+ * Sync shell using new Repository design
+ * Manages Repository instances and provides high-level sync operations
  */
 export class GistSyncShell {
-  private readonly repository: GistRepository;
-  private readonly parser = new MarkdownParser();
-  private readonly generator = new MarkdownGenerator();
-  private currentGistId?: string;
-  private currentEtag?: string;
+  private repository?: GistRepository;
+  private readonly repositoryConfig: GistRepositoryConfig;
+  private readonly useMock: boolean;
   
   constructor(config: GistSyncConfig) {
-    this.repository = config.repository;
-    this.currentGistId = config.gistId;
+    this.repositoryConfig = config.repositoryConfig;
+    this.useMock = config.useMock ?? false;
   }
   
   /**
-   * Load data from remote gist
+   * Initialize repository (create or connect to existing Gist)
    */
-  async load(gistId?: string): Promise<Result<Root>> {
+  async initialize(gistId?: string): Promise<Result<void>> {
     try {
-      const targetGistId = gistId || this.currentGistId;
+      const RepositoryClass = this.useMock ? MockGistRepository : FetchGistRepository;
       
-      if (!targetGistId) {
-        // No gist ID - try to find by filename
-        const findResult = await this.repository.findByFilename('bookmarks.md');
+      const params: CreateRepositoryParams = {
+        gistId
+      };
+      
+      // If no gistId provided, try to find by filename
+      if (!gistId) {
+        const findResult = await RepositoryClass.findByFilename(
+          this.repositoryConfig, 
+          this.repositoryConfig.filename
+        );
         
         if (!findResult.success) {
           return failure(findResult.error);
         }
         
-        if (!findResult.data) {
-          return failure(new Error('No bookmarks gist found'));
+        if (findResult.data) {
+          params.gistId = findResult.data;
         }
-        
-        // Found a gist, use it
-        this.currentGistId = findResult.data.id;
-        this.currentEtag = findResult.data.etag;
-        
-        const root = this.parser.parse(findResult.data.content);
-        return success(root);
       }
       
-      // Load specific gist
-      const readResult = await this.repository.read(targetGistId);
+      // Create repository instance
+      const repoResult = await RepositoryClass.create(
+        this.repositoryConfig,
+        params
+      );
       
-      if (!readResult.success) {
-        return failure(readResult.error);
+      if (!repoResult.success) {
+        return failure(repoResult.error);
       }
       
-      this.currentGistId = readResult.data.id;
-      this.currentEtag = readResult.data.etag;
-      
-      const root = this.parser.parse(readResult.data.content);
-      return success(root);
+      this.repository = repoResult.data;
+      return success(undefined);
+    } catch (error) {
+      return failure(new Error(`Failed to initialize: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  }
+  
+  /**
+   * Load data from remote gist
+   */
+  async load(): Promise<Result<Root>> {
+    if (!this.repository) {
+      return failure(new Error('Repository not initialized. Call initialize() first.'));
+    }
+    
+    try {
+      return await this.repository.read();
     } catch (error) {
       return failure(new Error(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
@@ -77,101 +95,91 @@ export class GistSyncShell {
   
   /**
    * Save data to remote gist
-   * Creates new gist if needed
    */
   async save(root: Root, description?: string): Promise<Result<GistSyncResult>> {
+    if (!this.repository) {
+      return failure(new Error('Repository not initialized. Call initialize() first.'));
+    }
+    
     try {
-      const content = this.generator.generate(root);
+      const updateResult = await this.repository.update(root, description);
       
-      if (this.currentGistId && this.currentEtag) {
-        // Update existing gist
-        const updateResult = await this.repository.update({
-          gistId: this.currentGistId,
-          content,
-          etag: this.currentEtag,
-          description
-        });
-        
-        if (!updateResult.success) {
-          // Handle etag mismatch
-          if (updateResult.error.message.includes('Precondition Failed') || 
-              updateResult.error.message.includes('Etag mismatch')) {
-            return failure(new Error('Remote has been modified. Please reload before saving.'));
-          }
-          return failure(updateResult.error);
-        }
-        
-        this.currentEtag = updateResult.data.etag;
-        
-        return success({
-          gistId: this.currentGistId,
-          etag: this.currentEtag,
-          root
-        });
-      } else {
-        // Create new gist
-        const createResult = await this.repository.create({
-          description: description || 'BookMarkDown - Bookmark Collection',
-          content,
-          filename: 'bookmarks.md',
-          isPublic: false
-        });
-        
-        if (!createResult.success) {
-          return failure(createResult.error);
-        }
-        
-        this.currentGistId = createResult.data.id;
-        this.currentEtag = createResult.data.etag;
-        
-        return success({
-          gistId: this.currentGistId,
-          etag: this.currentEtag,
-          root
-        });
+      if (!updateResult.success) {
+        return failure(updateResult.error);
       }
+      
+      return success({
+        gistId: this.repository.gistId,
+        etag: this.repository.etag,
+        root: updateResult.data
+      });
     } catch (error) {
       return failure(new Error(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   }
   
   /**
-   * Force reload from remote (discards local changes)
+   * Check if remote has been updated
    */
-  async forceReload(): Promise<Result<Root>> {
-    if (!this.currentGistId) {
-      return failure(new Error('No gist ID available for reload'));
+  async isRemoteUpdated(): Promise<Result<boolean>> {
+    if (!this.repository) {
+      return failure(new Error('Repository not initialized. Call initialize() first.'));
     }
     
-    // Clear etag to force fresh load
-    this.currentEtag = undefined;
-    return this.load(this.currentGistId);
+    try {
+      return await this.repository.isUpdated();
+    } catch (error) {
+      return failure(new Error(`Failed to check remote: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   /**
-   * Check if remote has changes
-   */
-  async hasRemoteChanges(): Promise<Result<boolean>> {
-    if (!this.currentGistId || !this.currentEtag) {
-      return success(false);
-    }
-    
-    const readResult = await this.repository.read(this.currentGistId);
-    
-    if (!readResult.success) {
-      return failure(readResult.error);
-    }
-    
-    return success(readResult.data.etag !== this.currentEtag);
-  }
-  
-  /**
-   * Get current gist info
+   * Get current Gist info
    */
   getGistInfo(): { gistId?: string; etag?: string } {
+    if (!this.repository) {
+      return {};
+    }
+    
     return {
-      gistId: this.currentGistId,
-      etag: this.currentEtag
+      gistId: this.repository.gistId,
+      etag: this.repository.etag
     };
+  }
+  
+  /**
+   * Create a new Gist with initial data
+   */
+  static async createNew(
+    config: GistRepositoryConfig,
+    root: Root,
+    description?: string,
+    isPublic?: boolean,
+    useMock?: boolean
+  ): Promise<Result<GistSyncShell>> {
+    try {
+      const RepositoryClass = useMock ? MockGistRepository : FetchGistRepository;
+      
+      const repoResult = await RepositoryClass.create(config, {
+        root,
+        description,
+        isPublic
+      });
+      
+      if (!repoResult.success) {
+        return failure(repoResult.error);
+      }
+      
+      const shell = new GistSyncShell({
+        repositoryConfig: config,
+        useMock
+      });
+      
+      shell.repository = repoResult.data;
+      
+      return success(shell);
+    } catch (error) {
+      return failure(new Error(`Failed to create new gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
 }

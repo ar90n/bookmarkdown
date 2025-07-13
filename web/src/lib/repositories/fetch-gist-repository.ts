@@ -1,230 +1,176 @@
 import { Result, success, failure } from '../types/result.js';
+import { Root } from '../types/bookmark.js';
+import { RootEntity } from '../entities/root-entity.js';
+import { MarkdownParser } from '../parsers/markdown-to-json.js';
+import { MarkdownGenerator } from '../parsers/json-to-markdown.js';
 import type {
   GistRepository,
-  GistCreateParams,
-  GistCreateResult,
-  GistReadResult,
-  GistUpdateParams,
-  GistUpdateResult,
-  GistCommit
+  GistRepositoryConfig,
+  CreateRepositoryParams
 } from './gist-repository.js';
 
-export interface FetchGistRepositoryConfig {
-  accessToken: string;
-  filename: string;
-  apiBaseUrl?: string;
+/**
+ * Gist commit information from API
+ */
+interface GistCommit {
+  version: string;
+  committed_at: string;
+  change_status?: {
+    additions: number;
+    deletions: number;
+    total: number;
+  };
 }
 
 /**
  * GitHub Gist repository implementation using Fetch API
- * Provides etag-based version control for safe concurrent updates
+ * Bound to a specific Gist instance
  */
 export class FetchGistRepository implements GistRepository {
-  private readonly accessToken: string;
-  private readonly filename: string;
-  private readonly apiBaseUrl: string;
+  public readonly gistId: string;
+  private _etag: string;
+  private readonly parser: MarkdownParser;
+  private readonly generator: MarkdownGenerator;
   
-  // API endpoints
-  private readonly endpoints = {
-    gists: '/gists',
-    gist: (id: string) => `/gists/${id}`,
-    commits: (id: string) => `/gists/${id}/commits`
-  };
-  
-  constructor(config: FetchGistRepositoryConfig) {
-    // Validate configuration
-    this.validateConfig(config);
-    
-    this.accessToken = config.accessToken;
-    this.filename = config.filename;
-    this.apiBaseUrl = config.apiBaseUrl || 'https://api.github.com';
+  get etag(): string {
+    return this._etag;
   }
   
-  private validateConfig(config: FetchGistRepositoryConfig): void {
+  private constructor(
+    private readonly config: GistRepositoryConfig,
+    gistId: string,
+    etag: string
+  ) {
+    this.gistId = gistId;
+    this._etag = etag;
+    this.parser = new MarkdownParser();
+    this.generator = new MarkdownGenerator();
+  }
+  
+  /**
+   * Create a repository instance
+   * - If gistId is provided, binds to existing Gist
+   * - Otherwise creates a new Gist
+   */
+  static async create(
+    config: GistRepositoryConfig,
+    params: CreateRepositoryParams
+  ): Promise<Result<FetchGistRepository>> {
+    // Validate config
     if (!config.accessToken || config.accessToken.trim() === '') {
-      throw new Error('Access token is required');
+      return failure(new Error('Access token is required'));
     }
     
     if (!config.filename || config.filename.trim() === '') {
-      throw new Error('Filename is required');
+      return failure(new Error('Filename is required'));
     }
-  }
-  
-  async create(params: GistCreateParams): Promise<Result<GistCreateResult>> {
-    try {
-      // Validate parameters
-      if (!params.content || params.content.trim() === '') {
-        return failure(new Error('Content is required'));
-      }
-      
-      if (!params.description || params.description.trim() === '') {
-        return failure(new Error('Description is required'));
-      }
-      
-      // Prepare request body
-      const requestBody = {
-        description: params.description,
-        public: params.isPublic ?? false,
-        files: {
-          [params.filename]: {
-            content: params.content
+    
+    const apiBaseUrl = config.apiBaseUrl || 'https://api.github.com';
+    
+    if (params.gistId) {
+      // Bind to existing Gist
+      try {
+        const response = await fetch(
+          `${apiBaseUrl}/gists/${params.gistId}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${config.accessToken}`,
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            }
           }
-        }
-      };
-      
-      // Make API request
-      const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.gists}`,
-        {
-          method: 'POST',
-          headers: this.getHeaders({
-            'Content-Type': 'application/json'
-          }),
-          body: JSON.stringify(requestBody)
-        }
-      );
-      
-      if (!response.ok) {
-        const error = await this.handleApiError(response);
-        return failure(error);
-      }
-      
-      // Extract etag from headers
-      const etag = response.headers.get('etag');
-      if (!etag) {
-        return failure(new Error('No etag received from API'));
-      }
-      
-      // Parse response
-      const gistData = await response.json();
-      
-      return success({
-        id: gistData.id,
-        etag: etag
-      });
-    } catch (error) {
-      return failure(new Error(`Failed to create gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
-    }
-  }
-  
-  async read(gistId: string): Promise<Result<GistReadResult>> {
-    try {
-      // Validate parameters
-      if (!gistId || gistId.trim() === '') {
-        return failure(new Error('Gist ID is required'));
-      }
-      
-      // Make API request
-      const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.gist(gistId)}`,
-        {
-          method: 'GET',
-          headers: this.getHeaders()
-        }
-      );
-      
-      if (!response.ok) {
-        const error = await this.handleApiError(response);
-        return failure(error);
-      }
-      
-      // Extract etag from headers
-      const etag = response.headers.get('etag');
-      if (!etag) {
-        return failure(new Error('No etag received from API'));
-      }
-      
-      // Parse response
-      const gistData = await response.json();
-      
-      // Find the file content
-      const file = gistData.files?.[this.filename];
-      if (!file || !file.content) {
-        return failure(new Error(`File ${this.filename} not found in gist`));
-      }
-      
-      return success({
-        id: gistData.id,
-        content: file.content,
-        etag: etag
-      });
-    } catch (error) {
-      return failure(new Error(`Failed to read gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
-    }
-  }
-  
-  async update(params: GistUpdateParams): Promise<Result<GistUpdateResult>> {
-    try {
-      // Validate parameters
-      if (!params.gistId || params.gistId.trim() === '') {
-        return failure(new Error('Gist ID is required'));
-      }
-      
-      if (!params.content || params.content.trim() === '') {
-        return failure(new Error('Content is required'));
-      }
-      
-      if (!params.etag || params.etag.trim() === '') {
-        return failure(new Error('Etag is required for updates'));
-      }
-      
-      // Prepare request body
-      const requestBody: any = {
-        files: {
-          [this.filename]: {
-            content: params.content
+        );
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            return failure(new Error(`Gist ${params.gistId} not found`));
           }
+          const error = await handleApiError(response);
+          return failure(error);
         }
-      };
-      
-      // Add description if provided
-      if (params.description !== undefined) {
-        requestBody.description = params.description;
-      }
-      
-      // Make API request with If-Match header for etag validation
-      const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.gist(params.gistId)}`,
-        {
-          method: 'PATCH',
-          headers: this.getHeaders({
-            'Content-Type': 'application/json',
-            'If-Match': params.etag
-          }),
-          body: JSON.stringify(requestBody)
+        
+        const etag = response.headers.get('etag');
+        if (!etag) {
+          return failure(new Error('No etag received from API'));
         }
-      );
-      
-      if (!response.ok) {
-        const error = await this.handleApiError(response);
-        return failure(error);
+        
+        return success(new FetchGistRepository(config, params.gistId, etag));
+      } catch (error) {
+        return failure(new Error(`Failed to connect to existing gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
-      
-      // Extract new etag from headers
-      const newEtag = response.headers.get('etag');
-      if (!newEtag) {
-        return failure(new Error('No etag received from API'));
+    } else {
+      // Create new Gist
+      try {
+        const root = params.root || RootEntity.create().toRoot();
+        const generator = new MarkdownGenerator();
+        const content = generator.generate(root);
+        
+        const requestBody = {
+          description: params.description || 'BookMarkDown',
+          public: params.isPublic ?? false,
+          files: {
+            [config.filename]: {
+              content
+            }
+          }
+        };
+        
+        const response = await fetch(
+          `${apiBaseUrl}/gists`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${config.accessToken}`,
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          }
+        );
+        
+        if (!response.ok) {
+          const error = await handleApiError(response);
+          return failure(error);
+        }
+        
+        const etag = response.headers.get('etag');
+        if (!etag) {
+          return failure(new Error('No etag received from API'));
+        }
+        
+        const gistData = await response.json();
+        return success(new FetchGistRepository(config, gistData.id, etag));
+      } catch (error) {
+        return failure(new Error(`Failed to create gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
-      
-      return success({
-        etag: newEtag
-      });
-    } catch (error) {
-      return failure(new Error(`Failed to update gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   }
   
-  async exists(gistId: string): Promise<Result<boolean>> {
+  /**
+   * Check if a Gist exists
+   */
+  static async exists(
+    config: GistRepositoryConfig,
+    gistId: string
+  ): Promise<Result<boolean>> {
+    if (!gistId || gistId.trim() === '') {
+      return success(false);
+    }
+    
+    const apiBaseUrl = config.apiBaseUrl || 'https://api.github.com';
+    
     try {
-      if (!gistId || gistId.trim() === '') {
-        return success(false);
-      }
-      
       const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.gist(gistId)}`,
+        `${apiBaseUrl}/gists/${gistId}`,
         {
           method: 'HEAD',
-          headers: this.getHeaders()
+          headers: {
+            'Authorization': `Bearer ${config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
         }
       );
       
@@ -234,23 +180,34 @@ export class FetchGistRepository implements GistRepository {
     }
   }
   
-  async findByFilename(filename: string): Promise<Result<GistReadResult | null>> {
+  /**
+   * Find Gist ID by filename
+   */
+  static async findByFilename(
+    config: GistRepositoryConfig,
+    filename: string
+  ): Promise<Result<string | null>> {
+    if (!filename || filename.trim() === '') {
+      return success(null);
+    }
+    
+    const apiBaseUrl = config.apiBaseUrl || 'https://api.github.com';
+    
     try {
-      if (!filename || filename.trim() === '') {
-        return success(null);
-      }
-      
-      // List user's gists
       const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.gists}?per_page=100`,
+        `${apiBaseUrl}/gists?per_page=100`,
         {
           method: 'GET',
-          headers: this.getHeaders()
+          headers: {
+            'Authorization': `Bearer ${config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
         }
       );
       
       if (!response.ok) {
-        const error = await this.handleApiError(response);
+        const error = await handleApiError(response);
         return failure(error);
       }
       
@@ -259,8 +216,7 @@ export class FetchGistRepository implements GistRepository {
       // Find gist containing the filename
       for (const gist of gists) {
         if (gist.files && gist.files[filename]) {
-          // Found a gist with the file, now read it to get full content
-          return this.read(gist.id);
+          return success(gist.id);
         }
       }
       
@@ -270,103 +226,260 @@ export class FetchGistRepository implements GistRepository {
     }
   }
   
-  async getCommits(gistId: string): Promise<Result<GistCommit[]>> {
+  /**
+   * Read the latest Root from Gist
+   */
+  async read(): Promise<Result<Root>> {
     try {
-      if (!gistId || gistId.trim() === '') {
-        return failure(new Error('Gist ID is required'));
-      }
+      const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
       
       const response = await fetch(
-        `${this.apiBaseUrl}${this.endpoints.commits(gistId)}`,
+        `${apiBaseUrl}/gists/${this.gistId}`,
         {
           method: 'GET',
-          headers: this.getHeaders()
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
         }
       );
       
       if (!response.ok) {
-        const error = await this.handleApiError(response);
+        const error = await handleApiError(response);
+        return failure(error);
+      }
+      
+      // Update etag
+      const etag = response.headers.get('etag');
+      if (!etag) {
+        return failure(new Error('No etag received from API'));
+      }
+      this._etag = etag;
+      
+      // Parse content
+      const gistData = await response.json();
+      const file = gistData.files?.[this.config.filename];
+      if (!file || !file.content) {
+        return failure(new Error(`File ${this.config.filename} not found in gist`));
+      }
+      
+      const root = this.parser.parse(file.content);
+      return success(root);
+    } catch (error) {
+      return failure(new Error(`Failed to read gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  }
+  
+  /**
+   * Update Gist with new Root data
+   * Performs commit hash verification to detect concurrent modifications
+   */
+  async update(root: Root, description?: string): Promise<Result<Root>> {
+    try {
+      const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
+      
+      // Step 1: Get current state with commit info
+      const beforeResponse = await fetch(
+        `${apiBaseUrl}/gists/${this.gistId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        }
+      );
+      
+      if (!beforeResponse.ok) {
+        const error = await handleApiError(beforeResponse);
+        return failure(error);
+      }
+      
+      const beforeData = await beforeResponse.json();
+      const beforeCommitHash = beforeData.history?.[0]?.version;
+      if (!beforeCommitHash) {
+        return failure(new Error('Could not get current commit hash'));
+      }
+      
+      // Step 2: Perform update
+      const content = this.generator.generate(root);
+      const requestBody: {
+        files: Record<string, { content: string }>;
+        description?: string;
+      } = {
+        files: {
+          [this.config.filename]: {
+            content
+          }
+        }
+      };
+      
+      if (description !== undefined) {
+        requestBody.description = description;
+      }
+      
+      const updateResponse = await fetch(
+        `${apiBaseUrl}/gists/${this.gistId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        }
+      );
+      
+      if (!updateResponse.ok) {
+        const error = await handleApiError(updateResponse);
+        return failure(error);
+      }
+      
+      // Update etag
+      const newEtag = updateResponse.headers.get('etag');
+      if (!newEtag) {
+        return failure(new Error('No etag received from API'));
+      }
+      this._etag = newEtag;
+      
+      // Step 3: Get updated state with new commit hash
+      const afterData = await updateResponse.json();
+      const afterCommitHash = afterData.history?.[0]?.version;
+      if (!afterCommitHash) {
+        return failure(new Error('Could not get new commit hash'));
+      }
+      
+      // Step 4: Verify commit order
+      const commits = await this.getCommits();
+      if (!commits.success) {
+        return failure(new Error('Could not verify commit order: ' + commits.error.message));
+      }
+      
+      let foundNew = false;
+      let foundBefore = false;
+      let orderCorrect = false;
+      
+      // Commits are ordered newest first
+      for (const commit of commits.data) {
+        if (commit.version === afterCommitHash) {
+          foundNew = true;
+        }
+        if (commit.version === beforeCommitHash) {
+          foundBefore = true;
+          if (foundNew) {
+            // Found new commit before old commit = correct order
+            orderCorrect = true;
+          }
+          break;
+        }
+      }
+      
+      if (!orderCorrect) {
+        return failure(new Error(
+          'Concurrent modification detected. ' +
+          'Another process modified the Gist during update. ' +
+          'Please reload and try again.'
+        ));
+      }
+      
+      return success(root);
+    } catch (error) {
+      return failure(new Error(`Failed to update gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  }
+  
+  /**
+   * Check if the Gist has been updated since last read/update
+   */
+  async isUpdated(): Promise<Result<boolean>> {
+    try {
+      const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
+      
+      const response = await fetch(
+        `${apiBaseUrl}/gists/${this.gistId}`,
+        {
+          method: 'HEAD',
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await handleApiError(response);
+        return failure(error);
+      }
+      
+      const latestEtag = response.headers.get('etag');
+      if (!latestEtag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      return success(latestEtag !== this._etag);
+    } catch (error) {
+      return failure(new Error(`Failed to check if gist is updated: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  }
+  
+  /**
+   * Get commit history (private method)
+   */
+  private async getCommits(): Promise<Result<GistCommit[]>> {
+    try {
+      const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
+      
+      const response = await fetch(
+        `${apiBaseUrl}/gists/${this.gistId}/commits`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await handleApiError(response);
         return failure(error);
       }
       
       const commits = await response.json();
-      
-      // Map API response to our GistCommit interface
-      const mappedCommits: GistCommit[] = commits.map((commit: any) => ({
-        version: commit.version,
-        committedAt: commit.committed_at,
-        changeStatus: {
-          additions: commit.change_status?.additions || 0,
-          deletions: commit.change_status?.deletions || 0,
-          total: commit.change_status?.total || 0
-        }
-      }));
-      
-      return success(mappedCommits);
+      return success(commits);
     } catch (error) {
       return failure(new Error(`Failed to get commits: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   }
-  
-  /**
-   * Create common headers for API requests
-   */
-  private getHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
-    return {
-      'Authorization': `Bearer ${this.accessToken}`,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...additionalHeaders
-    };
-  }
-  
-  /**
-   * Make an API request and handle common errors
-   */
-  private async makeRequest(
-    url: string, 
-    options: RequestInit
-  ): Promise<{ response: Response; etag: string }> {
-    const response = await fetch(url, options);
+}
+
+/**
+ * Handle API errors consistently
+ */
+async function handleApiError(response: Response): Promise<Error> {
+  try {
+    const errorData = await response.json();
+    const message = errorData.message || `API error: ${response.status}`;
     
-    if (!response.ok) {
-      const error = await this.handleApiError(response);
-      throw error;
+    switch (response.status) {
+      case 401:
+        return new Error(`Authentication failed: ${message}`);
+      case 403:
+        return new Error(`Permission denied: ${message}`);
+      case 404:
+        return new Error(`Not found: ${message}`);
+      case 422:
+        return new Error(`Invalid request: ${message}`);
+      default:
+        return new Error(message);
     }
-    
-    const etag = response.headers.get('etag');
-    if (!etag) {
-      throw new Error('No etag received from API');
-    }
-    
-    return { response, etag };
-  }
-  
-  /**
-   * Handle API errors consistently
-   */
-  private async handleApiError(response: Response): Promise<Error> {
-    try {
-      const errorData = await response.json();
-      const message = errorData.message || `API error: ${response.status}`;
-      
-      // Add specific error context
-      switch (response.status) {
-        case 401:
-          return new Error(`Authentication failed: ${message}`);
-        case 403:
-          return new Error(`Permission denied: ${message}`);
-        case 404:
-          return new Error(`Not found: ${message}`);
-        case 412:
-          return new Error(`Precondition Failed: ${message}`);
-        case 422:
-          return new Error(`Invalid request: ${message}`);
-        default:
-          return new Error(message);
-      }
-    } catch {
-      return new Error(`API error: ${response.status} ${response.statusText}`);
-    }
+  } catch {
+    return new Error(`API error: ${response.status} ${response.statusText}`);
   }
 }
