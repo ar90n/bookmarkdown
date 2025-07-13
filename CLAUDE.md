@@ -181,6 +181,13 @@ test/
 
 ## 現在のステータス
 - [ ] Phase 1: インターフェース設計とモック実装
+  - [x] Cycle 1: GistRepository インターフェース定義
+  - [x] Cycle 2: MockGistRepository 基本実装 (create操作)
+  - [ ] Cycle 3: read操作の実装
+  - [ ] Cycle 4: update操作とetag検証
+  - [ ] Cycle 5: exists操作の実装
+  - [ ] Cycle 6: findByFilename操作の実装
+  - [ ] Cycle 7: getCommits操作の実装
 - [ ] Phase 2: 実装とGist API統合  
 - [ ] Phase 3: SyncShell改修
 - [ ] Phase 4: UI統合

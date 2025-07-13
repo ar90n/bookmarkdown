@@ -76,4 +76,48 @@ describe('MockGistRepository', () => {
       }
     });
   });
+  
+  describe('read', () => {
+    it('should read an existing gist', async () => {
+      // First create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content\n\nThis is a test.',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Now read it
+        const readResult = await repository.read(createResult.data.id);
+        
+        expect(readResult.success).toBe(true);
+        if (readResult.success) {
+          expect(readResult.data.id).toBe(createResult.data.id);
+          expect(readResult.data.content).toBe(createParams.content);
+          expect(readResult.data.etag).toBe(createResult.data.etag);
+        }
+      }
+    });
+    
+    it('should return error for non-existent gist', async () => {
+      const readResult = await repository.read('non-existent-id');
+      
+      expect(readResult.success).toBe(false);
+      if (!readResult.success) {
+        expect(readResult.error.message).toContain('not found');
+      }
+    });
+    
+    it('should handle empty gist id', async () => {
+      const readResult = await repository.read('');
+      
+      expect(readResult.success).toBe(false);
+      if (!readResult.success) {
+        expect(readResult.error.message).toContain('Gist ID is required');
+      }
+    });
+  });
 });
