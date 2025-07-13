@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { useBookmarkContext, useAuthContext } from '../contexts/AppProvider';
+import { useBookmarkContext, useAuthContext } from '../contexts/AppProviderV2';
 
 interface ErrorHandlerOptions {
   onConflict?: () => void;

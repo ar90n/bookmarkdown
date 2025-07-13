@@ -1,5 +1,5 @@
 import React from 'react';
-import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useBookmarkContext } from '../../contexts/AppProviderV2';
 import { CloudArrowUpIcon, CheckCircleIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export const SyncStatus: React.FC = () => {
