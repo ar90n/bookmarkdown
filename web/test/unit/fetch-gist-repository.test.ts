@@ -231,4 +231,265 @@ describe('FetchGistRepository', () => {
       });
     });
   });
+  
+  describe('update', () => {
+    let repository: FetchGistRepository;
+    
+    beforeEach(async () => {
+      // Create a repository instance for testing
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ 'etag': '"initial-etag"' }),
+        json: async () => ({ id: 'test-gist-id' })
+      };
+      
+      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as any);
+      
+      const result = await FetchGistRepository.create(mockConfig, {
+        gistId: 'test-gist-id'
+      });
+      
+      if (result.success) {
+        repository = result.data;
+      }
+    });
+    
+    it('should update Gist with commit verification', async () => {
+      // Mock the GET request for current state
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          history: [{ version: 'old-commit-hash' }]
+        })
+      };
+      
+      // Mock the PATCH request for update
+      const updateResponse = {
+        ok: true,
+        headers: new Headers({ 'etag': '"new-etag"' }),
+        json: async () => ({
+          history: [{ version: 'new-commit-hash' }]
+        })
+      };
+      
+      // Mock the GET request for commit history
+      const commitsResponse = {
+        ok: true,
+        json: async () => ([
+          { version: 'new-commit-hash', committed_at: '2023-01-02' },
+          { version: 'old-commit-hash', committed_at: '2023-01-01' }
+        ])
+      };
+      
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(beforeResponse as any)
+        .mockResolvedValueOnce(updateResponse as any)
+        .mockResolvedValueOnce(commitsResponse as any);
+      
+      const newRoot = RootEntity.create().addCategory('Updated Category').toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(newRoot);
+      }
+      
+      // Verify all three requests were made
+      expect(fetch).toHaveBeenCalledTimes(4); // 1 from setup + 3 from update
+      
+      // Verify PATCH request body
+      const patchCall = vi.mocked(fetch).mock.calls[2];
+      expect(patchCall[0]).toContain('/gists/test-gist-id');
+      expect(patchCall[1]?.method).toBe('PATCH');
+      const body = JSON.parse(patchCall[1]?.body as string);
+      expect(body.files['bookmarks.md'].content).toContain('Updated Category');
+    });
+    
+    it('should detect concurrent modification', async () => {
+      // Mock the GET request for current state
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          history: [{ version: 'old-commit-hash' }]
+        })
+      };
+      
+      // Mock the PATCH request for update
+      const updateResponse = {
+        ok: true,
+        headers: new Headers({ 'etag': '"new-etag"' }),
+        json: async () => ({
+          history: [{ version: 'new-commit-hash' }]
+        })
+      };
+      
+      // Mock the GET request for commit history with wrong order
+      const commitsResponse = {
+        ok: true,
+        json: async () => ([
+          { version: 'another-commit-hash', committed_at: '2023-01-03' },
+          { version: 'old-commit-hash', committed_at: '2023-01-02' },
+          { version: 'new-commit-hash', committed_at: '2023-01-01' }
+        ])
+      };
+      
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(beforeResponse as any)
+        .mockResolvedValueOnce(updateResponse as any)
+        .mockResolvedValueOnce(commitsResponse as any);
+      
+      const newRoot = RootEntity.create().addCategory('Updated Category').toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Concurrent modification detected');
+      }
+    });
+    
+    it('should update with custom description', async () => {
+      // Mock the GET request for current state
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          history: [{ version: 'old-commit-hash' }]
+        })
+      };
+      
+      // Mock the PATCH request for update
+      const updateResponse = {
+        ok: true,
+        headers: new Headers({ 'etag': '"new-etag"' }),
+        json: async () => ({
+          history: [{ version: 'new-commit-hash' }]
+        })
+      };
+      
+      // Mock the GET request for commit history
+      const commitsResponse = {
+        ok: true,
+        json: async () => ([
+          { version: 'new-commit-hash', committed_at: '2023-01-02' },
+          { version: 'old-commit-hash', committed_at: '2023-01-01' }
+        ])
+      };
+      
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(beforeResponse as any)
+        .mockResolvedValueOnce(updateResponse as any)
+        .mockResolvedValueOnce(commitsResponse as any);
+      
+      const newRoot = RootEntity.create().toRoot();
+      const result = await repository.update(newRoot, 'Custom description');
+      
+      expect(result.success).toBe(true);
+      
+      // Verify description was included in PATCH
+      const patchCall = vi.mocked(fetch).mock.calls[2];
+      const body = JSON.parse(patchCall[1]?.body as string);
+      expect(body.description).toBe('Custom description');
+    });
+    
+    it('should handle API errors during update', async () => {
+      const beforeResponse = {
+        ok: false,
+        status: 403,
+        json: async () => ({ message: 'Forbidden' })
+      };
+      
+      vi.mocked(fetch).mockResolvedValueOnce(beforeResponse as any);
+      
+      const newRoot = RootEntity.create().toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Permission denied');
+      }
+    });
+    
+    it('should handle missing commit hash in before state', async () => {
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          // No history field
+        })
+      };
+      
+      vi.mocked(fetch).mockResolvedValueOnce(beforeResponse as any);
+      
+      const newRoot = RootEntity.create().toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toBe('Could not get current commit hash');
+      }
+    });
+    
+    it('should handle missing etag in update response', async () => {
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          history: [{ version: 'old-commit-hash' }]
+        })
+      };
+      
+      const updateResponse = {
+        ok: true,
+        headers: new Headers({}), // No etag
+        json: async () => ({
+          history: [{ version: 'new-commit-hash' }]
+        })
+      };
+      
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(beforeResponse as any)
+        .mockResolvedValueOnce(updateResponse as any);
+      
+      const newRoot = RootEntity.create().toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toBe('No etag received from API');
+      }
+    });
+    
+    it('should handle commit verification failure', async () => {
+      const beforeResponse = {
+        ok: true,
+        json: async () => ({
+          history: [{ version: 'old-commit-hash' }]
+        })
+      };
+      
+      const updateResponse = {
+        ok: true,
+        headers: new Headers({ 'etag': '"new-etag"' }),
+        json: async () => ({
+          history: [{ version: 'new-commit-hash' }]
+        })
+      };
+      
+      const commitsResponse = {
+        ok: false,
+        status: 500,
+        json: async () => ({ message: 'Internal Server Error' })
+      };
+      
+      vi.mocked(fetch)
+        .mockResolvedValueOnce(beforeResponse as any)
+        .mockResolvedValueOnce(updateResponse as any)
+        .mockResolvedValueOnce(commitsResponse as any);
+      
+      const newRoot = RootEntity.create().toRoot();
+      const result = await repository.update(newRoot);
+      
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.message).toContain('Could not verify commit order');
+      }
+    });
+  });
 });
