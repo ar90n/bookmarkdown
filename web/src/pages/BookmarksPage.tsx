@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
+import { useBookmarkContext, useDialogContext } from '../contexts/AppProviderV2';
 import { DnDProvider, DraggableBookmark, DraggableBundle, DroppableBundle, DroppableCategory } from '../components/dnd';
 import { useChromeExtension } from '../hooks/useChromeExtension';
 import { useToast } from '../hooks/useToast';

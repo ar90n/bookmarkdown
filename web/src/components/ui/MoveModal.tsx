@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useBookmarkContext } from '../../contexts/AppProviderV2';
 
 interface MoveModalProps {
   isOpen: boolean;

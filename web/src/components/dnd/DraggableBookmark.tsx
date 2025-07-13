@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import { Bookmark } from '../../../../../src/types/bookmark';
-import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useBookmarkContext } from '../../contexts/AppProviderV2';
 
 interface DraggableBookmarkProps {
   bookmark: Bookmark;

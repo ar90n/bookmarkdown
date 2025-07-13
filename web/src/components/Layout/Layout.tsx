@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
 import { Footer } from './Footer';
-import { useBookmarkContext, useDialogContext } from '../../contexts/AppProvider';
+import { useBookmarkContext, useDialogContext } from '../../contexts/AppProviderV2';
 import { CategoryDialog } from '../Dialogs/CategoryDialog';
 import { BundleDialog } from '../Dialogs/BundleDialog';
 import { BookmarkDialog } from '../Dialogs/BookmarkDialog';
