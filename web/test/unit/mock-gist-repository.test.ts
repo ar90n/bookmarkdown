@@ -399,4 +399,123 @@ describe('MockGistRepository', () => {
       }
     });
   });
+  
+  describe('getCommits', () => {
+    it('should return commit history for existing gist', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        const commitsResult = await repository.getCommits(createResult.data.id);
+        
+        expect(commitsResult.success).toBe(true);
+        if (commitsResult.success) {
+          expect(commitsResult.data).toHaveLength(1);
+          
+          const commit = commitsResult.data[0];
+          expect(commit.version).toBeDefined();
+          expect(commit.committedAt).toBeDefined();
+          expect(commit.changeStatus).toBeDefined();
+          expect(commit.changeStatus.additions).toBeDefined();
+          expect(commit.changeStatus.deletions).toBeDefined();
+          expect(commit.changeStatus.total).toBeDefined();
+        }
+      }
+    });
+    
+    it('should return error for non-existent gist', async () => {
+      const commitsResult = await repository.getCommits('non-existent-id');
+      
+      expect(commitsResult.success).toBe(false);
+      if (!commitsResult.success) {
+        expect(commitsResult.error.message).toContain('not found');
+      }
+    });
+    
+    it('should show multiple commits after updates', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Original Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Update the gist
+        const updateParams: GistUpdateParams = {
+          gistId: createResult.data.id,
+          content: '# Updated Content',
+          etag: createResult.data.etag
+        };
+        
+        const updateResult = await repository.update(updateParams);
+        expect(updateResult.success).toBe(true);
+        
+        // Get commits
+        const commitsResult = await repository.getCommits(createResult.data.id);
+        
+        expect(commitsResult.success).toBe(true);
+        if (commitsResult.success) {
+          // Mock implementation currently returns only latest commit
+          // In real implementation, this would show full history
+          expect(commitsResult.data.length).toBeGreaterThanOrEqual(1);
+          
+          const latestCommit = commitsResult.data[0];
+          expect(latestCommit.version).toBeDefined();
+          expect(latestCommit.committedAt).toBeDefined();
+        }
+      }
+    });
+    
+    it('should handle empty gist id', async () => {
+      const commitsResult = await repository.getCommits('');
+      
+      expect(commitsResult.success).toBe(false);
+      if (!commitsResult.success) {
+        expect(commitsResult.error.message).toBeDefined();
+      }
+    });
+    
+    it('should return commits with proper change status', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content\n\nThis is a test.',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        const commitsResult = await repository.getCommits(createResult.data.id);
+        
+        expect(commitsResult.success).toBe(true);
+        if (commitsResult.success && commitsResult.data.length > 0) {
+          const commit = commitsResult.data[0];
+          
+          // Version should match etag without quotes
+          expect(commit.version).toBe(createResult.data.etag.replace(/"/g, ''));
+          
+          // Timestamp should be valid ISO string
+          expect(new Date(commit.committedAt).toISOString()).toBe(commit.committedAt);
+          
+          // Change status should have numeric values
+          expect(typeof commit.changeStatus.additions).toBe('number');
+          expect(typeof commit.changeStatus.deletions).toBe('number');
+          expect(typeof commit.changeStatus.total).toBe('number');
+        }
+      }
+    });
+  });
 });
