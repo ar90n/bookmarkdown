@@ -394,21 +394,25 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${this.gistId}`,
         {
           method: 'HEAD',
-          headers: buildGistHeaders(this.config.accessToken)
+          headers: {
+            ...buildGistHeaders(this.config.accessToken),
+            'If-None-Match': this._etag
+          }
         }
       );
       
-      if (!response.ok) {
-        const error = await handleApiError(response);
-        return failure(error);
+      if (response.status === 304) {
+        // Not Modified - no updates
+        return success(false);
       }
       
-      const latestEtag = response.headers.get('etag');
-      if (!latestEtag) {
-        return failure(new Error('No etag received from API'));
+      if (response.ok) {
+        // Modified - has updates
+        return success(true);
       }
       
-      return success(latestEtag !== this._etag);
+      const error = await handleApiError(response);
+      return failure(error);
     } catch (error) {
       return failure(new Error(`Failed to check if gist is updated: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
