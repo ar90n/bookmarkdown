@@ -85,4 +85,131 @@ describe('RemoteChangeDetector', () => {
       expect(defaultDetector.isRunning()).toBe(false);
     });
   });
+  
+  describe('change detection', () => {
+    beforeEach(() => {
+      // Use fake timers for testing
+      vi.useFakeTimers();
+    });
+    
+    afterEach(() => {
+      // Restore real timers
+      vi.useRealTimers();
+    });
+    
+    it('should call onChangeDetected when remote changes are detected', async () => {
+      const onChangeDetected = vi.fn();
+      
+      const detector = new RemoteChangeDetector({
+        repository,
+        intervalMs: 1000, // 1 second for testing
+        onChangeDetected
+      });
+      
+      // Start detection
+      detector.start();
+      
+      // Initially no changes
+      expect(onChangeDetected).not.toHaveBeenCalled();
+      
+      // Advance time to trigger first check
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      // Still no changes (repository hasn't changed)
+      expect(onChangeDetected).not.toHaveBeenCalled();
+      
+      // Simulate remote change
+      const gistId = repository.gistId;
+      MockGistRepository.simulateConcurrentModification(gistId);
+      
+      // Advance time to trigger next check
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      // Now it should detect the change
+      expect(onChangeDetected).toHaveBeenCalledTimes(1);
+      
+      // Stop detection
+      detector.stop();
+    });
+    
+    it('should not call onChangeDetected when no changes', async () => {
+      const onChangeDetected = vi.fn();
+      
+      const detector = new RemoteChangeDetector({
+        repository,
+        intervalMs: 1000,
+        onChangeDetected
+      });
+      
+      detector.start();
+      
+      // Advance time multiple times
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      // No changes detected
+      expect(onChangeDetected).not.toHaveBeenCalled();
+      
+      detector.stop();
+    });
+    
+    it('should handle errors gracefully', async () => {
+      const onChangeDetected = vi.fn();
+      
+      // Mock console.error to suppress output in tests
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      // Mock hasRemoteChanges to throw an error
+      vi.spyOn(repository, 'hasRemoteChanges').mockRejectedValueOnce(new Error('Network error'));
+      
+      const detector = new RemoteChangeDetector({
+        repository,
+        intervalMs: 1000,
+        onChangeDetected
+      });
+      
+      detector.start();
+      
+      // Advance time to trigger check
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      // Should not crash or call onChangeDetected
+      expect(onChangeDetected).not.toHaveBeenCalled();
+      
+      // Verify error was logged
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Error checking for remote changes:', expect.any(Error));
+      
+      detector.stop();
+      
+      // Restore console.error
+      consoleErrorSpy.mockRestore();
+    });
+    
+    it('should stop checking when stopped', async () => {
+      const onChangeDetected = vi.fn();
+      
+      const detector = new RemoteChangeDetector({
+        repository,
+        intervalMs: 1000,
+        onChangeDetected
+      });
+      
+      detector.start();
+      
+      // Advance time once
+      await vi.advanceTimersByTimeAsync(1000);
+      
+      // Stop detector
+      detector.stop();
+      
+      // Simulate change after stop
+      MockGistRepository.simulateConcurrentModification(repository.gistId);
+      
+      // Advance time - should not detect change
+      await vi.advanceTimersByTimeAsync(5000);
+      
+      expect(onChangeDetected).not.toHaveBeenCalled();
+    });
+  });
 });
