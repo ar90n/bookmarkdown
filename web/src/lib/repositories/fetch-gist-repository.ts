@@ -57,94 +57,105 @@ export class FetchGistRepository implements GistRepository {
     params: CreateRepositoryParams
   ): Promise<Result<FetchGistRepository>> {
     // Validate config
-    if (!config.accessToken || config.accessToken.trim() === '') {
-      return failure(new Error('Access token is required'));
-    }
-    
-    if (!config.filename || config.filename.trim() === '') {
-      return failure(new Error('Filename is required'));
+    const configError = validateConfig(config);
+    if (configError) {
+      return failure(configError);
     }
     
     const apiBaseUrl = config.apiBaseUrl || 'https://api.github.com';
     
     if (params.gistId) {
-      // Bind to existing Gist
-      try {
-        const response = await fetch(
-          `${apiBaseUrl}/gists/${params.gistId}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${config.accessToken}`,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28'
-            }
-          }
-        );
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            return failure(new Error(`Gist ${params.gistId} not found`));
-          }
-          const error = await handleApiError(response);
-          return failure(error);
-        }
-        
-        const etag = response.headers.get('etag');
-        if (!etag) {
-          return failure(new Error('No etag received from API'));
-        }
-        
-        return success(new FetchGistRepository(config, params.gistId, etag));
-      } catch (error) {
-        return failure(new Error(`Failed to connect to existing gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
-      }
+      return FetchGistRepository.bindToExisting(config, params.gistId, apiBaseUrl);
     } else {
-      // Create new Gist
-      try {
-        const root = params.root || RootEntity.create().toRoot();
-        const generator = new MarkdownGenerator();
-        const content = generator.generate(root);
-        
-        const requestBody = {
-          description: params.description || 'BookMarkDown',
-          public: params.isPublic ?? false,
-          files: {
-            [config.filename]: {
-              content
-            }
-          }
-        };
-        
-        const response = await fetch(
-          `${apiBaseUrl}/gists`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${config.accessToken}`,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-          }
-        );
-        
-        if (!response.ok) {
-          const error = await handleApiError(response);
-          return failure(error);
+      return FetchGistRepository.createNew(config, params, apiBaseUrl);
+    }
+  }
+  
+  /**
+   * Bind to an existing Gist
+   */
+  private static async bindToExisting(
+    config: GistRepositoryConfig,
+    gistId: string,
+    apiBaseUrl: string
+  ): Promise<Result<FetchGistRepository>> {
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/gists/${gistId}`,
+        {
+          method: 'GET',
+          headers: buildGistHeaders(config.accessToken)
         }
-        
-        const etag = response.headers.get('etag');
-        if (!etag) {
-          return failure(new Error('No etag received from API'));
+      );
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          return failure(new Error(`Gist ${gistId} not found`));
         }
-        
-        const gistData = await response.json();
-        return success(new FetchGistRepository(config, gistData.id, etag));
-      } catch (error) {
-        return failure(new Error(`Failed to create gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+        const error = await handleApiError(response);
+        return failure(error);
       }
+      
+      const etag = response.headers.get('etag');
+      if (!etag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      return success(new FetchGistRepository(config, gistId, etag));
+    } catch (error) {
+      return failure(new Error(`Failed to connect to existing gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
+  }
+  
+  /**
+   * Create a new Gist
+   */
+  private static async createNew(
+    config: GistRepositoryConfig,
+    params: CreateRepositoryParams,
+    apiBaseUrl: string
+  ): Promise<Result<FetchGistRepository>> {
+    try {
+      const root = params.root || RootEntity.create().toRoot();
+      const generator = new MarkdownGenerator();
+      const content = generator.generate(root);
+      
+      const requestBody = {
+        description: params.description || 'BookMarkDown',
+        public: params.isPublic ?? false,
+        files: {
+          [config.filename]: {
+            content
+          }
+        }
+      };
+      
+      const response = await fetch(
+        `${apiBaseUrl}/gists`,
+        {
+          method: 'POST',
+          headers: {
+            ...buildGistHeaders(config.accessToken),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await handleApiError(response);
+        return failure(error);
+      }
+      
+      const etag = response.headers.get('etag');
+      if (!etag) {
+        return failure(new Error('No etag received from API'));
+      }
+      
+      const gistData = await response.json();
+      return success(new FetchGistRepository(config, gistData.id, etag));
+    } catch (error) {
+      return failure(new Error(`Failed to create gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   }
   
@@ -166,11 +177,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${gistId}`,
         {
           method: 'HEAD',
-          headers: {
-            'Authorization': `Bearer ${config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(config.accessToken)
         }
       );
       
@@ -198,11 +205,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists?per_page=100`,
         {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(config.accessToken)
         }
       );
       
@@ -237,11 +240,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${this.gistId}`,
         {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(this.config.accessToken)
         }
       );
       
@@ -284,11 +283,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${this.gistId}`,
         {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(this.config.accessToken)
         }
       );
       
@@ -325,9 +320,7 @@ export class FetchGistRepository implements GistRepository {
         {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${this.config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
+            ...buildGistHeaders(this.config.accessToken),
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(requestBody)
@@ -360,7 +353,6 @@ export class FetchGistRepository implements GistRepository {
       }
       
       let foundNew = false;
-      let foundBefore = false;
       let orderCorrect = false;
       
       // Commits are ordered newest first
@@ -369,7 +361,6 @@ export class FetchGistRepository implements GistRepository {
           foundNew = true;
         }
         if (commit.version === beforeCommitHash) {
-          foundBefore = true;
           if (foundNew) {
             // Found new commit before old commit = correct order
             orderCorrect = true;
@@ -403,11 +394,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${this.gistId}`,
         {
           method: 'HEAD',
-          headers: {
-            'Authorization': `Bearer ${this.config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(this.config.accessToken)
         }
       );
       
@@ -438,11 +425,7 @@ export class FetchGistRepository implements GistRepository {
         `${apiBaseUrl}/gists/${this.gistId}/commits`,
         {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.config.accessToken}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          }
+          headers: buildGistHeaders(this.config.accessToken)
         }
       );
       
@@ -457,6 +440,32 @@ export class FetchGistRepository implements GistRepository {
       return failure(new Error(`Failed to get commits: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
   }
+}
+
+/**
+ * Validate repository configuration
+ */
+function validateConfig(config: GistRepositoryConfig): Error | null {
+  if (!config.accessToken || config.accessToken.trim() === '') {
+    return new Error('Access token is required');
+  }
+  
+  if (!config.filename || config.filename.trim() === '') {
+    return new Error('Filename is required');
+  }
+  
+  return null;
+}
+
+/**
+ * Build common Gist API headers
+ */
+function buildGistHeaders(accessToken: string): Record<string, string> {
+  return {
+    'Authorization': `Bearer ${accessToken}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
 }
 
 /**
