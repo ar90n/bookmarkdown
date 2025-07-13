@@ -215,18 +215,97 @@ export class FetchGistRepository implements GistRepository {
   }
   
   async exists(gistId: string): Promise<Result<boolean>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      if (!gistId || gistId.trim() === '') {
+        return success(false);
+      }
+      
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.gist(gistId)}`,
+        {
+          method: 'HEAD',
+          headers: this.getHeaders()
+        }
+      );
+      
+      return success(response.ok);
+    } catch (error) {
+      return failure(new Error(`Failed to check gist existence: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async findByFilename(filename: string): Promise<Result<GistReadResult | null>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      if (!filename || filename.trim() === '') {
+        return success(null);
+      }
+      
+      // List user's gists
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.gists}?per_page=100`,
+        {
+          method: 'GET',
+          headers: this.getHeaders()
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await this.handleApiError(response);
+        return failure(error);
+      }
+      
+      const gists = await response.json();
+      
+      // Find gist containing the filename
+      for (const gist of gists) {
+        if (gist.files && gist.files[filename]) {
+          // Found a gist with the file, now read it to get full content
+          return this.read(gist.id);
+        }
+      }
+      
+      return success(null);
+    } catch (error) {
+      return failure(new Error(`Failed to find gist by filename: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async getCommits(gistId: string): Promise<Result<GistCommit[]>> {
-    // Implementation in next cycle
-    return failure(new Error('Not implemented'));
+    try {
+      if (!gistId || gistId.trim() === '') {
+        return failure(new Error('Gist ID is required'));
+      }
+      
+      const response = await fetch(
+        `${this.apiBaseUrl}${this.endpoints.commits(gistId)}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders()
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await this.handleApiError(response);
+        return failure(error);
+      }
+      
+      const commits = await response.json();
+      
+      // Map API response to our GistCommit interface
+      const mappedCommits: GistCommit[] = commits.map((commit: any) => ({
+        version: commit.version,
+        committedAt: commit.committed_at,
+        changeStatus: {
+          additions: commit.change_status?.additions || 0,
+          deletions: commit.change_status?.deletions || 0,
+          total: commit.change_status?.total || 0
+        }
+      }));
+      
+      return success(mappedCommits);
+    } catch (error) {
+      return failure(new Error(`Failed to get commits: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   /**
