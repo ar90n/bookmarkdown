@@ -10,10 +10,19 @@ import { BookmarkDialog } from '../Dialogs/BookmarkDialog';
 import { CreateGistDialog } from '../Dialogs/CreateGistDialog';
 import { ImportDialog } from '../Dialogs/ImportDialog';
 import { ExportDialog } from '../Dialogs/ExportDialog';
+import { ErrorNotification } from '../ui/ErrorNotification';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 
 export const Layout: React.FC = () => {
   const bookmark = useBookmarkContext();
   const dialog = useDialogContext();
+  const errorHandler = useErrorHandler({
+    onConflict: () => {
+      // Could show a specific dialog for conflicts
+      console.log('Sync conflict detected');
+    },
+    autoDismiss: true
+  });
 
   const handleAddCategory = async (name: string) => {
     await bookmark.addCategory(name);
@@ -65,6 +74,16 @@ export const Layout: React.FC = () => {
           </div>
         </main>
       </div>
+      
+      {/* Error notification */}
+      <ErrorNotification
+        error={errorHandler.bookmarkError || errorHandler.authError}
+        onDismiss={errorHandler.dismissError}
+        onRetry={errorHandler.retrySync}
+        onReload={errorHandler.reloadFromRemote}
+        autoDismiss={true}
+        dismissAfter={5000}
+      />
       <Footer />
       
       <CategoryDialog
