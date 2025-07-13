@@ -46,10 +46,10 @@ describe('GistRepository Integration', () => {
       );
       
       // Step 3: Check if updated (should be false)
-      const hasRemoteUpdateResult1 = await repository.hasRemoteUpdate();
-      expect(hasRemoteUpdateResult1.success).toBe(true);
-      if (!hasRemoteUpdateResult1.success) return;
-      expect(hasRemoteUpdateResult1.data).toBe(false);
+      const hasRemoteChangesResult1 = await repository.hasRemoteChanges();
+      expect(hasRemoteChangesResult1.success).toBe(true);
+      if (!hasRemoteChangesResult1.success) return;
+      expect(hasRemoteChangesResult1.data).toBe(false);
       
       // Step 4: Update the data
       const updatedRoot = RootEntity.fromRoot(readResult.data)
@@ -73,10 +73,10 @@ describe('GistRepository Integration', () => {
       MockGistRepository.simulateConcurrentModification(repository.gistId);
       
       // Step 7: Check if updated (should be true)
-      const hasRemoteUpdateResult2 = await repository.hasRemoteUpdate();
-      expect(hasRemoteUpdateResult2.success).toBe(true);
-      if (!hasRemoteUpdateResult2.success) return;
-      expect(hasRemoteUpdateResult2.data).toBe(true);
+      const hasRemoteChangesResult2 = await repository.hasRemoteChanges();
+      expect(hasRemoteChangesResult2.success).toBe(true);
+      if (!hasRemoteChangesResult2.success) return;
+      expect(hasRemoteChangesResult2.data).toBe(true);
     });
     
     it('should find existing repository by filename', async () => {
@@ -148,10 +148,10 @@ describe('GistRepository Integration', () => {
       expect(update1.success).toBe(true);
       
       // Repo2 should detect the update
-      const hasRemoteUpdate = await repo2.hasRemoteUpdate();
-      expect(hasRemoteUpdate.success).toBe(true);
-      if (!hasRemoteUpdate.success) return;
-      expect(hasRemoteUpdate.data).toBe(true);
+      const hasRemoteChanges = await repo2.hasRemoteChanges();
+      expect(hasRemoteChanges.success).toBe(true);
+      if (!hasRemoteChanges.success) return;
+      expect(hasRemoteChanges.data).toBe(true);
       
       // Repo2 reads the updated data
       const read2Updated = await repo2.read();
