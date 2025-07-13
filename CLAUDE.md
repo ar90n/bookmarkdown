@@ -199,8 +199,8 @@ test/
   - [x] Cycle 14: BookmarkServiceV2の実装とテスト
   - [x] Cycle 15: BookmarkServiceV2のアプリ統合
   - [x] Cycle 16: BookmarkContextV2の実装
-  - [ ] Cycle 17: 既存コンポーネントの移行
-- [ ] Phase 4: UI統合
-  - [ ] Cycle 18: 同期ステータスコンポーネント
-  - [ ] Cycle 19: エラー処理とリトライUI
-  - [ ] Cycle 20: 設定画面の更新
+  - [x] Cycle 17: 既存コンポーネントの移行
+- [x] Phase 4: UI統合
+  - [x] Cycle 18: 同期ステータスコンポーネント
+  - [x] Cycle 19: エラー処理とリトライUI
+  - [x] Cycle 20: 設定画面の更新
