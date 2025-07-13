@@ -111,7 +111,17 @@ export class MockGistRepository implements GistRepository {
   }
   
   async exists(gistId: string): Promise<Result<boolean>> {
-    return success(this.gists.has(gistId));
+    try {
+      // Validate input
+      if (!gistId || gistId.trim() === '') {
+        return success(false);
+      }
+      
+      // Check existence in internal storage
+      return success(this.gists.has(gistId));
+    } catch (error) {
+      return failure(new Error(`Failed to check gist existence: ${error instanceof Error ? error.message : 'Unknown error'}`));
+    }
   }
   
   async findByFilename(filename: string): Promise<Result<GistReadResult | null>> {

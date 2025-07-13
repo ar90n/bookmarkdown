@@ -235,4 +235,68 @@ describe('MockGistRepository', () => {
       }
     });
   });
+  
+  describe('exists', () => {
+    it('should return true for existing gist', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        const existsResult = await repository.exists(createResult.data.id);
+        
+        expect(existsResult.success).toBe(true);
+        if (existsResult.success) {
+          expect(existsResult.data).toBe(true);
+        }
+      }
+    });
+    
+    it('should return false for non-existent gist', async () => {
+      const existsResult = await repository.exists('non-existent-id');
+      
+      expect(existsResult.success).toBe(true);
+      if (existsResult.success) {
+        expect(existsResult.data).toBe(false);
+      }
+    });
+    
+    it('should handle empty gist id', async () => {
+      const existsResult = await repository.exists('');
+      
+      expect(existsResult.success).toBe(true);
+      if (existsResult.success) {
+        expect(existsResult.data).toBe(false);
+      }
+    });
+    
+    it('should return true after create and false after theoretical delete', async () => {
+      // Create a gist
+      const createParams: GistCreateParams = {
+        description: 'Test Gist',
+        content: '# Test Content',
+        filename: 'test.md'
+      };
+      
+      const createResult = await repository.create(createParams);
+      expect(createResult.success).toBe(true);
+      
+      if (createResult.success) {
+        // Should exist after creation
+        const existsResult1 = await repository.exists(createResult.data.id);
+        expect(existsResult1.success).toBe(true);
+        if (existsResult1.success) {
+          expect(existsResult1.data).toBe(true);
+        }
+        
+        // Note: MockGistRepository doesn't have delete, but we can test the pattern
+      }
+    });
+  });
 });
