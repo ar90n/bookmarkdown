@@ -63,17 +63,25 @@ export class MockGistRepository implements GistRepository {
   }
   
   async read(gistId: string): Promise<Result<GistReadResult>> {
-    const gist = this.gists.get(gistId);
-    
-    if (!gist) {
-      return failure(new Error(`Gist ${gistId} not found`));
+    try {
+      if (!gistId || gistId.trim() === '') {
+        return failure(new Error('Gist ID is required'));
+      }
+      
+      const gist = this.gists.get(gistId);
+      
+      if (!gist) {
+        return failure(new Error(`Gist ${gistId} not found`));
+      }
+      
+      return success({
+        id: gist.id,
+        content: gist.content,
+        etag: gist.etag
+      });
+    } catch (error) {
+      return failure(new Error(`Failed to read gist: ${error instanceof Error ? error.message : 'Unknown error'}`));
     }
-    
-    return success({
-      id: gist.id,
-      content: gist.content,
-      etag: gist.etag
-    });
   }
   
   async update(params: GistUpdateParams): Promise<Result<GistUpdateResult>> {
