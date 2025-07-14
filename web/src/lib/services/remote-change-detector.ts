@@ -4,6 +4,7 @@ export interface RemoteChangeDetectorConfig {
   repository: GistRepository;
   intervalMs?: number;
   onChangeDetected?: () => void;
+  isConflictDialogOpen?: () => boolean;
 }
 
 /**
@@ -13,6 +14,7 @@ export class RemoteChangeDetector {
   private readonly repository: GistRepository;
   private readonly intervalMs: number;
   private readonly onChangeDetected?: () => void;
+  private readonly isConflictDialogOpen?: () => boolean;
   private intervalId?: NodeJS.Timeout;
   private running = false;
   
@@ -20,6 +22,7 @@ export class RemoteChangeDetector {
     this.repository = config.repository;
     this.intervalMs = config.intervalMs ?? 10000; // Default: 10 seconds
     this.onChangeDetected = config.onChangeDetected;
+    this.isConflictDialogOpen = config.isConflictDialogOpen;
   }
   
   /**
@@ -65,6 +68,11 @@ export class RemoteChangeDetector {
    * Check for remote changes
    */
   private async checkForChanges(): Promise<void> {
+    // Skip check if conflict dialog is open
+    if (this.isConflictDialogOpen?.()) {
+      return;
+    }
+    
     try {
       const result = await this.repository.hasRemoteChanges();
       

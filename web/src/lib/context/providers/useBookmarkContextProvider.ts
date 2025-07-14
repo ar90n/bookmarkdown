@@ -7,6 +7,7 @@ import { GistSyncShell } from '../../shell/gist-sync.js';
 import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
 import { useDebounce } from '../../../hooks/useDebounce.js';
+import { dialogStateRef } from './dialog-state-ref.js';
 
 interface BookmarkContextV2Config {
   accessToken?: string;
@@ -89,7 +90,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
             if (handleRemoteChangeDetectedRef.current) {
               await handleRemoteChangeDetectedRef.current();
             }
-          }
+          },
+          isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen
         });
         
         // Initialize the shell to start remote change detection
@@ -370,7 +372,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         filename: config.filename || 'bookmarks.md'
       },
       gistId: currentGistId,
-      useMock: false
+      useMock: false,
+      isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen
     });
     
     const initResult = await syncShell.initialize(currentGistId);
