@@ -35,7 +35,9 @@ export interface BookmarkContextValue {
   getStats: () => BookmarkStats;
   
   // Sync operations
-  syncWithRemote: () => Promise<void>;
+  syncWithRemote: (options?: {
+    onConflict?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
+  }) => Promise<void>;
   syncWithConflictResolution: (resolutions: ConflictResolution[]) => Promise<void>;
   checkConflicts: () => Promise<MergeConflict[]>;
   loadFromRemote: () => Promise<void>;

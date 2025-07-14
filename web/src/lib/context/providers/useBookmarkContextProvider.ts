@@ -496,7 +496,9 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, [broadcastUpdate, saveGistId, config.accessToken, doRetryInitialization]);
   
   // Simplified sync (no merge conflicts in V2)
-  const syncWithRemote = useCallback(async () => {
+  const syncWithRemote = useCallback(async (options?: {
+    onConflict?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
+  }) => {
     if (!service.current) {
       throw new Error('Service not initialized');
     }
@@ -521,7 +523,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       if (hasChangesResult.success && hasChangesResult.data) {
         // Remote has changes - need to decide what to do
         if (isDirty) {
-          setError('Remote has changes. Please save or discard your local changes first.');
+          // Conflict detected - use the dialog if callback provided
+          if (options?.onConflict) {
+            options.onConflict({
+              onLoadRemote: async () => {
+                await loadFromRemote();
+              },
+              onSaveLocal: async () => {
+                await saveToRemote();
+              }
+            });
+          } else {
+            setError('Remote has changes. Please save or discard your local changes first.');
+          }
           return;
         } else {
           // No local changes, safe to reload

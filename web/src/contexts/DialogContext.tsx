@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Bookmark } from 'bookmarkdown';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { SyncConflictDialog } from '../components/Dialogs/SyncConflictDialog';
 
 interface ConfirmDialogState {
   isOpen: boolean;
@@ -10,6 +11,12 @@ interface ConfirmDialogState {
   cancelText?: string;
   confirmButtonClass?: string;
   resolve: ((result: boolean) => void) | null;
+}
+
+interface SyncConflictDialogState {
+  isOpen: boolean;
+  onLoadRemote: (() => void) | null;
+  onSaveLocal: (() => void) | null;
 }
 
 interface DialogContextValue {
@@ -44,6 +51,9 @@ interface DialogContextValue {
   closeExportDialog: () => void;
   confirmDialog: ConfirmDialogState;
   openConfirmDialog: (options: Omit<ConfirmDialogState, 'isOpen' | 'resolve'>) => Promise<boolean>;
+  syncConflictDialog: SyncConflictDialogState;
+  openSyncConflictDialog: (options: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
+  closeSyncConflictDialog: () => void;
 }
 
 const DialogContext = createContext<DialogContextValue | undefined>(undefined);
@@ -79,6 +89,11 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
     title: '',
     message: '',
     resolve: null
+  });
+  const [syncConflictDialog, setSyncConflictDialog] = useState<SyncConflictDialogState>({
+    isOpen: false,
+    onLoadRemote: null,
+    onSaveLocal: null
   });
 
   const openCategoryDialog = () => {
@@ -169,6 +184,22 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
     });
   };
 
+  const openSyncConflictDialog = (options: { onLoadRemote: () => void; onSaveLocal: () => void }) => {
+    setSyncConflictDialog({
+      isOpen: true,
+      onLoadRemote: options.onLoadRemote,
+      onSaveLocal: options.onSaveLocal
+    });
+  };
+
+  const closeSyncConflictDialog = () => {
+    setSyncConflictDialog({
+      isOpen: false,
+      onLoadRemote: null,
+      onSaveLocal: null
+    });
+  };
+
   return (
     <DialogContext.Provider value={{
       isCategoryDialogOpen,
@@ -202,6 +233,9 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
       closeExportDialog,
       confirmDialog,
       openConfirmDialog,
+      syncConflictDialog,
+      openSyncConflictDialog,
+      closeSyncConflictDialog,
     }}>
       {children}
       {confirmDialog.isOpen && (
@@ -214,6 +248,20 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
           confirmButtonClass={confirmDialog.confirmButtonClass}
           onConfirm={() => handleConfirmDialogResult(true)}
           onCancel={() => handleConfirmDialogResult(false)}
+        />
+      )}
+      {syncConflictDialog.isOpen && (
+        <SyncConflictDialog
+          isOpen={syncConflictDialog.isOpen}
+          onClose={closeSyncConflictDialog}
+          onLoadRemote={() => {
+            syncConflictDialog.onLoadRemote?.();
+            closeSyncConflictDialog();
+          }}
+          onSaveLocal={() => {
+            syncConflictDialog.onSaveLocal?.();
+            closeSyncConflictDialog();
+          }}
         />
       )}
     </DialogContext.Provider>
