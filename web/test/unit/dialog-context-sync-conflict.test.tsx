@@ -1,0 +1,195 @@
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook, act, render, screen } from '@testing-library/react';
+import { DialogProvider, useDialogContext } from '../../src/contexts/DialogContext';
+import React from 'react';
+
+// Mock the SyncConflictDialog component
+vi.mock('../../src/components/Dialogs/SyncConflictDialog', () => ({
+  SyncConflictDialog: ({ isOpen, onClose, onLoadRemote, onSaveLocal }: any) => {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="sync-conflict-dialog">
+        <button onClick={onClose}>Close</button>
+        <button onClick={onLoadRemote}>Load Remote</button>
+        <button onClick={onSaveLocal}>Save Local</button>
+      </div>
+    );
+  },
+}));
+
+describe('DialogContext - Sync Conflict Dialog', () => {
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <DialogProvider>{children}</DialogProvider>
+  );
+
+  it('should have sync conflict dialog methods', () => {
+    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    
+    expect(result.current.syncConflictDialog).toBeDefined();
+    expect(result.current.openSyncConflictDialog).toBeDefined();
+    expect(result.current.closeSyncConflictDialog).toBeDefined();
+  });
+
+  it('should initially have sync conflict dialog closed', () => {
+    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    
+    expect(result.current.syncConflictDialog.isOpen).toBe(false);
+    expect(result.current.syncConflictDialog.onLoadRemote).toBe(null);
+    expect(result.current.syncConflictDialog.onSaveLocal).toBe(null);
+  });
+
+  it('should open sync conflict dialog with handlers', () => {
+    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    
+    const mockLoadRemote = vi.fn();
+    const mockSaveLocal = vi.fn();
+    
+    act(() => {
+      result.current.openSyncConflictDialog({
+        onLoadRemote: mockLoadRemote,
+        onSaveLocal: mockSaveLocal,
+      });
+    });
+    
+    expect(result.current.syncConflictDialog.isOpen).toBe(true);
+    expect(result.current.syncConflictDialog.onLoadRemote).toBe(mockLoadRemote);
+    expect(result.current.syncConflictDialog.onSaveLocal).toBe(mockSaveLocal);
+  });
+
+  it('should close sync conflict dialog', () => {
+    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    
+    // First open it
+    act(() => {
+      result.current.openSyncConflictDialog({
+        onLoadRemote: vi.fn(),
+        onSaveLocal: vi.fn(),
+      });
+    });
+    
+    expect(result.current.syncConflictDialog.isOpen).toBe(true);
+    
+    // Then close it
+    act(() => {
+      result.current.closeSyncConflictDialog();
+    });
+    
+    expect(result.current.syncConflictDialog.isOpen).toBe(false);
+    expect(result.current.syncConflictDialog.onLoadRemote).toBe(null);
+    expect(result.current.syncConflictDialog.onSaveLocal).toBe(null);
+  });
+
+  it('should render sync conflict dialog when open', () => {
+    const TestComponent = () => {
+      const dialog = useDialogContext();
+      
+      return (
+        <div>
+          <button 
+            onClick={() => dialog.openSyncConflictDialog({
+              onLoadRemote: vi.fn(),
+              onSaveLocal: vi.fn(),
+            })}
+          >
+            Open Dialog
+          </button>
+        </div>
+      );
+    };
+    
+    const { getByText, queryByTestId } = render(
+      <DialogProvider>
+        <TestComponent />
+      </DialogProvider>
+    );
+    
+    // Initially not rendered
+    expect(queryByTestId('sync-conflict-dialog')).not.toBeInTheDocument();
+    
+    // Open the dialog
+    act(() => {
+      getByText('Open Dialog').click();
+    });
+    
+    // Now it should be rendered
+    expect(queryByTestId('sync-conflict-dialog')).toBeInTheDocument();
+  });
+
+  it('should call handlers and close dialog when options are clicked', () => {
+    const mockLoadRemote = vi.fn();
+    const mockSaveLocal = vi.fn();
+    
+    const TestComponent = () => {
+      const dialog = useDialogContext();
+      
+      React.useEffect(() => {
+        dialog.openSyncConflictDialog({
+          onLoadRemote: mockLoadRemote,
+          onSaveLocal: mockSaveLocal,
+        });
+      }, [dialog]);
+      
+      return null;
+    };
+    
+    const { getByText, queryByTestId } = render(
+      <DialogProvider>
+        <TestComponent />
+      </DialogProvider>
+    );
+    
+    // Click Load Remote
+    act(() => {
+      getByText('Load Remote').click();
+    });
+    
+    expect(mockLoadRemote).toHaveBeenCalledTimes(1);
+    expect(queryByTestId('sync-conflict-dialog')).not.toBeInTheDocument();
+    
+    // Reset and test Save Local
+    const { getByText: getByText2 } = render(
+      <DialogProvider>
+        <TestComponent />
+      </DialogProvider>
+    );
+    
+    act(() => {
+      getByText2('Save Local').click();
+    });
+    
+    expect(mockSaveLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle multiple dialogs independently', () => {
+    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    
+    // Open confirm dialog
+    act(() => {
+      result.current.openConfirmDialog({
+        title: 'Test',
+        message: 'Test message',
+      });
+    });
+    
+    // Open sync conflict dialog
+    act(() => {
+      result.current.openSyncConflictDialog({
+        onLoadRemote: vi.fn(),
+        onSaveLocal: vi.fn(),
+      });
+    });
+    
+    // Both should be open
+    expect(result.current.confirmDialog.isOpen).toBe(true);
+    expect(result.current.syncConflictDialog.isOpen).toBe(true);
+    
+    // Close sync conflict dialog
+    act(() => {
+      result.current.closeSyncConflictDialog();
+    });
+    
+    // Only sync conflict should be closed
+    expect(result.current.confirmDialog.isOpen).toBe(true);
+    expect(result.current.syncConflictDialog.isOpen).toBe(false);
+  });
+});
