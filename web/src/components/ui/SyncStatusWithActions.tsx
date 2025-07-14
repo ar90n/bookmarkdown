@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useBookmarkContext, useDialogContext } from '../../contexts/AppProvider';
 import { 
   CloudArrowUpIcon, 
   CheckCircleIcon, 
   ExclamationTriangleIcon, 
-  ArrowPathIcon,
-  ArrowDownTrayIcon,
-  ArrowUpTrayIcon
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 interface SyncStatusWithActionsProps {
@@ -19,8 +17,9 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
   showActions = true 
 }) => {
   const bookmarkContext = useBookmarkContext();
-  const { isDirty, isLoading, lastSyncAt, error, getGistInfo, syncWithRemote, loadFromRemote, saveToRemote } = bookmarkContext;
-  const [actionLoading, setActionLoading] = useState<'sync' | 'load' | 'save' | null>(null);
+  const dialog = useDialogContext();
+  const { isDirty, isLoading, lastSyncAt, error, getGistInfo, syncWithRemote } = bookmarkContext;
+  const [actionLoading, setActionLoading] = useState<'sync' | null>(null);
   
   // Get etag info if available (V2 only)
   const gistInfo = getGistInfo?.() || {};
@@ -28,27 +27,11 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
   const handleSync = async () => {
     setActionLoading('sync');
     try {
-      await syncWithRemote();
-    } finally {
-      setActionLoading(null);
-    }
-  };
-  
-  const handleLoad = async () => {
-    if (!confirm('This will overwrite your local changes. Continue?')) return;
-    
-    setActionLoading('load');
-    try {
-      await loadFromRemote();
-    } finally {
-      setActionLoading(null);
-    }
-  };
-  
-  const handleSave = async () => {
-    setActionLoading('save');
-    try {
-      await saveToRemote();
+      await syncWithRemote({
+        onConflict: (handlers) => {
+          dialog.openSyncConflictDialog(handlers);
+        }
+      });
     } finally {
       setActionLoading(null);
     }
@@ -113,38 +96,6 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
             <ArrowPathIcon className="h-4 w-4" />
             {actionLoading === 'sync' ? 'Syncing...' : 'Sync'}
           </button>
-          
-          {/* Load from remote */}
-          <button
-            onClick={handleLoad}
-            disabled={isProcessing}
-            className="
-              inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-600
-              hover:bg-gray-100 rounded-md transition-colors
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-            title="Load from remote (overwrites local changes)"
-          >
-            <ArrowDownTrayIcon className="h-4 w-4" />
-            {actionLoading === 'load' ? 'Loading...' : 'Load'}
-          </button>
-          
-          {/* Force save */}
-          {isDirty && (
-            <button
-              onClick={handleSave}
-              disabled={isProcessing}
-              className="
-                inline-flex items-center gap-1 px-2 py-1 text-sm text-gray-600
-                hover:bg-gray-100 rounded-md transition-colors
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-              title="Force save to remote"
-            >
-              <ArrowUpTrayIcon className="h-4 w-4" />
-              {actionLoading === 'save' ? 'Saving...' : 'Save'}
-            </button>
-          )}
         </div>
       )}
       

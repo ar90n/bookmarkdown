@@ -211,7 +211,11 @@ export const SettingsPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => bookmark.syncWithRemote()}
+                onClick={() => bookmark.syncWithRemote({
+                  onConflict: (handlers) => {
+                    dialog.openSyncConflictDialog(handlers);
+                  }
+                })}
                 disabled={bookmark.isLoading}
               >
                 <CloudArrowUpIcon className="h-4 w-4 mr-1" />
