@@ -55,8 +55,13 @@ export interface BookmarkService {
   isSyncConfigured: () => boolean;
 }
 
-export const createBookmarkService = (syncShell?: GistSyncShell): BookmarkService => {
+export interface BookmarkServiceConfig {
+  onRemoteChangeDetected?: () => void;
+}
+
+export const createBookmarkService = (syncShell?: GistSyncShell, config?: BookmarkServiceConfig): BookmarkService => {
   let currentRoot: Root = createRoot();
+  const onRemoteChangeDetected = config?.onRemoteChangeDetected;
 
   const validateCategoryExists = (categoryName: string): boolean => {
     return currentRoot.categories.some(category => category.name === categoryName);
@@ -72,7 +77,7 @@ export const createBookmarkService = (syncShell?: GistSyncShell): BookmarkServic
     return currentRoot;
   };
 
-  return {
+  const service: BookmarkService = {
     getRoot: () => currentRoot,
 
     // Category operations (synchronous, local only)
@@ -263,4 +268,11 @@ export const createBookmarkService = (syncShell?: GistSyncShell): BookmarkServic
       return syncShell !== undefined && syncShell !== null;
     }
   };
+  
+  // Add onRemoteChangeDetected for testing purposes
+  if (onRemoteChangeDetected) {
+    (service as any).onRemoteChangeDetected = onRemoteChangeDetected;
+  }
+  
+  return service;
 };
