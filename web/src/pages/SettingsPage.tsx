@@ -8,7 +8,8 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   TrashIcon,
-  InformationCircleIcon
+  InformationCircleIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 
 export const SettingsPage: React.FC = () => {
@@ -228,12 +229,24 @@ export const SettingsPage: React.FC = () => {
                 <p className="text-xs text-gray-600 mb-1">Gist ID</p>
                 <div className="flex items-center justify-between">
                   <code className="text-sm font-mono text-gray-800">{gistInfo.gistId}</code>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(gistInfo.gistId!)}
-                    className="text-xs text-primary-600 hover:text-primary-700"
-                  >
-                    <DocumentDuplicateIcon className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigator.clipboard.writeText(gistInfo.gistId!)}
+                      className="text-xs text-primary-600 hover:text-primary-700"
+                      title="Copy Gist ID"
+                    >
+                      <DocumentDuplicateIcon className="h-4 w-4" />
+                    </button>
+                    <a
+                      href={`https://gist.github.com/${gistInfo.gistId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary-600 hover:text-primary-700"
+                      title="Open in GitHub"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                    </a>
+                  </div>
                 </div>
                 {gistInfo.etag && (
                   <div className="mt-2">
