@@ -69,6 +69,10 @@ export interface BookmarkContextValue {
   getGistInfo?: () => { gistId?: string; etag?: string };
   retryInitialization?: () => Promise<void>;
   isSyncConfigured?: () => boolean;
+  
+  // Auto-sync settings
+  isAutoSyncEnabled?: () => boolean;
+  setAutoSync?: (enabled: boolean) => void;
 }
 
 // Factory function removed - use useBookmarkContextProvider hook instead
