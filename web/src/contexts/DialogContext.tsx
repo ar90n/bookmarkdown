@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { Bookmark } from 'bookmarkdown';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SyncConflictDialog } from '../components/Dialogs/SyncConflictDialog';
-import { dialogStateRef } from '../lib/context/providers/dialog-state-ref';
+import { dialogStateRef, dialogCallbackRef } from '../lib/context/providers/dialog-state-ref';
 
 interface ConfirmDialogState {
   isOpen: boolean;
@@ -205,6 +205,16 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
   useEffect(() => {
     dialogStateRef.isConflictDialogOpen = syncConflictDialog.isOpen;
   }, [syncConflictDialog.isOpen]);
+  
+  // Set dialog callback ref on mount
+  useEffect(() => {
+    dialogCallbackRef.openSyncConflictDialog = openSyncConflictDialog;
+    
+    // Clear on unmount
+    return () => {
+      dialogCallbackRef.openSyncConflictDialog = null;
+    };
+  }, [openSyncConflictDialog]);
 
   return (
     <DialogContext.Provider value={{
