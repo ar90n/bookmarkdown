@@ -11,6 +11,7 @@ export interface ChromeExtensionHook {
   isAvailable: boolean;
   isLoading: boolean;
   getAllTabs: () => Promise<TabInfo[]>;
+  getCurrentWindowTabs: () => Promise<TabInfo[]>;
   getTabCount: () => Promise<number>;
 }
 
@@ -171,6 +172,57 @@ export const useChromeExtension = (): ChromeExtensionHook => {
     }
   };
 
+  const getCurrentWindowTabs = async (): Promise<TabInfo[]> => {
+    if (!isAvailable) {
+      throw new Error('Chrome extension is not available');
+    }
+
+    try {
+      // Method 1: Try content script communication via PostMessage
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Content script timeout'));
+        }, 5000);
+
+        const messageHandler = (event: MessageEvent) => {
+          if (event.data.type === 'BOOKMARKDOWN_CURRENT_WINDOW_TABS_RESPONSE') {
+            clearTimeout(timeout);
+            window.removeEventListener('message', messageHandler);
+            resolve(event.data.tabs || []);
+          } else if (event.data.type === 'BOOKMARKDOWN_CURRENT_WINDOW_TABS_ERROR') {
+            clearTimeout(timeout);
+            window.removeEventListener('message', messageHandler);
+            reject(new Error(event.data.error));
+          }
+        };
+
+        window.addEventListener('message', messageHandler);
+        window.postMessage({ type: 'BOOKMARKDOWN_GET_CURRENT_WINDOW_TABS' }, '*');
+      });
+
+      // Method 2: Try external connection
+      const extensionId = document.documentElement.getAttribute('data-bookmarkdown-extension-id') || 
+                          (window as any).bookmarkdownExtensionId;
+      if (extensionId && typeof chrome !== 'undefined' && chrome.runtime) {
+        try {
+          const response = await chrome.runtime.sendMessage(extensionId, {
+            action: 'getCurrentWindowTabs'
+          });
+          return response.currentWindowTabsInfo || [];
+        } catch (connectError) {
+          // Connection failed, continue to next method
+        }
+      }
+
+      // Method 3: Direct chrome.storage access (fallback)
+      const result = await chrome.storage.local.get(['currentWindowTabsInfo']);
+      return result.currentWindowTabsInfo || [];
+    } catch (error) {
+      console.error('Error getting current window tabs:', error);
+      return [];
+    }
+  };
+
   const getTabCount = async (): Promise<number> => {
     try {
       const tabs = await getAllTabs();
@@ -184,6 +236,7 @@ export const useChromeExtension = (): ChromeExtensionHook => {
     isAvailable,
     isLoading,
     getAllTabs,
+    getCurrentWindowTabs,
     getTabCount
   };
 };

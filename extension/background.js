@@ -82,10 +82,12 @@ chrome.runtime.onStartup.addListener(async () => {
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         await updateTabInfo(activeTab);
         await updateAllTabsInfo();
+        await updateCurrentWindowTabsInfo();
     } catch (error) {
         console.error('Error initializing on startup:', error);
         await updateTabInfo(null);
         await updateAllTabsInfo();
+        await updateCurrentWindowTabsInfo();
     }
 });
 
@@ -95,10 +97,12 @@ chrome.runtime.onInstalled.addListener(async () => {
         const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
         await updateTabInfo(activeTab);
         await updateAllTabsInfo();
+        await updateCurrentWindowTabsInfo();
     } catch (error) {
         console.error('Error initializing on install:', error);
         await updateTabInfo(null);
         await updateAllTabsInfo();
+        await updateCurrentWindowTabsInfo();
     }
 });
 
@@ -130,11 +134,55 @@ async function updateAllTabsInfo() {
     }
 }
 
+// Update current window tabs info for web app import
+async function updateCurrentWindowTabsInfo() {
+    try {
+        // Get the currently focused window
+        const currentWindow = await chrome.windows.getCurrent();
+        
+        // Query tabs only from the current window
+        const tabs = await chrome.tabs.query({ windowId: currentWindow.id });
+        
+        const validTabs = tabs.filter(tab => 
+            tab.url && 
+            !tab.url.startsWith('chrome://') && 
+            !tab.url.startsWith('about:') &&
+            !tab.url.startsWith('edge://') &&
+            !tab.url.startsWith('moz-extension://') &&
+            !tab.url.startsWith('chrome-extension://')
+        );
+        
+        const currentWindowTabsInfo = validTabs.map(tab => ({
+            title: tab.title || 'Untitled',
+            url: tab.url,
+            id: tab.id,
+            windowId: tab.windowId
+        }));
+        
+        await chrome.storage.local.set({ currentWindowTabsInfo });
+    } catch (error) {
+        console.error('Error updating current window tabs info:', error);
+        await chrome.storage.local.set({ currentWindowTabsInfo: [] });
+    }
+}
+
 // Update all tabs info when tabs change
-chrome.tabs.onCreated.addListener(updateAllTabsInfo);
-chrome.tabs.onRemoved.addListener(updateAllTabsInfo);
-chrome.tabs.onUpdated.addListener(updateAllTabsInfo);
-chrome.tabs.onActivated.addListener(updateAllTabsInfo);
+chrome.tabs.onCreated.addListener(() => {
+    updateAllTabsInfo();
+    updateCurrentWindowTabsInfo();
+});
+chrome.tabs.onRemoved.addListener(() => {
+    updateAllTabsInfo();
+    updateCurrentWindowTabsInfo();
+});
+chrome.tabs.onUpdated.addListener(() => {
+    updateAllTabsInfo();
+    updateCurrentWindowTabsInfo();
+});
+chrome.tabs.onActivated.addListener(() => {
+    updateAllTabsInfo();
+    updateCurrentWindowTabsInfo();
+});
 
 // Handle messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -143,6 +191,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.action === 'getAllTabs') {
         chrome.storage.local.get(['allTabsInfo']).then(result => {
             sendResponse({ allTabsInfo: result.allTabsInfo || [] });
+        });
+        return true; // Keep the message channel open for async response
+    } else if (request.action === 'getCurrentWindowTabs') {
+        chrome.storage.local.get(['currentWindowTabsInfo']).then(result => {
+            sendResponse({ currentWindowTabsInfo: result.currentWindowTabsInfo || [] });
         });
         return true; // Keep the message channel open for async response
     }

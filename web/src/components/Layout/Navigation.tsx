@@ -21,17 +21,17 @@ export const Navigation: React.FC = () => {
 
   const handleImportTabs = useCallback(async () => {
     try {
-      // First get the tabs to show count in confirmation
-      const tabs = await chromeExtension.getAllTabs();
+      // Get tabs from current window only
+      const tabs = await chromeExtension.getCurrentWindowTabs();
       if (tabs.length === 0) {
-        showError('No tabs found to import');
+        showError('No tabs found in current window');
         return;
       }
 
       // Show confirmation dialog
       const confirmed = await dialog.openConfirmDialog({
-        title: 'Import Browser Tabs',
-        message: `Import ${tabs.length} tab${tabs.length !== 1 ? 's' : ''} to "Browser Tabs" category?`,
+        title: 'Import Current Window Tabs',
+        message: `Import ${tabs.length} tab${tabs.length !== 1 ? 's' : ''} from current window to "Browser Tabs" category?`,
         confirmText: 'Import',
         cancelText: 'Cancel',
         confirmButtonClass: 'bg-green-600 hover:bg-green-700'
@@ -41,7 +41,7 @@ export const Navigation: React.FC = () => {
         return;
       }
 
-      showInfo('Importing tabs...');
+      showInfo('Importing tabs from current window...');
 
       const categoryName = 'Browser Tabs';
       const bundleName = `Tabs ${new Date().toLocaleString()}`;
