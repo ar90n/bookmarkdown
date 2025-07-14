@@ -15,6 +15,7 @@ export interface GistSyncConfig {
   readonly useMock?: boolean;
   readonly onRemoteChangeDetected?: () => void;
   readonly isConflictDialogOpen?: () => boolean;
+  readonly hasUnresolvedConflict?: () => boolean;
 }
 
 export interface GistSyncResult {
@@ -34,12 +35,14 @@ export class GistSyncShell {
   private readonly useMock: boolean;
   private readonly onRemoteChangeDetected?: () => void;
   private readonly isConflictDialogOpen?: () => boolean;
+  private readonly hasUnresolvedConflict?: () => boolean;
   
   constructor(config: GistSyncConfig) {
     this.repositoryConfig = config.repositoryConfig;
     this.useMock = config.useMock ?? false;
     this.onRemoteChangeDetected = config.onRemoteChangeDetected;
     this.isConflictDialogOpen = config.isConflictDialogOpen;
+    this.hasUnresolvedConflict = config.hasUnresolvedConflict;
   }
   
   /**
@@ -238,7 +241,8 @@ export class GistSyncShell {
       onChangeDetected: this.onRemoteChangeDetected || (() => {
         console.log('Remote changes detected!');
       }),
-      isConflictDialogOpen: this.isConflictDialogOpen
+      isConflictDialogOpen: this.isConflictDialogOpen,
+      hasUnresolvedConflict: this.hasUnresolvedConflict
     });
   }
 }

@@ -91,7 +91,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
               await handleRemoteChangeDetectedRef.current();
             }
           },
-          isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen
+          isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen,
+          hasUnresolvedConflict: () => dialogStateRef.hasUnresolvedConflict
         });
         
         // Initialize the shell to start remote change detection
@@ -373,7 +374,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       },
       gistId: currentGistId,
       useMock: false,
-      isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen
+      isConflictDialogOpen: () => dialogStateRef.isConflictDialogOpen,
+      hasUnresolvedConflict: () => dialogStateRef.hasUnresolvedConflict
     });
     
     const initResult = await syncShell.initialize(currentGistId);
@@ -555,14 +557,21 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       if (hasChangesResult.success && hasChangesResult.data) {
         // Remote has changes - need to decide what to do
         if (isDirty) {
-          // Conflict detected - use the dialog if callback provided
+          // Conflict detected - set the flag
+          dialogStateRef.hasUnresolvedConflict = true;
+          
+          // Use the dialog if callback provided
           if (options?.onConflict) {
             options.onConflict({
               onLoadRemote: async () => {
                 await loadFromRemote();
+                // Conflict resolved
+                dialogStateRef.hasUnresolvedConflict = false;
               },
               onSaveLocal: async () => {
                 await saveToRemote();
+                // Conflict resolved
+                dialogStateRef.hasUnresolvedConflict = false;
               }
             });
           } else {
@@ -762,13 +771,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       
       if (hasChangesResult.data) {
         // Remote has changes - conflict detected
+        dialogStateRef.hasUnresolvedConflict = true;
+        
         if (onConflictRef.current) {
           onConflictRef.current({
             onLoadRemote: async () => {
               await loadFromRemote();
+              // Conflict resolved
+              dialogStateRef.hasUnresolvedConflict = false;
             },
             onSaveLocal: async () => {
               await saveToRemote();
+              // Conflict resolved
+              dialogStateRef.hasUnresolvedConflict = false;
             }
           });
         } else {
@@ -793,14 +808,20 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     
     // Check if we have local changes
     if (service.current.isDirty()) {
-      // We have local changes - potential conflict
+      // We have local changes - conflict detected
+      dialogStateRef.hasUnresolvedConflict = true;
+      
       if (config.onConflictDuringAutoSync) {
         config.onConflictDuringAutoSync({
           onLoadRemote: async () => {
             await loadFromRemote();
+            // Conflict resolved
+            dialogStateRef.hasUnresolvedConflict = false;
           },
           onSaveLocal: async () => {
             await saveToRemote();
+            // Conflict resolved
+            dialogStateRef.hasUnresolvedConflict = false;
           }
         });
       }
