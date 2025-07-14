@@ -17,8 +17,6 @@ export const BookmarksPage: React.FC = () => {
   const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
   const isMobile = useMobile();
 
-  const stats = bookmark.getStats();
-
   // Move modal state
   const [moveModal, setMoveModal] = useState<{
     isOpen: boolean;
@@ -271,28 +269,6 @@ export const BookmarksPage: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.categoriesCount}</div>
-              <div className="text-sm text-gray-500">Categories</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.bundlesCount}</div>
-              <div className="text-sm text-gray-500">Bundles</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.bookmarksCount}</div>
-              <div className="text-sm text-gray-500">Bookmarks</div>
-            </div>
-            <div className="bg-white p-4 rounded-lg border border-gray-200">
-              <div className="text-2xl font-bold text-gray-900">{stats.tagsCount}</div>
-              <div className="text-sm text-gray-500">Tags</div>
-            </div>
-          </div>
-        )}
 
         {/* Content */}
         {filterActiveCategories(bookmark.root.categories).length === 0 ? (
