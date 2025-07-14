@@ -21,6 +21,7 @@ import { GistSyncShell, GistSyncResult } from '../shell/gist-sync.js';
 export interface BookmarkService {
   // Data operations
   getRoot: () => Root;
+  isDirty: () => boolean;
   
   // Category operations
   addCategory: (name: string) => Result<Root>;
@@ -61,6 +62,7 @@ export interface BookmarkServiceConfig {
 
 export const createBookmarkService = (syncShell?: GistSyncShell, config?: BookmarkServiceConfig): BookmarkService => {
   let currentRoot: Root = createRoot();
+  let dirtyState = false;
   const onRemoteChangeDetected = config?.onRemoteChangeDetected;
 
   const validateCategoryExists = (categoryName: string): boolean => {
@@ -72,13 +74,17 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
     return category?.bundles.some(bundle => bundle.name === bundleName) || false;
   };
   
-  const updateRoot = (newRoot: Root): Root => {
+  const updateRoot = (newRoot: Root, markDirty = true): Root => {
     currentRoot = newRoot;
+    if (markDirty) {
+      dirtyState = true;
+    }
     return currentRoot;
   };
 
   const service: BookmarkService = {
     getRoot: () => currentRoot,
+    isDirty: () => dirtyState,
 
     // Category operations (synchronous, local only)
     addCategory: (name: string): Result<Root> => {
@@ -226,7 +232,8 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
       
       const result = await syncShell.load();
       if (result.success) {
-        updateRoot(result.data);
+        updateRoot(result.data, false); // Don't mark dirty on load
+        dirtyState = false; // Reset dirty state after successful load
       }
       return result;
     },
@@ -236,7 +243,11 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
         return failure(new Error('Sync not configured'));
       }
       
-      return syncShell.save(currentRoot, description);
+      const result = await syncShell.save(currentRoot, description);
+      if (result.success) {
+        dirtyState = false; // Reset dirty state after successful save
+      }
+      return result;
     },
 
     hasRemoteChanges: async (): Promise<Result<boolean>> => {
@@ -255,7 +266,8 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
       // Force reload by just loading again
       const result = await syncShell.load();
       if (result.success) {
-        updateRoot(result.data);
+        updateRoot(result.data, false); // Don't mark dirty on load
+        dirtyState = false; // Reset dirty state after successful load
       }
       return result;
     },
