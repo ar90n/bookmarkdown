@@ -841,6 +841,27 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     handleRemoteChangeDetectedRef.current = handleRemoteChangeDetected;
   }, [debouncedAutoSync, handleRemoteChangeDetected]);
   
+  // Immediate sync on initialization when Gist ID exists
+  useEffect(() => {
+    const performInitialSync = async () => {
+      // Only sync if:
+      // 1. We have a Gist ID from localStorage
+      // 2. We have an access token
+      // 3. Service is initialized
+      // 4. Initial sync hasn't been completed yet
+      if (currentGistId && config.accessToken && service.current && !initialSyncCompleted && syncConfigured) {
+        try {
+          await loadFromRemote();
+        } catch (error) {
+          console.error('Initial sync failed:', error);
+          // Error is already handled in loadFromRemote
+        }
+      }
+    };
+    
+    performInitialSync();
+  }, [currentGistId, config.accessToken, syncConfigured, initialSyncCompleted, loadFromRemote]);
+  
   return {
     // State
     root,
