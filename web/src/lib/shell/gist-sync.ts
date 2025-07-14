@@ -13,6 +13,7 @@ export interface GistSyncConfig {
   readonly repositoryConfig: GistRepositoryConfig;
   readonly gistId?: string;
   readonly useMock?: boolean;
+  readonly onRemoteChangeDetected?: () => void;
 }
 
 export interface GistSyncResult {
@@ -30,10 +31,12 @@ export class GistSyncShell {
   private detector?: RemoteChangeDetector;
   private readonly repositoryConfig: GistRepositoryConfig;
   private readonly useMock: boolean;
+  private readonly onRemoteChangeDetected?: () => void;
   
   constructor(config: GistSyncConfig) {
     this.repositoryConfig = config.repositoryConfig;
     this.useMock = config.useMock ?? false;
+    this.onRemoteChangeDetected = config.onRemoteChangeDetected;
   }
   
   /**
@@ -78,12 +81,7 @@ export class GistSyncShell {
       this.repository = repoResult.data;
       
       // Create and start remote change detector
-      this.detector = new RemoteChangeDetector({
-        repository: this.repository,
-        onChangeDetected: () => {
-          console.log('Remote changes detected!');
-        }
-      });
+      this.detector = this.createDetector(this.repository);
       this.detector.start();
       
       return success(undefined);
@@ -169,7 +167,8 @@ export class GistSyncShell {
     root: Root,
     description?: string,
     isPublic?: boolean,
-    useMock?: boolean
+    useMock?: boolean,
+    onRemoteChangeDetected?: () => void
   ): Promise<Result<GistSyncShell>> {
     try {
       const RepositoryClass = useMock ? MockGistRepository : FetchGistRepository;
@@ -186,18 +185,14 @@ export class GistSyncShell {
       
       const shell = new GistSyncShell({
         repositoryConfig: config,
-        useMock
+        useMock,
+        onRemoteChangeDetected
       });
       
       shell.repository = repoResult.data;
       
       // Create and start remote change detector
-      shell.detector = new RemoteChangeDetector({
-        repository: shell.repository,
-        onChangeDetected: () => {
-          console.log('Remote changes detected!');
-        }
-      });
+      shell.detector = shell.createDetector(shell.repository);
       shell.detector.start();
       
       return success(shell);
@@ -229,5 +224,17 @@ export class GistSyncShell {
    */
   isChangeDetectionRunning(): boolean {
     return this.detector?.isRunning() ?? false;
+  }
+  
+  /**
+   * Create a RemoteChangeDetector instance
+   */
+  private createDetector(repository: GistRepository): RemoteChangeDetector {
+    return new RemoteChangeDetector({
+      repository,
+      onChangeDetected: this.onRemoteChangeDetected || (() => {
+        console.log('Remote changes detected!');
+      })
+    });
   }
 }
