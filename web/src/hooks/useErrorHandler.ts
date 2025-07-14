@@ -33,12 +33,34 @@ export const useErrorHandler = (options: ErrorHandlerOptions = {}) => {
   // Retry handlers
   const retrySync = useCallback(async () => {
     bookmarkContext.clearError();
-    await bookmarkContext.syncWithRemote();
+    
+    // If we have a retryInitialization method, try that first
+    if (bookmarkContext.retryInitialization) {
+      try {
+        await bookmarkContext.retryInitialization();
+      } catch (error) {
+        console.error('Retry initialization failed:', error);
+        // Fall back to regular sync
+        await bookmarkContext.syncWithRemote();
+      }
+    } else {
+      await bookmarkContext.syncWithRemote();
+    }
   }, [bookmarkContext]);
   
   const reloadFromRemote = useCallback(async () => {
     bookmarkContext.clearError();
-    await bookmarkContext.loadFromRemote();
+    
+    // If sync is not initialized, try to initialize first
+    if (bookmarkContext.error?.includes('not initialized') && bookmarkContext.retryInitialization) {
+      try {
+        await bookmarkContext.retryInitialization();
+      } catch (error) {
+        console.error('Retry initialization failed:', error);
+      }
+    } else {
+      await bookmarkContext.loadFromRemote();
+    }
   }, [bookmarkContext]);
   
   const dismissError = useCallback(() => {

@@ -47,11 +47,15 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   const [error, setError] = useState<string | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [syncConfigured, setSyncConfigured] = useState(false);
+  const [initialSyncCompleted, setInitialSyncCompleted] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Initialize service
   useEffect(() => {
     const initializeService = async () => {
       let syncShell: GistSyncShell | undefined;
+      let initializationError: Error | null = null;
       
       if (config.createSyncShell) {
         // For testing
@@ -71,6 +75,11 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         const initResult = await syncShell.initialize(currentGistId);
         if (!initResult.success) {
           console.error('Failed to initialize GistSyncShell:', initResult.error);
+          initializationError = initResult.error;
+          // Set error state so UI can show it
+          setError(`Failed to connect to Gist: ${initResult.error.message}`);
+          // Don't start the detector if initialization failed
+          syncShell = undefined;
         }
       }
       
@@ -98,6 +107,15 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         }
         service.current = newService;
         setRoot(service.current.getRoot());
+      }
+      
+      // Update sync configured state
+      setSyncConfigured(syncShell !== undefined);
+      
+      // If initialization failed, mark as not synced
+      if (initializationError) {
+        setLastSyncAt(null);
+        setIsDirty(false);
       }
     };
     
@@ -311,11 +329,62 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     return service.current.getStats();
   }, []);
   
+  // Retry initialization helper - defined before use
+  const doRetryInitialization = useCallback(async () => {
+    if (!config.accessToken) {
+      throw new Error('No access token available');
+    }
+    
+    const syncShell = new GistSyncShell({
+      repositoryConfig: {
+        accessToken: config.accessToken,
+        filename: config.filename || 'bookmarks.md'
+      },
+      gistId: currentGistId,
+      useMock: false
+    });
+    
+    const initResult = await syncShell.initialize(currentGistId);
+    if (!initResult.success) {
+      throw initResult.error;
+    }
+    
+    // Update service with new sync shell
+    const newService = createBookmarkService(syncShell);
+    
+    // Preserve existing data if any
+    if (service.current) {
+      const currentRoot = service.current.getRoot();
+      if (currentRoot.categories.length > 0) {
+        const markdown = generator.current.generate(currentRoot);
+        const parsedRoot = parser.current.parse(markdown);
+        parsedRoot.categories.forEach(category => {
+          newService.addCategory(category.name);
+          category.bundles.forEach(bundle => {
+            newService.addBundle(category.name, bundle.name);
+            bundle.bookmarks.forEach(bookmark => {
+              newService.addBookmark(category.name, bundle.name, bookmark);
+            });
+          });
+        });
+      }
+    }
+    
+    service.current = newService;
+    setRoot(service.current.getRoot());
+    setSyncConfigured(true);
+    
+    return newService;
+  }, [config.accessToken, config.filename, currentGistId]);
+  
   // Remote operations
   const loadFromRemote = useCallback(async () => {
-    if (!service.current) return;
+    if (!service.current) {
+      throw new Error('Service not initialized');
+    }
     
     setIsLoading(true);
+    setIsSyncing(true);
     setError(null);
     
     try {
@@ -324,6 +393,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         setRoot(result.data);
         setIsDirty(false);
         setLastSyncAt(new Date());
+        setInitialSyncCompleted(true);
         broadcastUpdate(new Date());
         
         // Update GistID if loaded successfully
@@ -332,15 +402,50 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           saveGistId(gistInfo.gistId);
         }
       } else {
-        setError(result.error.message);
+        // Check if it's an initialization error
+        if (result.error.message.includes('not initialized')) {
+          // Try to reinitialize
+          if (config.accessToken) {
+            await doRetryInitialization();
+            // Retry load after reinitialization
+            const retryResult = await service.current!.loadFromRemote();
+            if (retryResult.success) {
+              setRoot(retryResult.data);
+              setIsDirty(false);
+              setLastSyncAt(new Date());
+              setInitialSyncCompleted(true);
+              broadcastUpdate(new Date());
+              
+              const gistInfo = service.current!.getGistInfo();
+              if (gistInfo.gistId) {
+                saveGistId(gistInfo.gistId);
+              }
+            } else {
+              throw retryResult.error;
+            }
+          } else {
+            throw result.error;
+          }
+        } else {
+          throw result.error;
+        }
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      // Mark initial sync as completed even on error to show local data
+      setInitialSyncCompleted(true);
+      throw error; // Re-throw so caller can handle
     } finally {
       setIsLoading(false);
+      setIsSyncing(false);
     }
-  }, [broadcastUpdate, saveGistId]);
+  }, [broadcastUpdate, saveGistId, config.accessToken, doRetryInitialization]);
   
   const saveToRemote = useCallback(async () => {
-    if (!service.current) return;
+    if (!service.current) {
+      throw new Error('Service not initialized');
+    }
     
     setIsLoading(true);
     setError(null);
@@ -357,35 +462,83 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           saveGistId(result.data.gistId);
         }
       } else {
-        setError(result.error.message);
+        // Check if it's an initialization error
+        if (result.error.message.includes('not initialized') || result.error.message.includes('not configured')) {
+          // Try to reinitialize
+          if (config.accessToken) {
+            await doRetryInitialization();
+            // Retry save after reinitialization
+            const retryResult = await service.current!.saveToRemote();
+            if (retryResult.success) {
+              setIsDirty(false);
+              setLastSyncAt(new Date());
+              broadcastUpdate(new Date());
+              if (retryResult.data.gistId) {
+                saveGistId(retryResult.data.gistId);
+              }
+            } else {
+              throw retryResult.error;
+            }
+          } else {
+            throw result.error;
+          }
+        } else {
+          throw result.error;
+        }
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      throw error; // Re-throw so caller can handle
     } finally {
       setIsLoading(false);
     }
-  }, [broadcastUpdate, saveGistId]);
+  }, [broadcastUpdate, saveGistId, config.accessToken, doRetryInitialization]);
   
   // Simplified sync (no merge conflicts in V2)
   const syncWithRemote = useCallback(async () => {
-    if (!service.current) return;
-    
-    // Check for remote changes
-    const hasChangesResult = await service.current.hasRemoteChanges();
-    if (hasChangesResult.success && hasChangesResult.data) {
-      // Remote has changes - need to decide what to do
-      if (isDirty) {
-        setError('Remote has changes. Please save or discard your local changes first.');
-        return;
-      } else {
-        // No local changes, safe to reload
-        await loadFromRemote();
-      }
-    } else {
-      // No remote changes, safe to save if dirty
-      if (isDirty) {
-        await saveToRemote();
-      }
+    if (!service.current) {
+      throw new Error('Service not initialized');
     }
-  }, [isDirty, loadFromRemote, saveToRemote]);
+    
+    try {
+      // Check for remote changes
+      let hasChangesResult = await service.current.hasRemoteChanges();
+      if (!hasChangesResult.success) {
+        // If checking fails, it might be due to initialization issues
+        if (hasChangesResult.error.message.includes('not initialized')) {
+          await doRetryInitialization();
+          // Try again after reinitialization
+          hasChangesResult = await service.current!.hasRemoteChanges();
+          if (!hasChangesResult.success) {
+            throw hasChangesResult.error;
+          }
+        } else {
+          throw hasChangesResult.error;
+        }
+      }
+      
+      if (hasChangesResult.success && hasChangesResult.data) {
+        // Remote has changes - need to decide what to do
+        if (isDirty) {
+          setError('Remote has changes. Please save or discard your local changes first.');
+          return;
+        } else {
+          // No local changes, safe to reload
+          await loadFromRemote();
+        }
+      } else {
+        // No remote changes, safe to save if dirty
+        if (isDirty) {
+          await saveToRemote();
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      throw error;
+    }
+  }, [isDirty, loadFromRemote, saveToRemote, doRetryInitialization]);
   
   // Conflict resolution - simplified for V2
   const syncWithConflictResolution = useCallback(async (resolutions: ConflictResolution[]) => {
@@ -463,6 +616,23 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     }
   }, []);
   
+  // Retry initialization - useful when sync fails on first attempt
+  const retryInitialization = useCallback(async () => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      await doRetryInitialization();
+      
+      // Try to load from remote
+      await loadFromRemote();
+    } catch (error) {
+      setError(`Failed to reconnect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [doRetryInitialization, loadFromRemote]);
+  
   // Business logic delegates
   const canDragBookmark = useCallback((categoryName: string, bundleName: string, bookmarkId: string): boolean => {
     // Always allow dragging
@@ -505,6 +675,10 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     return service.current.getGistInfo();
   }, []);
   
+  const isSyncConfigured = useCallback(() => {
+    return syncConfigured;
+  }, [syncConfigured]);
+  
   return {
     // State
     root,
@@ -512,6 +686,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     error,
     lastSyncAt,
     isDirty,
+    initialSyncCompleted,
+    isSyncing,
     
     // Operations
     addCategory,
@@ -560,5 +736,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     
     // Additional V2 methods
     getGistInfo,
+    retryInitialization,
+    isSyncConfigured,
   };
 }

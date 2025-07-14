@@ -226,6 +226,16 @@ export const BookmarksPage: React.FC = () => {
     }
   }, [moveModal, bookmark, showSuccess, showError]);
 
+  // Show loading spinner during initial sync
+  if (!bookmark.initialSyncCompleted && bookmark.isSyncing) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mb-4"></div>
+        <p className="text-gray-600">Syncing with Gist...</p>
+      </div>
+    );
+  }
+
   return (
     <DnDProvider>
       <div className="space-y-6">

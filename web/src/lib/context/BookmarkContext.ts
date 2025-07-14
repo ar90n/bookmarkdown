@@ -7,6 +7,8 @@ export interface BookmarkContextValue {
   readonly error: string | null;
   readonly lastSyncAt: Date | null;
   readonly isDirty: boolean; // Has unsaved changes
+  readonly initialSyncCompleted: boolean; // Initial sync with remote completed
+  readonly isSyncing: boolean; // Currently syncing with remote
   
   // Core operations
   addCategory: (name: string) => Promise<void>;
@@ -63,6 +65,8 @@ export interface BookmarkContextValue {
   
   // V2 additions
   getGistInfo?: () => { gistId?: string; etag?: string };
+  retryInitialization?: () => Promise<void>;
+  isSyncConfigured?: () => boolean;
 }
 
 // Factory function removed - use useBookmarkContextProvider hook instead
