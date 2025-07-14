@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { GistSyncShell, GistSyncConfig } from '../../src/lib/shell/gist-sync.js';
 import { MockGistRepository } from '../../src/lib/repositories/mock-gist-repository.js';
 import { RootEntity } from '../../src/lib/entities/root-entity.js';
@@ -14,6 +14,11 @@ describe('GistSyncShell - Remote Change Callback', () => {
   
   beforeEach(() => {
     MockGistRepository.clearAll();
+    vi.useFakeTimers();
+  });
+  
+  afterEach(() => {
+    vi.useRealTimers();
   });
   
   it('should accept onRemoteChangeDetected callback in config', async () => {
@@ -69,5 +74,54 @@ describe('GistSyncShell - Remote Change Callback', () => {
       expect(detector).toBeDefined();
       expect((detector as any).onChangeDetected).toBe(onRemoteChangeDetected);
     }
+  });
+  
+  it('should trigger callback when remote changes are detected', async () => {
+    const onRemoteChangeDetected = vi.fn();
+    
+    const configWithCallback: GistSyncConfig = {
+      ...mockConfig,
+      onRemoteChangeDetected
+    };
+    
+    const shell = new GistSyncShell(configWithCallback);
+    await shell.initialize();
+    
+    // Create another shell to make changes
+    const anotherShell = new GistSyncShell(mockConfig);
+    await anotherShell.initialize();
+    
+    // Make a change from another shell
+    const root = RootEntity.create().addCategory('New Category').toRoot();
+    await anotherShell.save(root);
+    
+    // Fast forward time to trigger the detector
+    await vi.advanceTimersByTimeAsync(10000); // Default interval is 10 seconds
+    
+    // The callback should have been called
+    expect(onRemoteChangeDetected).toHaveBeenCalledTimes(1);
+  });
+  
+  it('should use default console.log when no callback provided', async () => {
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    
+    const shell = new GistSyncShell(mockConfig);
+    await shell.initialize();
+    
+    // Create another shell to make changes
+    const anotherShell = new GistSyncShell(mockConfig);
+    await anotherShell.initialize();
+    
+    // Make a change
+    const root = RootEntity.create().addCategory('New Category').toRoot();
+    await anotherShell.save(root);
+    
+    // Fast forward time
+    await vi.advanceTimersByTimeAsync(10000);
+    
+    // Default log should have been called
+    expect(consoleLogSpy).toHaveBeenCalledWith('Remote changes detected!');
+    
+    consoleLogSpy.mockRestore();
   });
 });
