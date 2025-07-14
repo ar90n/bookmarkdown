@@ -15,7 +15,7 @@
  */
 
 import { createBookmarkService } from './adapters/index.js';
-import { createSyncShell } from './shell/index.js';
+import { GistSyncShell } from './shell/gist-sync.js';
 
 
 // Factory function for creating bookmark service with sync capability
@@ -26,11 +26,13 @@ export const createBookmarkApp = (config?: {
   description?: string;
 }) => {
   if (config?.accessToken) {
-    const syncShell = createSyncShell({
-      accessToken: config.accessToken,
-      filename: config.filename || 'bookmarks.md',
+    const syncShell = new GistSyncShell({
+      repositoryConfig: {
+        accessToken: config.accessToken,
+        filename: config.filename || 'bookmarks.md',
+      },
       gistId: config.gistId,
-      description: config.description,
+      useMock: false
     });
     return createBookmarkService(syncShell);
   }

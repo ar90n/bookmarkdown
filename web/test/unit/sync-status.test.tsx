@@ -9,11 +9,27 @@ let mockBookmarkContext = {
   isLoading: false,
   lastSyncAt: null,
   error: null,
-  getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' })
+  getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' }),
+  clearError: vi.fn(),
+  syncWithRemote: vi.fn(),
+  loadFromRemote: vi.fn(),
+  retryInitialization: vi.fn()
+};
+
+let mockAuthContext = {
+  error: null,
+  clearError: vi.fn()
 };
 
 vi.mock('../../src/contexts/AppProvider', () => ({
-  useBookmarkContext: () => mockBookmarkContext
+  useBookmarkContext: () => mockBookmarkContext,
+  useAuthContext: () => mockAuthContext
+}));
+
+vi.mock('../../src/hooks/useErrorHandler', () => ({
+  useErrorHandler: () => ({
+    retrySync: vi.fn()
+  })
 }));
 
 // Reset mock before each test
@@ -23,7 +39,16 @@ beforeEach(() => {
     isLoading: false,
     lastSyncAt: null,
     error: null,
-    getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' })
+    getGistInfo: () => ({ gistId: 'test-123', etag: 'abc123' }),
+    clearError: vi.fn(),
+    syncWithRemote: vi.fn(),
+    loadFromRemote: vi.fn(),
+    retryInitialization: vi.fn()
+  };
+  
+  mockAuthContext = {
+    error: null,
+    clearError: vi.fn()
   };
 });
 
@@ -94,5 +119,13 @@ describe('SyncStatus', () => {
     
     const statusElement = screen.getByTestId('sync-status');
     expect(statusElement).toHaveAttribute('title', expect.stringContaining('abc123'));
+  });
+  
+  it('should show retry button when there is an error', () => {
+    mockBookmarkContext.error = 'Failed to sync';
+    
+    render(<SyncStatus />);
+    
+    expect(screen.getByText(/Retry connection/i)).toBeInTheDocument();
   });
 });

@@ -1,53 +1,39 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBookmarkService, BookmarkService } from '../../web/src/lib/adapters/bookmark-service.js';
-import { SyncShell, SyncResult } from '../../web/src/lib/shell/index.js';
+import { GistSyncShell } from '../../web/src/lib/shell/gist-sync.js';
 import { Root, BookmarkInput } from '../../web/src/lib/types/index.js';
 import { createRoot } from '../../web/src/lib/core/index.js';
 import { success, failure } from '../../web/src/lib/types/result.js';
 
-// Mock SyncShell for testing
-const createMockSyncShell = (): SyncShell => {
-  const mockSyncShell: SyncShell = {
-    load: vi.fn(),
-    save: vi.fn(),
-    sync: vi.fn(),
-    syncWithConflictResolution: vi.fn(),
-    checkConflicts: vi.fn(),
-    syncBeforeOperation: vi.fn(),
-    saveAfterOperation: vi.fn(),
+// Mock GistSyncShell for testing
+const createMockGistSyncShell = (): GistSyncShell => {
+  const mockShell = {
+    load: vi.fn().mockResolvedValue(success(createRoot())),
+    save: vi.fn().mockResolvedValue(success({ gistId: 'test-gist', etag: 'test-etag', root: createRoot() })),
+    isRemoteUpdated: vi.fn().mockResolvedValue(success(false)),
+    getGistInfo: vi.fn().mockReturnValue({ gistId: 'test-gist', etag: 'test-etag' }),
+    initialize: vi.fn().mockResolvedValue(success(undefined)),
+    startChangeDetection: vi.fn(),
+    stopChangeDetection: vi.fn(),
+    isChangeDetectionRunning: vi.fn().mockReturnValue(false)
   };
 
-  return mockSyncShell;
+  return mockShell as any as GistSyncShell;
 };
 
 describe('BookmarkService', () => {
   let service: BookmarkService;
-  let mockSyncShell: SyncShell;
-  let initialRoot: Root;
+  let mockSyncShell: GistSyncShell;
 
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
     
     // Create fresh mock sync shell
-    mockSyncShell = createMockSyncShell();
+    mockSyncShell = createMockGistSyncShell();
     
     // Create service instance
     service = createBookmarkService(mockSyncShell);
-    
-    // Set up initial root with test data
-    initialRoot = createRoot();
-    // Add test category and bundle
-    initialRoot = {
-      ...initialRoot,
-      categories: [
-        {
-          name: 'Test Category',
-          bundles: [
-            {
-              name: 'Test Bundle',
-              bookmarks: [
-                {
                   id: 'bookmark-1',
                   title: 'Test Bookmark 1',
                   url: 'https://test1.com',

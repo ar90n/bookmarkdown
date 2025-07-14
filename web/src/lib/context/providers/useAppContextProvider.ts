@@ -2,6 +2,49 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppContextValue, AppConfig } from '../AppContext.js';
 import { useAuthContextProvider } from './useAuthContextProvider.js';
 import { useBookmarkContextProvider } from './useBookmarkContextProvider.js';
+import { BookmarkContextValue } from '../BookmarkContext.js';
+
+// Helper function to wait for sync configuration
+async function waitForSyncConfiguration(
+  bookmarkContext: BookmarkContextValue,
+  maxRetries: number,
+  intervalMs: number = 1000
+): Promise<boolean> {
+  let retryCount = 0;
+  
+  while (retryCount < maxRetries && !bookmarkContext.isSyncConfigured?.()) {
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+    retryCount++;
+  }
+  
+  return bookmarkContext.isSyncConfigured?.() ?? false;
+}
+
+// Helper function to retry loading from remote
+async function retryLoadFromRemote(
+  bookmarkContext: BookmarkContextValue,
+  maxRetries: number
+): Promise<{ success: boolean; error?: Error }> {
+  let retryCount = 0;
+  let lastError: Error | null = null;
+  
+  while (retryCount < maxRetries) {
+    try {
+      await bookmarkContext.loadFromRemote();
+      return { success: true };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+      retryCount++;
+      
+      if (retryCount < maxRetries) {
+        // Wait before retrying with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
+  }
+  
+  return { success: false, error: lastError || new Error('Failed to load from remote') };
+}
 
 export function useAppContextProvider(config: AppConfig): AppContextValue {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -51,10 +94,33 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     if (isInitialized) return;
     
     try {
+      // Wait a bit for auth context to fully initialize
+      // This helps avoid race conditions on page reload
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // If we have an access token, try to load from remote
       if (authContext.tokens?.accessToken) {
-        await bookmarkContext.loadFromRemote();
-        setSyncEnabled(true);
+        // First ensure the bookmark context is ready
+        const maxRetries = 3;
+        let retryCount = 0;
+        
+        // Wait for sync to be configured
+        const syncReady = await waitForSyncConfiguration(bookmarkContext, maxRetries);
+        
+        if (!syncReady) {
+          console.log('Sync not configured during initialization, skipping remote load');
+          setSyncEnabled(false);
+        } else {
+          // Try to load from remote with retries
+          const loadResult = await retryLoadFromRemote(bookmarkContext, maxRetries);
+          
+          if (loadResult.success) {
+            setSyncEnabled(true);
+          } else {
+            console.error('Failed to load from remote after retries:', loadResult.error);
+            bookmarkContext.setError(`Sync failed: ${loadResult.error?.message}`);
+          }
+        }
       }
       setIsInitialized(true);
     } catch (error) {
@@ -69,7 +135,28 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     if (authContext.isAuthenticated && !syncEnabled) {
       setSyncEnabled(true);
       // Try to load remote data when newly authenticated
-      bookmarkContext.loadFromRemote().catch(console.error);
+      // Add retry logic here as well
+      const loadWithRetry = async () => {
+        const maxRetries = 3;
+        let retryCount = 0;
+        
+        // First, wait for sync to be configured
+        const waitResult = await waitForSyncConfiguration(bookmarkContext, maxRetries);
+        if (!waitResult) {
+          console.log('Sync not configured after waiting, skipping remote load');
+          return;
+        }
+        
+        // Try to load from remote with retries
+        const loadResult = await retryLoadFromRemote(bookmarkContext, maxRetries);
+        
+        if (!loadResult.success) {
+          console.error('Failed to load from remote:', loadResult.error);
+          bookmarkContext.setError(`Unable to sync with remote: ${loadResult.error?.message}`);
+        }
+      };
+      
+      loadWithRetry();
     } else if (!authContext.isAuthenticated && syncEnabled) {
       setSyncEnabled(false);
     }

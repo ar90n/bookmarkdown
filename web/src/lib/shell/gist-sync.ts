@@ -43,12 +43,10 @@ export class GistSyncShell {
     try {
       const RepositoryClass = this.useMock ? MockGistRepository : FetchGistRepository;
       
-      const params: CreateRepositoryParams = {
-        gistId
-      };
+      let resolvedGistId = gistId;
       
       // If no gistId provided, try to find by filename
-      if (!gistId) {
+      if (!resolvedGistId) {
         const findResult = await RepositoryClass.findByFilename(
           this.repositoryConfig, 
           this.repositoryConfig.filename
@@ -59,9 +57,13 @@ export class GistSyncShell {
         }
         
         if (findResult.data) {
-          params.gistId = findResult.data;
+          resolvedGistId = findResult.data;
         }
       }
+      
+      const params: CreateRepositoryParams = {
+        gistId: resolvedGistId
+      };
       
       // Create repository instance
       const repoResult = await RepositoryClass.create(

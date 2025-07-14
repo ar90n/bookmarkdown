@@ -52,6 +52,7 @@ export interface BookmarkService {
   hasRemoteChanges: () => Promise<Result<boolean>>;
   forceReload: () => Promise<Result<Root>>;
   getGistInfo: () => { gistId?: string; etag?: string };
+  isSyncConfigured: () => boolean;
 }
 
 export const createBookmarkService = (syncShell?: GistSyncShell): BookmarkService => {
@@ -256,6 +257,10 @@ export const createBookmarkService = (syncShell?: GistSyncShell): BookmarkServic
     
     getGistInfo: (): { gistId?: string; etag?: string } => {
       return syncShell?.getGistInfo() || {};
+    },
+    
+    isSyncConfigured: (): boolean => {
+      return syncShell !== undefined && syncShell !== null;
     }
   };
 };

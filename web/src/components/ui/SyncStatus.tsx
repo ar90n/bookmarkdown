@@ -1,10 +1,12 @@
 import React from 'react';
 import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useErrorHandler } from '../../hooks/useErrorHandler';
 import { CloudArrowUpIcon, CheckCircleIcon, ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 export const SyncStatus: React.FC = () => {
   const bookmarkContext = useBookmarkContext();
   const { isDirty, isLoading, lastSyncAt, error, getGistInfo } = bookmarkContext;
+  const { retrySync } = useErrorHandler();
   
   // Get etag info if available (V2 only)
   const gistInfo = getGistInfo?.() || {};
@@ -75,6 +77,15 @@ export const SyncStatus: React.FC = () => {
         <span className={`font-medium ${statusColor}`}>{statusText}</span>
         {lastSyncAt && status !== 'error' && (
           <span className="text-xs text-gray-500">{getTimeSince(lastSyncAt)}</span>
+        )}
+        {status === 'error' && (
+          <button
+            onClick={retrySync}
+            className="text-xs text-blue-600 hover:text-blue-700 underline mt-1"
+            disabled={isLoading}
+          >
+            Retry connection
+          </button>
         )}
       </div>
     </div>

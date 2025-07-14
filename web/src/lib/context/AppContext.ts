@@ -5,15 +5,11 @@ export interface AppContextValue {
   readonly bookmark: BookmarkContextValue;
   readonly auth: AuthContextValue;
   readonly isInitialized: boolean;
+  readonly config: AppConfig;
+  readonly syncEnabled: boolean;
   
   // App-level operations
   initialize: () => Promise<void>;
-  reset: () => Promise<void>;
-  
-  // Sync management
-  enableSync: () => Promise<void>;
-  disableSync: () => void;
-  isSyncEnabled: () => boolean;
 }
 
 export interface AppConfig extends AuthConfig {
