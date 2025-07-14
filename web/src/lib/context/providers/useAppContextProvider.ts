@@ -3,6 +3,7 @@ import { AppContextValue, AppConfig } from '../AppContext.js';
 import { useAuthContextProvider } from './useAuthContextProvider.js';
 import { useBookmarkContextProvider } from './useBookmarkContextProvider.js';
 import { BookmarkContextValue } from '../BookmarkContext.js';
+import { dialogCallbackRef } from './dialog-state-ref.js';
 
 // Helper function to wait for sync configuration
 async function waitForSyncConfiguration(
@@ -63,7 +64,13 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     storageKey: config.storageConfig?.bookmarkKey || 'bookmarkdown_data',
     filename: 'bookmarks.md',
     autoSave: true,
-    autoSync: true  // Enable auto-sync on every change
+    autoSync: true,  // Enable auto-sync on every change
+    onConflictDuringAutoSync: (handlers) => {
+      // Use the dialog callback ref to open the conflict dialog
+      if (dialogCallbackRef.openSyncConflictDialog) {
+        dialogCallbackRef.openSyncConflictDialog(handlers);
+      }
+    }
   });
 
   // Setup auto-sync
