@@ -83,17 +83,14 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
           {/* Sync button - main action */}
           <button
             onClick={handleSync}
-            disabled={isProcessing || (!isDirty && !error)}
+            disabled={isProcessing}
             className={`
               inline-flex items-center gap-1 px-3 py-1 text-sm font-medium rounded-md
-              ${isDirty || error
-                ? 'bg-primary-600 text-white hover:bg-primary-700' 
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }
+              bg-primary-600 text-white hover:bg-primary-700
               disabled:opacity-50 disabled:cursor-not-allowed
               transition-colors
             `}
-            title={isDirty ? 'Save changes to remote' : 'Already synced'}
+            title="Sync with remote"
           >
             <ArrowPathIcon className="h-4 w-4" />
             {actionLoading === 'sync' || isSyncing ? 'Syncing...' : 'Sync'}
