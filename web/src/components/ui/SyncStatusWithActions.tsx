@@ -6,6 +6,7 @@ import {
   ExclamationTriangleIcon, 
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import { formatRelativeTime } from '../../lib/utils/time';
 
 interface SyncStatusWithActionsProps {
   className?: string;
@@ -99,10 +100,10 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
         </div>
       )}
       
-      {/* Version info */}
-      {gistInfo.etag && (
-        <div className="text-xs text-gray-400" title={`Full version: ${gistInfo.etag}`}>
-          v{gistInfo.etag.slice(0, 6)}
+      {/* Last sync time */}
+      {lastSyncAt && (
+        <div className="text-xs text-gray-500" title={lastSyncAt.toLocaleString()}>
+          {formatRelativeTime(lastSyncAt)}
         </div>
       )}
     </div>

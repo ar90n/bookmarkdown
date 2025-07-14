@@ -137,11 +137,16 @@ describe('SyncStatusWithActions', () => {
     mockBookmarkContext.isDirty = false;
   });
 
-  it('should show version info when etag is available', () => {
+  it('should show last sync time when available', () => {
+    // Mock formatRelativeTime
+    vi.mock('../../src/lib/utils/time', () => ({
+      formatRelativeTime: vi.fn(() => '5 minutes ago')
+    }));
+    
     render(<SyncStatusWithActions />);
     
-    expect(screen.getByText('vabc123')).toBeInTheDocument();
-    expect(screen.getByTitle('Full version: abc123')).toBeInTheDocument();
+    expect(screen.getByText('5 minutes ago')).toBeInTheDocument();
+    expect(screen.getByTitle(mockBookmarkContext.lastSyncAt.toLocaleString())).toBeInTheDocument();
   });
 
   it('should not show actions when showActions is false', () => {
