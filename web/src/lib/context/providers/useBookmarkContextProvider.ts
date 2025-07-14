@@ -6,6 +6,7 @@ import { createRoot } from '../../core/index.js';
 import { GistSyncShell } from '../../shell/gist-sync.js';
 import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
+import { useDebounce } from '../../../hooks/useDebounce.js';
 
 interface BookmarkContextV2Config {
   accessToken?: string;
@@ -13,6 +14,8 @@ interface BookmarkContextV2Config {
   filename?: string;
   autoSave?: boolean;
   gistId?: string;
+  autoSync?: boolean;
+  onConflictDuringAutoSync?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
   // For testing
   createSyncShell?: () => GistSyncShell;
 }
@@ -152,13 +155,21 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     });
   }, []);
   
+  // Ref for debounced auto-sync
+  const debouncedAutoSyncRef = useRef<(() => void) | null>(null);
+  
   // Helper to update state after operations
   const updateState = useCallback(() => {
     if (service.current) {
       setRoot(service.current.getRoot());
       setIsDirty(true);
+      
+      // Trigger auto-sync if enabled
+      if (config.autoSync && config.accessToken && debouncedAutoSyncRef.current) {
+        debouncedAutoSyncRef.current();
+      }
     }
-  }, []);
+  }, [config.autoSync, config.accessToken]);
   
   // Save GistID
   const saveGistId = useCallback((gistId: string) => {
@@ -692,6 +703,62 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   const isSyncConfigured = useCallback(() => {
     return syncConfigured;
   }, [syncConfigured]);
+  
+  // Store config values in refs to avoid recreating callbacks
+  const autoSyncRef = useRef(config.autoSync);
+  const accessTokenRef = useRef(config.accessToken);
+  const onConflictRef = useRef(config.onConflictDuringAutoSync);
+  
+  useEffect(() => {
+    autoSyncRef.current = config.autoSync;
+    accessTokenRef.current = config.accessToken;
+    onConflictRef.current = config.onConflictDuringAutoSync;
+  }, [config.autoSync, config.accessToken, config.onConflictDuringAutoSync]);
+  
+  // Auto-sync callback
+  const triggerAutoSync = useCallback(async () => {
+    if (!autoSyncRef.current || !accessTokenRef.current || !service.current) {
+      return;
+    }
+    
+    try {
+      // Check for remote changes
+      const hasChangesResult = await service.current.hasRemoteChanges();
+      if (!hasChangesResult.success) {
+        throw hasChangesResult.error;
+      }
+      
+      if (hasChangesResult.data) {
+        // Remote has changes - conflict detected
+        if (onConflictRef.current) {
+          onConflictRef.current({
+            onLoadRemote: async () => {
+              await loadFromRemote();
+            },
+            onSaveLocal: async () => {
+              await saveToRemote();
+            }
+          });
+        } else {
+          setError('Auto-sync failed: Remote has changes');
+        }
+      } else {
+        // No remote changes, safe to save
+        await saveToRemote();
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Auto-sync failed: ${errorMessage}`);
+    }
+  }, [loadFromRemote, saveToRemote]);
+  
+  // Debounced auto-sync
+  const debouncedAutoSync = useDebounce(triggerAutoSync, 1000);
+  
+  // Set the ref
+  useEffect(() => {
+    debouncedAutoSyncRef.current = debouncedAutoSync;
+  }, [debouncedAutoSync]);
   
   return {
     // State

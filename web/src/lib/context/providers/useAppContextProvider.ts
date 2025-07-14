@@ -62,7 +62,8 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     accessToken: authContext.tokens?.accessToken,
     storageKey: config.storageConfig?.bookmarkKey || 'bookmarkdown_data',
     filename: 'bookmarks.md',
-    autoSave: true
+    autoSave: true,
+    autoSync: true  // Enable auto-sync on every change
   });
 
   // Setup auto-sync
