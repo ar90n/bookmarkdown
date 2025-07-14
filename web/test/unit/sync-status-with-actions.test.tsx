@@ -118,11 +118,11 @@ describe('SyncStatusWithActions', () => {
     mockBookmarkContext.error = null;
   });
 
-  it('should disable sync button when already synced and no changes', () => {
+  it('should enable sync button even when already synced and no changes', () => {
     render(<SyncStatusWithActions />);
     
     const syncButton = screen.getByText('Sync').closest('button');
-    expect(syncButton).toHaveAttribute('disabled');
+    expect(syncButton).not.toHaveAttribute('disabled');
   });
 
   it('should enable sync button when there are changes', () => {

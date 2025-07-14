@@ -5,6 +5,7 @@ export interface RemoteChangeDetectorConfig {
   intervalMs?: number;
   onChangeDetected?: () => void;
   isConflictDialogOpen?: () => boolean;
+  hasUnresolvedConflict?: () => boolean;
 }
 
 /**
@@ -15,6 +16,7 @@ export class RemoteChangeDetector {
   private readonly intervalMs: number;
   private readonly onChangeDetected?: () => void;
   private readonly isConflictDialogOpen?: () => boolean;
+  private readonly hasUnresolvedConflict?: () => boolean;
   private intervalId?: NodeJS.Timeout;
   private running = false;
   
@@ -23,6 +25,7 @@ export class RemoteChangeDetector {
     this.intervalMs = config.intervalMs ?? 10000; // Default: 10 seconds
     this.onChangeDetected = config.onChangeDetected;
     this.isConflictDialogOpen = config.isConflictDialogOpen;
+    this.hasUnresolvedConflict = config.hasUnresolvedConflict;
   }
   
   /**
@@ -68,8 +71,8 @@ export class RemoteChangeDetector {
    * Check for remote changes
    */
   private async checkForChanges(): Promise<void> {
-    // Skip check if conflict dialog is open
-    if (this.isConflictDialogOpen?.()) {
+    // Skip check if conflict dialog is open or unresolved conflict exists
+    if (this.isConflictDialogOpen?.() || this.hasUnresolvedConflict?.()) {
       return;
     }
     

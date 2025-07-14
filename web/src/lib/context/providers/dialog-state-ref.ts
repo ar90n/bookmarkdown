@@ -4,5 +4,6 @@
  * without creating circular dependencies
  */
 export const dialogStateRef = {
-  isConflictDialogOpen: false
+  isConflictDialogOpen: false,
+  hasUnresolvedConflict: false
 };
