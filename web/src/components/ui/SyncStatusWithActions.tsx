@@ -19,7 +19,7 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
 }) => {
   const bookmarkContext = useBookmarkContext();
   const dialog = useDialogContext();
-  const { isDirty, isLoading, lastSyncAt, error, getGistInfo, syncWithRemote } = bookmarkContext;
+  const { isDirty, isLoading, isSyncing, lastSyncAt, error, getGistInfo, syncWithRemote } = bookmarkContext;
   const [actionLoading, setActionLoading] = useState<'sync' | null>(null);
   
   // Get etag info if available (V2 only)
@@ -42,7 +42,7 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
   let statusColor: string;
   let Icon: React.ComponentType<any>;
   
-  if (isLoading || actionLoading) {
+  if (isLoading || actionLoading || isSyncing) {
     statusColor = 'text-blue-600';
     Icon = ArrowPathIcon;
   } else if (error) {
@@ -59,7 +59,7 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
     Icon = CheckCircleIcon;
   }
   
-  const isProcessing = isLoading || actionLoading !== null;
+  const isProcessing = isLoading || actionLoading !== null || isSyncing;
   
   return (
     <div className={`flex items-center gap-3 ${className}`}>
@@ -70,9 +70,10 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
         />
         <div className="text-sm">
           {error && <span className="text-red-600 font-medium">Sync error</span>}
-          {!error && isDirty && <span className="text-yellow-600 font-medium">Changes pending</span>}
-          {!error && !isDirty && lastSyncAt && <span className="text-green-600 font-medium">Synced</span>}
-          {!error && !lastSyncAt && <span className="text-gray-500">Not synced</span>}
+          {!error && isSyncing && <span className="text-blue-600 font-medium">Auto-syncing...</span>}
+          {!error && !isSyncing && isDirty && <span className="text-yellow-600 font-medium">Changes pending</span>}
+          {!error && !isSyncing && !isDirty && lastSyncAt && <span className="text-green-600 font-medium">Synced</span>}
+          {!error && !isSyncing && !lastSyncAt && <span className="text-gray-500">Not synced</span>}
         </div>
       </div>
       
@@ -95,7 +96,7 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
             title={isDirty ? 'Save changes to remote' : 'Already synced'}
           >
             <ArrowPathIcon className="h-4 w-4" />
-            {actionLoading === 'sync' ? 'Syncing...' : 'Sync'}
+            {actionLoading === 'sync' || isSyncing ? 'Syncing...' : 'Sync'}
           </button>
         </div>
       )}
