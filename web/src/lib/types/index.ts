@@ -3,9 +3,6 @@ export * from './result.js';
 
 // Re-export shell types for easy access
 export type {
-  SyncShell,
-  SyncConfig,
-  SyncResult,
   LocalStorageShell,
   ChromeStorageShell,
   StorageConfig,

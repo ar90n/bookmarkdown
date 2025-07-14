@@ -87,11 +87,7 @@ export {
   getBookmarkLastSynced,
   isBookmarkDeleted,
   updateAllLastSynced,
-  markBookmarkAsDeleted as markBookmarkAsDeletedMetadata,
-  // Merge utilities
-  mergeRoots,
-  resolveConflicts,
-  hasConflicts
+  markBookmarkAsDeleted as markBookmarkAsDeletedMetadata
 } from './utils/index.js';
 
 // Re-export schemas with different names to avoid conflicts

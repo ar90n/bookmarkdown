@@ -46,11 +46,7 @@ export {
   getBookmarkLastSynced,
   isBookmarkDeleted,
   updateAllLastSynced,
-  markBookmarkAsDeleted as markBookmarkAsDeletedMetadata,
-  // Merge utilities
-  mergeRoots,
-  resolveConflicts,
-  hasConflicts
+  markBookmarkAsDeleted as markBookmarkAsDeletedMetadata
 } from './utils/index.js';
 
 // Adapters
@@ -59,7 +55,6 @@ export { createBookmarkService, type BookmarkService } from './adapters/index.js
 
 // Shell exports
 export { createLocalStorageShell, type LocalStorageShell } from './shell/storage.js';
-export { createSyncShell, type SyncShell } from './shell/sync.js';
 export { createGistClient, type GistClient } from './shell/gist-io.js';
 
 // Context exports
