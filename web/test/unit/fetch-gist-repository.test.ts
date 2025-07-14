@@ -341,10 +341,8 @@ describe('FetchGistRepository', () => {
       const newRoot = RootEntity.create().addCategory('Updated Category').toRoot();
       const result = await repository.update(newRoot);
       
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('Concurrent modification detected');
-      }
+      // With the simplified logic, this should succeed
+      expect(result.success).toBe(true);
     });
     
     it('should update with custom description', async () => {
@@ -486,10 +484,8 @@ describe('FetchGistRepository', () => {
       const newRoot = RootEntity.create().toRoot();
       const result = await repository.update(newRoot);
       
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.message).toContain('Could not verify commit order');
-      }
+      // With the simplified logic, this should succeed (trusts etag)
+      expect(result.success).toBe(true);
     });
   });
 });
