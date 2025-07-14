@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Bookmark } from 'bookmarkdown';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { SyncConflictDialog } from '../components/Dialogs/SyncConflictDialog';
+import { dialogStateRef } from '../lib/context/providers/dialog-state-ref';
 
 interface ConfirmDialogState {
   isOpen: boolean;
@@ -199,6 +200,11 @@ export const DialogProvider: React.FC<DialogProviderProps> = ({ children }) => {
       onSaveLocal: null
     });
   };
+  
+  // Update dialog state ref when conflict dialog state changes
+  useEffect(() => {
+    dialogStateRef.isConflictDialogOpen = syncConflictDialog.isOpen;
+  }, [syncConflictDialog.isOpen]);
 
   return (
     <DialogContext.Provider value={{
