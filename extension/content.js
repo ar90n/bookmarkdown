@@ -71,5 +71,24 @@ window.addEventListener('message', async (event) => {
         error: error.message
       }, '*');
     }
+  } else if (event.data.type === 'BOOKMARKDOWN_GET_CURRENT_WINDOW_TABS') {
+    try {
+      // Get current window tabs from chrome.storage.local via background script
+      const response = await chrome.runtime.sendMessage({
+        action: 'getCurrentWindowTabs'
+      });
+      
+      // Send response back to web app
+      window.postMessage({
+        type: 'BOOKMARKDOWN_CURRENT_WINDOW_TABS_RESPONSE',
+        tabs: response.currentWindowTabsInfo || []
+      }, '*');
+    } catch (error) {
+      console.error('Error getting current window tabs:', error);
+      window.postMessage({
+        type: 'BOOKMARKDOWN_CURRENT_WINDOW_TABS_ERROR',
+        error: error.message
+      }, '*');
+    }
   }
 });
