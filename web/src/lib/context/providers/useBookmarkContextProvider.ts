@@ -54,6 +54,9 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   const [initialSyncCompleted, setInitialSyncCompleted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
+  // Ref for handling remote changes
+  const handleRemoteChangeDetectedRef = useRef<(() => Promise<void>) | null>(null);
+  
   // Initialize service
   useEffect(() => {
     const initializeService = async () => {
@@ -71,7 +74,12 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
             filename: config.filename || 'bookmarks.md'
           },
           gistId: currentGistId,
-          useMock: false
+          useMock: false,
+          onRemoteChangeDetected: async () => {
+            if (handleRemoteChangeDetectedRef.current) {
+              await handleRemoteChangeDetectedRef.current();
+            }
+          }
         });
         
         // Initialize the shell to start remote change detection
@@ -755,10 +763,38 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   // Debounced auto-sync
   const debouncedAutoSync = useDebounce(triggerAutoSync, 1000);
   
-  // Set the ref
+  // Handle remote change detection
+  const handleRemoteChangeDetected = useCallback(async () => {
+    if (!service.current) return;
+    
+    // Check if we have local changes
+    if (service.current.isDirty()) {
+      // We have local changes - potential conflict
+      if (config.onConflictDuringAutoSync) {
+        config.onConflictDuringAutoSync({
+          onLoadRemote: async () => {
+            await loadFromRemote();
+          },
+          onSaveLocal: async () => {
+            await saveToRemote();
+          }
+        });
+      }
+    } else {
+      // No local changes, safe to auto-load if enabled
+      try {
+        await loadFromRemote();
+      } catch (error) {
+        console.error('Failed to auto-load on remote change:', error);
+      }
+    }
+  }, [config.onConflictDuringAutoSync, loadFromRemote, saveToRemote]);
+  
+  // Set the refs
   useEffect(() => {
     debouncedAutoSyncRef.current = debouncedAutoSync;
-  }, [debouncedAutoSync]);
+    handleRemoteChangeDetectedRef.current = handleRemoteChangeDetected;
+  }, [debouncedAutoSync, handleRemoteChangeDetected]);
   
   return {
     // State
