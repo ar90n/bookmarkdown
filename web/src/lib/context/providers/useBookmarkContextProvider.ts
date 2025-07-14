@@ -44,6 +44,16 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     }
   });
   
+  // Auto-sync settings stored in localStorage
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem('autoSyncEnabled');
+      return stored ? stored === 'true' : true; // Default to enabled
+    } catch {
+      return true;
+    }
+  });
+  
   // React state (read-only copy of service state)
   const [root, setRoot] = useState<Root>(createRoot());
   const [isLoading, setIsLoading] = useState(false);
@@ -173,11 +183,11 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       setIsDirty(true);
       
       // Trigger auto-sync if enabled
-      if (config.autoSync && config.accessToken && debouncedAutoSyncRef.current) {
+      if (config.autoSync && autoSyncEnabled && config.accessToken && debouncedAutoSyncRef.current) {
         debouncedAutoSyncRef.current();
       }
     }
-  }, [config.autoSync, config.accessToken]);
+  }, [config.autoSync, config.accessToken, autoSyncEnabled]);
   
   // Save GistID
   const saveGistId = useCallback((gistId: string) => {
@@ -712,6 +722,17 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     return syncConfigured;
   }, [syncConfigured]);
   
+  const isAutoSyncEnabled = useCallback(() => autoSyncEnabled, [autoSyncEnabled]);
+  
+  const setAutoSync = useCallback((enabled: boolean) => {
+    setAutoSyncEnabled(enabled);
+    try {
+      localStorage.setItem('autoSyncEnabled', enabled.toString());
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+  
   // Store config values in refs to avoid recreating callbacks
   const autoSyncRef = useRef(config.autoSync);
   const accessTokenRef = useRef(config.accessToken);
@@ -855,5 +876,9 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     getGistInfo,
     retryInitialization,
     isSyncConfigured,
+    
+    // Auto-sync settings
+    isAutoSyncEnabled,
+    setAutoSync,
   };
 }
