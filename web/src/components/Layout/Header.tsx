@@ -45,6 +45,10 @@ export const Header: React.FC = () => {
                       <div className="text-lg font-semibold text-gray-900">{stats.bookmarksCount}</div>
                       <div className="text-xs text-gray-500">Bookmarks</div>
                     </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-gray-900">{stats.tagsCount}</div>
+                      <div className="text-xs text-gray-500">Tags</div>
+                    </div>
                   </>
                 );
               })()}
