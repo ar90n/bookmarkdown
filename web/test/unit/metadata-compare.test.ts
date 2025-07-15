@@ -280,4 +280,139 @@ describe('Metadata Comparison Functions', () => {
       expect(compareCategoriesContent(category1, category2)).toBe(true);
     });
   });
+
+  describe('compareBundlesContent', () => {
+    it('should return true for identical bundles', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 },
+          { id: '2', title: 'GitHub', url: 'https://github.com', order: 1 }
+        ]
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 },
+          { id: '2', title: 'GitHub', url: 'https://github.com', order: 1 }
+        ]
+      };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(true);
+    });
+
+    it('should return false for different names', () => {
+      const bundle1: Bundle = { name: 'Project A', bookmarks: [] };
+      const bundle2: Bundle = { name: 'Project B', bookmarks: [] };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(false);
+    });
+
+    it('should return false for different number of bookmarks', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 },
+          { id: '2', title: 'GitHub', url: 'https://github.com', order: 1 }
+        ]
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+        ]
+      };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(false);
+    });
+
+    it('should handle bookmarks in different order', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '2', title: 'GitHub', url: 'https://github.com', order: 1 },
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+        ]
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 },
+          { id: '2', title: 'GitHub', url: 'https://github.com', order: 1 }
+        ]
+      };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(true);
+    });
+
+    it('should return false when bookmark content differs', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+        ]
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'DuckDuckGo', url: 'https://duckduckgo.com', order: 0 }
+        ]
+      };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(false);
+    });
+
+    it('should handle empty bookmarks arrays', () => {
+      const bundle1: Bundle = { name: 'Project A', bookmarks: [] };
+      const bundle2: Bundle = { name: 'Project A', bookmarks: [] };
+      
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(true);
+    });
+
+    it('should handle bundles with metadata fields', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [],
+        metadata: {
+          lastModified: '2024-01-01',
+          lastSynced: '2024-01-01'
+        }
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [],
+        metadata: {
+          lastModified: '2024-01-02',
+          lastSynced: '2024-01-02'
+        }
+      };
+      
+      // compareBundlesContent should only compare content, not metadata
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(true);
+    });
+
+    it('should handle bookmarks with different IDs but same content', () => {
+      const bundle1: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+        ]
+      };
+      
+      const bundle2: Bundle = {
+        name: 'Project A',
+        bookmarks: [
+          { id: '2', title: 'Google', url: 'https://google.com', order: 0 }
+        ]
+      };
+      
+      // IDs are excluded from content comparison (they're only for React keys)
+      expect(compareBundlesContent(bundle1, bundle2)).toBe(true);
+    });
+  });
 });
