@@ -34,7 +34,7 @@ describe('SyncConflictDialog', () => {
     render(<SyncConflictDialog {...defaultProps} />);
     
     expect(screen.getByText('Continue Editing')).toBeInTheDocument();
-    expect(screen.getByText('Keep your local changes and resolve the conflict later')).toBeInTheDocument();
+    expect(screen.getByText(/Keep your local changes and resolve the conflict later/)).toBeInTheDocument();
     
     expect(screen.getByText('Load Remote Version')).toBeInTheDocument();
     expect(screen.getByText(/Discard your local changes/)).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe('SyncConflictDialog', () => {
   it('should display helpful tip', () => {
     render(<SyncConflictDialog {...defaultProps} />);
     
-    expect(screen.getByText(/If you're unsure, choose "Continue Editing"/)).toBeInTheDocument();
+    expect(screen.getByText(/If you're unsure, choose "Continue Editing" and use the Sync button when ready/)).toBeInTheDocument();
   });
 
   it('should have proper accessibility attributes', () => {

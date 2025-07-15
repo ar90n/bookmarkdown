@@ -36,6 +36,9 @@ export const SyncConflictDialog: React.FC<SyncConflictDialogProps> = ({
               <p className="text-sm text-gray-600 mt-1">
                 Both local and remote have changes. Choose how to resolve:
               </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Auto-sync is paused while this conflict exists.
+              </p>
             </div>
           </div>
 
@@ -50,7 +53,8 @@ export const SyncConflictDialog: React.FC<SyncConflictDialogProps> = ({
                 <div>
                   <div className="font-medium text-gray-900">Continue Editing</div>
                   <div className="text-sm text-gray-600 mt-1">
-                    Keep your local changes and resolve the conflict later
+                    Keep your local changes and resolve the conflict later.
+                    You'll need to manually sync to resolve later.
                   </div>
                 </div>
               </div>
@@ -91,7 +95,10 @@ export const SyncConflictDialog: React.FC<SyncConflictDialogProps> = ({
 
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600">
-              <strong>Tip:</strong> If you're unsure, choose "Continue Editing" to review your changes before deciding.
+              <strong>Tip:</strong> If you're unsure, choose "Continue Editing" and use the Sync button when ready.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Auto-sync will resume after choosing "Load Remote" or "Save Your Version".
             </p>
           </div>
         </div>
