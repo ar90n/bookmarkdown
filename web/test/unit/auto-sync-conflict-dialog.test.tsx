@@ -1,40 +1,44 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { dialogCallbackRef } from '../../src/lib/context/providers/dialog-state-ref.js';
-import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider';
+import { createBookmarkService } from '../../src/lib/adapters/bookmark-service.js';
+import { dialogStateRef, dialogCallbackRef } from '../../src/lib/context/providers/dialog-state-ref.js';
 
-// Mock the GistSyncShell and related modules
-vi.mock('../../src/lib/shell/gist-sync.js', () => ({
-  GistSyncShell: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue({ success: true }),
-    load: vi.fn().mockResolvedValue({ success: true, data: { categories: [] } }),
-    save: vi.fn().mockResolvedValue({ success: true, data: { gistId: 'test-gist', etag: 'test-etag', root: { categories: [] } } }),
-    isRemoteUpdated: vi.fn().mockResolvedValue({ success: true, data: false }),
-    getGistInfo: vi.fn().mockReturnValue({ gistId: 'test-gist', etag: 'test-etag' })
-  }))
+// Mock the adapters
+vi.mock('../../src/lib/adapters/bookmark-service.js', () => ({
+  createBookmarkService: vi.fn()
 }));
 
-vi.mock('../../src/lib/adapters/bookmark-service.js', () => ({
-  createBookmarkService: vi.fn().mockImplementation((shell) => ({
-    getRoot: vi.fn().mockReturnValue({ categories: [] }),
-    isDirty: vi.fn().mockReturnValue(true),
-    hasRemoteChanges: vi.fn().mockResolvedValue({ success: true, data: true }),
-    loadFromRemote: vi.fn().mockResolvedValue({ success: true, data: { categories: [] } }),
-    saveToRemote: vi.fn().mockResolvedValue({ success: true, data: { gistId: 'test-gist' } }),
-    addCategory: vi.fn().mockReturnValue({ success: true }),
-    removeCategory: vi.fn().mockReturnValue({ success: true }),
-    getGistInfo: vi.fn().mockReturnValue({ gistId: 'test-gist', etag: 'test-etag' })
+vi.mock('../../src/lib/shell/gist-sync.js', () => ({
+  GistSyncShell: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn(() => Promise.resolve({ success: true }))
   }))
 }));
 
 describe('Auto-sync Conflict Dialog', () => {
   beforeEach(() => {
-    // Reset mocks and refs
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    dialogStateRef.hasUnresolvedConflict = false;
     dialogCallbackRef.openSyncConflictDialog = null;
+    
+    // Default mock setup
+    vi.mocked(createBookmarkService).mockReturnValue({
+      getRoot: vi.fn(() => ({ categories: [] })),
+      addCategory: vi.fn(() => ({ success: true })),
+      isDirty: vi.fn(() => true),
+      hasRemoteChanges: vi.fn(() => Promise.resolve({ success: true, data: true })), // Remote has changes
+      saveToRemote: vi.fn(() => Promise.resolve({ success: true, data: {} })),
+      loadFromRemote: vi.fn(() => Promise.resolve({ success: true, data: { categories: [] } })),
+      getGistInfo: vi.fn(() => ({}))
+    });
   });
 
-  it('should call dialogCallbackRef when auto-sync detects conflict', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should call onConflictDuringAutoSync when remote has changes', async () => {
     const mockOpenDialog = vi.fn();
     dialogCallbackRef.openSyncConflictDialog = mockOpenDialog;
 
@@ -50,7 +54,7 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for initialization
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.runAllTimersAsync();
     });
 
     // Trigger a change to start auto-sync
@@ -60,7 +64,7 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for debounced auto-sync
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
     });
 
     // Check that dialog was called
@@ -70,7 +74,18 @@ describe('Auto-sync Conflict Dialog', () => {
     expect(callArgs).toHaveProperty('onSaveLocal');
   });
 
-  it('should show error when onConflictDuringAutoSync is not provided', async () => {
+  it('should set hasUnresolvedConflict and show error when onConflictDuringAutoSync is not provided', async () => {
+    const mockSaveToRemote = vi.fn(() => Promise.resolve({ success: true, data: {} }));
+    vi.mocked(createBookmarkService).mockReturnValue({
+      getRoot: vi.fn(() => ({ categories: [] })),
+      addCategory: vi.fn(() => ({ success: true })),
+      isDirty: vi.fn(() => true),
+      hasRemoteChanges: vi.fn(() => Promise.resolve({ success: true, data: true })), // Remote has changes
+      saveToRemote: mockSaveToRemote,
+      loadFromRemote: vi.fn(() => Promise.resolve({ success: true, data: { categories: [] } })),
+      getGistInfo: vi.fn(() => ({}))
+    });
+
     const { result } = renderHook(() => useBookmarkContextProvider({
       accessToken: 'test-token',
       autoSync: true
@@ -79,8 +94,11 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for initialization
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.runAllTimersAsync();
     });
+
+    // Reset the flag
+    dialogStateRef.hasUnresolvedConflict = false;
 
     // Trigger a change to start auto-sync
     await act(async () => {
@@ -89,11 +107,24 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for debounced auto-sync
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
     });
 
-    // Should have error since no conflict handler was provided
+    // Should have set error and conflict flag
     expect(result.current.error).toBe('Auto-sync failed: Remote has changes');
+    expect(dialogStateRef.hasUnresolvedConflict).toBe(true);
+    
+    // Additional operations should skip auto-sync
+    await act(async () => {
+      result.current.addCategory('Test Category 2');
+    });
+    
+    await act(async () => {
+      vi.advanceTimersByTime(1100);
+    });
+    
+    // Save should not be called due to conflict
+    expect(mockSaveToRemote).not.toHaveBeenCalled();
   });
 
   it('should set hasUnresolvedConflict when conflict detected', async () => {
@@ -112,11 +143,8 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for initialization
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.runAllTimersAsync();
     });
-
-    // Import dialogStateRef to check the flag
-    const { dialogStateRef } = await import('../../src/lib/context/providers/dialog-state-ref.js');
     
     // Reset the flag
     dialogStateRef.hasUnresolvedConflict = false;
@@ -128,11 +156,14 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for debounced auto-sync
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
     });
 
-    // Check that hasUnresolvedConflict was set
+    // Should have set conflict flag
     expect(dialogStateRef.hasUnresolvedConflict).toBe(true);
+    
+    // Should have called the dialog
+    expect(mockOpenDialog).toHaveBeenCalled();
   });
 
   it('should clear hasUnresolvedConflict when Load Remote is chosen', async () => {
@@ -155,10 +186,8 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for initialization
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.runAllTimersAsync();
     });
-
-    const { dialogStateRef } = await import('../../src/lib/context/providers/dialog-state-ref.js');
 
     // Trigger a change to start auto-sync
     await act(async () => {
@@ -167,14 +196,14 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for debounced auto-sync
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
     });
 
     expect(dialogStateRef.hasUnresolvedConflict).toBe(true);
     
     // Simulate choosing Load Remote
     await act(async () => {
-      await capturedHandlers.onLoadRemote();
+      await capturedHandlers?.onLoadRemote();
     });
 
     // Flag should be cleared
@@ -201,10 +230,8 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for initialization
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await vi.runAllTimersAsync();
     });
-
-    const { dialogStateRef } = await import('../../src/lib/context/providers/dialog-state-ref.js');
 
     // Trigger a change to start auto-sync
     await act(async () => {
@@ -213,14 +240,14 @@ describe('Auto-sync Conflict Dialog', () => {
 
     // Wait for debounced auto-sync
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      vi.advanceTimersByTime(1100);
     });
 
     expect(dialogStateRef.hasUnresolvedConflict).toBe(true);
     
     // Simulate choosing Save Your Version
     await act(async () => {
-      await capturedHandlers.onSaveLocal();
+      await capturedHandlers?.onSaveLocal();
     });
 
     // Flag should be cleared
