@@ -361,6 +361,7 @@ export const compareBookmarksContent = (bm1: Bookmark, bm2: Bookmark): boolean =
 // Generic tree traversal and update
 export interface TraverseOptions {
   path: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   update?: (node: any, level: number) => any;
   updateMetadata?: boolean;
   timestamp?: string;
@@ -374,6 +375,7 @@ export const traverseAndUpdate = (root: Root, options: TraverseOptions): Root =>
     return root;
   }
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateNode = (node: any, currentPath: string[], level: number): any => {
     const isOnPath = level === 0 || (currentPath.length > 0 && path.slice(0, currentPath.length).every((p, i) => p === currentPath[i]));
     

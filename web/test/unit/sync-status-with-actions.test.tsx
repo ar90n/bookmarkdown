@@ -13,6 +13,9 @@ const mockBookmarkContext = {
   error: null,
   getGistInfo: () => ({ etag: 'abc123' }),
   syncWithRemote: mockSyncWithRemote,
+  isAutoSyncEnabled: () => true,
+  loadFromRemote: vi.fn(),
+  saveToRemote: vi.fn(),
 };
 
 const mockDialogContext = {

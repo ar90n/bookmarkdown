@@ -13,6 +13,7 @@ const fetchWithAuth = async (
   url: string, 
   accessToken: string,
   options: RequestInit = {}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
   const response = await fetch(url, {
     ...options,
@@ -94,6 +95,7 @@ export const createGistClient = (config: GistConfig): GistClient => {
 
     update: async (gistId: string, content: string, description?: string): Promise<Result<GistCreateResult>> => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const body: any = {
           files: {
             [filename]: {

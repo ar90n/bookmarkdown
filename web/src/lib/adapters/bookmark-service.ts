@@ -283,6 +283,7 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
   
   // Add onRemoteChangeDetected for testing purposes
   if (onRemoteChangeDetected) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).onRemoteChangeDetected = onRemoteChangeDetected;
   }
   

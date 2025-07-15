@@ -110,7 +110,6 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
       if (authContext.tokens?.accessToken) {
         // First ensure the bookmark context is ready
         const maxRetries = 3;
-        let retryCount = 0;
         
         // Wait for sync to be configured
         const syncReady = await waitForSyncConfiguration(bookmarkContext, maxRetries);
@@ -146,7 +145,6 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
       // Add retry logic here as well
       const loadWithRetry = async () => {
         const maxRetries = 3;
-        let retryCount = 0;
         
         // First, wait for sync to be configured
         const waitResult = await waitForSyncConfiguration(bookmarkContext, maxRetries);

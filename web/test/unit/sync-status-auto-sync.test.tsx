@@ -13,7 +13,9 @@ let mockBookmarkContext = {
   clearError: vi.fn(),
   syncWithRemote: vi.fn(),
   loadFromRemote: vi.fn(),
-  retryInitialization: vi.fn()
+  saveToRemote: vi.fn(),
+  retryInitialization: vi.fn(),
+  isAutoSyncEnabled: () => true
 };
 
 let mockDialogContext = {
@@ -39,7 +41,9 @@ describe('SyncStatusWithActions - Auto-sync UI', () => {
       clearError: vi.fn(),
       syncWithRemote: vi.fn(),
       loadFromRemote: vi.fn(),
-      retryInitialization: vi.fn()
+      saveToRemote: vi.fn(),
+      retryInitialization: vi.fn(),
+      isAutoSyncEnabled: () => true
     };
   });
   
