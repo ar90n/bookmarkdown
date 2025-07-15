@@ -596,6 +596,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, [isDirty, loadFromRemote, saveToRemote, doRetryInitialization]);
   
   // Conflict resolution - simplified for V2
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const syncWithConflictResolution = useCallback(async (resolutions: ConflictResolution[]) => {
     // In V2, we don't have automatic merge conflicts
     // This is kept for compatibility but always uses remote as truth
@@ -689,6 +690,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, [doRetryInitialization, loadFromRemote]);
   
   // Business logic delegates
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const canDragBookmark = useCallback((categoryName: string, bundleName: string, bookmarkId: string): boolean => {
     // Always allow dragging
     return true;

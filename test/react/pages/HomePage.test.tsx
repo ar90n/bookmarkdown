@@ -32,7 +32,10 @@ vi.mock('../../../web/src/contexts/AppProvider', () => ({
     initialize: vi.fn(),
   }),
   useBookmarkContext: () => ({
-    getStats: vi.fn(() => ({ totalBookmarks: 0, totalCategories: 0, totalBundles: 0 }))
+    getStats: vi.fn(() => ({ totalBookmarks: 0, totalCategories: 0, totalBundles: 0 })),
+    isAutoSyncEnabled: () => true,
+    loadFromRemote: vi.fn(),
+    saveToRemote: vi.fn()
   }),
   useDialogContext: () => ({
     openDialog: vi.fn(),

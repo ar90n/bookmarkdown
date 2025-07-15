@@ -203,6 +203,7 @@ export class MockGistRepository implements GistRepository {
     // In mock, order is always correct since we control it
     const commits = updatedGist.commits;
     let foundNew = false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let foundBefore = false;
     let orderCorrect = false;
     
