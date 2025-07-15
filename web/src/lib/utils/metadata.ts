@@ -273,8 +273,8 @@ export const clearLocalLastSynced = (gistId: string): void => {
 
 // Generic function to compare arrays by sorting them by name and comparing each element
 export const compareArraysByName = <T>(
-  arr1: T[],
-  arr2: T[],
+  arr1: readonly T[],
+  arr2: readonly T[],
   getName: (item: T) => string,
   compareItem: (a: T, b: T) => boolean
 ): boolean => {
