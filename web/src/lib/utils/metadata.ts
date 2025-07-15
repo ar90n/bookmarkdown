@@ -335,7 +335,7 @@ export const compareRootsContent = (root1: Root, root2: Root): boolean => {
 };
 
 // Compare two categories for content equality (excluding metadata)
-const compareCategoriesContent = (cat1: Category, cat2: Category): boolean => {
+export const compareCategoriesContent = (cat1: Category, cat2: Category): boolean => {
   if (cat1.name !== cat2.name) {
     return false;
   }
@@ -357,7 +357,7 @@ const compareCategoriesContent = (cat1: Category, cat2: Category): boolean => {
 };
 
 // Compare two bundles for content equality (excluding metadata)
-const compareBundlesContent = (bundle1: Bundle, bundle2: Bundle): boolean => {
+export const compareBundlesContent = (bundle1: Bundle, bundle2: Bundle): boolean => {
   if (bundle1.name !== bundle2.name) {
     return false;
   }
@@ -380,7 +380,7 @@ const compareBundlesContent = (bundle1: Bundle, bundle2: Bundle): boolean => {
 
 // Compare two bookmarks for content equality (excluding metadata and ID)
 // Note: ID is for UI optimization only (React key), not for business logic
-const compareBookmarksContent = (bm1: Bookmark, bm2: Bookmark): boolean => {
+export const compareBookmarksContent = (bm1: Bookmark, bm2: Bookmark): boolean => {
   const titleMatch = bm1.title === bm2.title;
   const urlMatch = bm1.url === bm2.url;
   const notesMatch = bm1.notes === bm2.notes;

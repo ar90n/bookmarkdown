@@ -146,4 +146,138 @@ describe('Metadata Comparison Functions', () => {
       expect(compareRootsContent(root1, root2)).toBe(true);
     });
   });
+
+  describe('compareCategoriesContent', () => {
+    it('should return true for identical categories', () => {
+      const category1: Category = {
+        name: 'Work',
+        bundles: [
+          {
+            name: 'Project A',
+            bookmarks: [
+              { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+            ]
+          }
+        ]
+      };
+      
+      const category2: Category = {
+        name: 'Work',
+        bundles: [
+          {
+            name: 'Project A',
+            bookmarks: [
+              { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+            ]
+          }
+        ]
+      };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(true);
+    });
+
+    it('should return false for different names', () => {
+      const category1: Category = { name: 'Work', bundles: [] };
+      const category2: Category = { name: 'Personal', bundles: [] };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(false);
+    });
+
+    it('should return false for different number of bundles', () => {
+      const category1: Category = {
+        name: 'Work',
+        bundles: [
+          { name: 'Project A', bookmarks: [] },
+          { name: 'Project B', bookmarks: [] }
+        ]
+      };
+      
+      const category2: Category = {
+        name: 'Work',
+        bundles: [
+          { name: 'Project A', bookmarks: [] }
+        ]
+      };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(false);
+    });
+
+    it('should handle bundles in different order', () => {
+      const category1: Category = {
+        name: 'Work',
+        bundles: [
+          { name: 'Project B', bookmarks: [] },
+          { name: 'Project A', bookmarks: [] }
+        ]
+      };
+      
+      const category2: Category = {
+        name: 'Work',
+        bundles: [
+          { name: 'Project A', bookmarks: [] },
+          { name: 'Project B', bookmarks: [] }
+        ]
+      };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(true);
+    });
+
+    it('should return false when bundle content differs', () => {
+      const category1: Category = {
+        name: 'Work',
+        bundles: [
+          {
+            name: 'Project A',
+            bookmarks: [
+              { id: '1', title: 'Google', url: 'https://google.com', order: 0 }
+            ]
+          }
+        ]
+      };
+      
+      const category2: Category = {
+        name: 'Work',
+        bundles: [
+          {
+            name: 'Project A',
+            bookmarks: [
+              { id: '2', title: 'GitHub', url: 'https://github.com', order: 0 }
+            ]
+          }
+        ]
+      };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(false);
+    });
+
+    it('should handle empty bundles arrays', () => {
+      const category1: Category = { name: 'Work', bundles: [] };
+      const category2: Category = { name: 'Work', bundles: [] };
+      
+      expect(compareCategoriesContent(category1, category2)).toBe(true);
+    });
+
+    it('should handle categories with metadata fields', () => {
+      const category1: Category = {
+        name: 'Work',
+        bundles: [],
+        metadata: {
+          lastModified: '2024-01-01',
+          lastSynced: '2024-01-01'
+        }
+      };
+      
+      const category2: Category = {
+        name: 'Work',
+        bundles: [],
+        metadata: {
+          lastModified: '2024-01-02',
+          lastSynced: '2024-01-02'
+        }
+      };
+      
+      // compareCategoriesContent should only compare content, not metadata
+      expect(compareCategoriesContent(category1, category2)).toBe(true);
+    });
+  });
 });
