@@ -762,6 +762,11 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       return;
     }
     
+    // Skip auto-sync if there's an unresolved conflict
+    if (dialogStateRef.hasUnresolvedConflict) {
+      return;
+    }
+    
     try {
       // Check for remote changes
       const hasChangesResult = await service.current.hasRemoteChanges();
