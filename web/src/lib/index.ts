@@ -54,9 +54,6 @@ export * from './context/index.js';
 // Utilities - export specific items to avoid conflicts with core
 export { 
   generateId,
-  isValidUrl,
-  sanitizeFilename,
-  deepClone,
   // Metadata utilities (excluding markBookmarkAsDeleted which exists in core)
   EPOCH_TIMESTAMP,
   getCurrentTimestamp,

@@ -13,9 +13,6 @@ export * from './parsers/index.js';
 // Utilities - export specific items to avoid conflicts
 export { 
   generateId,
-  isValidUrl,
-  sanitizeFilename,
-  deepClone,
   // Metadata utilities (excluding markBookmarkAsDeleted to avoid conflict)
   EPOCH_TIMESTAMP,
   getCurrentTimestamp,
