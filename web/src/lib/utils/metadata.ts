@@ -64,77 +64,39 @@ export const getLastSynced = <T extends HasMetadata>(entity: T): string => {
   return entity.metadata?.lastSynced || '';
 };
 
-// Initialize metadata for Root
-export const initializeRootMetadata = (root: Root): Root => ({
-  ...root,
-  metadata: {
-    lastModified: getCurrentTimestamp(),
-    // lastSynced is not initialized here - it's managed by localStorage
-  }
-});
+// Initialize metadata for Root (wrapper for generic function)
+export const initializeRootMetadata = (root: Root): Root => initializeMetadata(root);
 
-// Update Root metadata
+// Update Root metadata (wrapper for generic function)
 export const updateRootMetadata = (
   root: Root, 
   lastModified?: string, 
   lastSynced?: string
-): Root => {
-  const rootWithMeta = ensureRootMetadata(root);
-  return {
-    ...rootWithMeta,
-    metadata: {
-      lastModified: lastModified || rootWithMeta.metadata?.lastModified || getCurrentTimestamp(),
-      // lastSynced should not be stored in Root metadata - it's managed by localStorage
-      ...(lastSynced && { lastSynced })
-    }
-  };
-};
+): Root => updateMetadata(root, lastModified, lastSynced);
 
-// Initialize metadata for Category
-export const initializeCategoryMetadata = (category: Category): Category => ({
-  ...category,
-  metadata: {
-    lastModified: getCurrentTimestamp(),
-    lastSynced: getCurrentTimestamp(),
-  }
-});
+// Initialize metadata for Category (wrapper for generic function)
+export const initializeCategoryMetadata = (category: Category): Category => initializeMetadata(category);
 
-// Update Category metadata
+// Update Category metadata (wrapper for generic function)
 export const updateCategoryMetadata = (
   category: Category, 
   lastModified?: string,
   lastSynced?: string
-): Category => ({
-  ...category,
-  metadata: {
-    ...category.metadata, // Preserve existing metadata including isDeleted flag
-    lastModified: lastModified || getCurrentTimestamp(),
-    lastSynced: lastSynced || category.metadata?.lastSynced || EPOCH_TIMESTAMP,
-  }
-});
+): Category => updateMetadata(category, lastModified, lastSynced);
 
 // Compare timestamps
 export const isNewerThan = (timestamp1: string, timestamp2: string): boolean => {
   return new Date(timestamp1) > new Date(timestamp2);
 };
 
-// Check if Root has metadata
-export const hasRootMetadata = (root: Root): boolean => {
-  return !!root.metadata;
-};
+// Check if Root has metadata (wrapper for generic function)
+export const hasRootMetadata = (root: Root): boolean => hasMetadata(root);
 
-// Check if Category has metadata
-export const hasCategoryMetadata = (category: Category): boolean => {
-  return !!category.metadata;
-};
+// Check if Category has metadata (wrapper for generic function)
+export const hasCategoryMetadata = (category: Category): boolean => hasMetadata(category);
 
-// Ensure Root has metadata (create if missing)
-export const ensureRootMetadata = (root: Root): Root => {
-  if (hasRootMetadata(root)) {
-    return root;
-  }
-  return initializeRootMetadata(root);
-};
+// Ensure Root has metadata (wrapper for generic function)
+export const ensureRootMetadata = (root: Root): Root => ensureMetadata(root);
 
 // Ensure Root has metadata without updating timestamp (for sync operations)
 export const ensureRootMetadataWithoutTimestamp = (root: Root): Root => {
@@ -151,125 +113,66 @@ export const ensureRootMetadataWithoutTimestamp = (root: Root): Root => {
   };
 };
 
-// Ensure Category has metadata (create if missing)
-export const ensureCategoryMetadata = (category: Category): Category => {
-  if (hasCategoryMetadata(category)) {
-    return category;
-  }
-  return initializeCategoryMetadata(category);
-};
+// Ensure Category has metadata (wrapper for generic function)
+export const ensureCategoryMetadata = (category: Category): Category => ensureMetadata(category);
 
-// Get last modified timestamp from Root
-export const getRootLastModified = (root: Root): string => {
-  return root.metadata?.lastModified || EPOCH_TIMESTAMP;
-};
+// Get last modified timestamp from Root (wrapper for generic function)
+export const getRootLastModified = (root: Root): string => getLastModified(root) || EPOCH_TIMESTAMP;
 
-// Get last sync timestamp from Root (LOCAL ONLY - should use localStorage instead)
-export const getRootLastSynced = (root: Root): string => {
-  return root.metadata?.lastSynced || EPOCH_TIMESTAMP;
-};
+// Get last sync timestamp from Root (wrapper for generic function)
+export const getRootLastSynced = (root: Root): string => getLastSynced(root) || EPOCH_TIMESTAMP;
 
-// Get last modified timestamp from Category
-export const getCategoryLastModified = (category: Category): string => {
-  return category.metadata?.lastModified || EPOCH_TIMESTAMP;
-};
+// Get last modified timestamp from Category (wrapper for generic function)
+export const getCategoryLastModified = (category: Category): string => getLastModified(category) || EPOCH_TIMESTAMP;
 
 // Get last synced timestamp from Category
 export const getCategoryLastSynced = (category: Category): string => {
   return category.metadata?.lastSynced || EPOCH_TIMESTAMP;
 };
 
-// Initialize metadata for Bundle
-export const initializeBundleMetadata = (bundle: Bundle): Bundle => ({
-  ...bundle,
-  metadata: {
-    lastModified: getCurrentTimestamp(),
-    lastSynced: getCurrentTimestamp(),
-  }
-});
+// Initialize metadata for Bundle (wrapper for generic function)
+export const initializeBundleMetadata = (bundle: Bundle): Bundle => initializeMetadata(bundle);
 
-// Update Bundle metadata
+// Update Bundle metadata (wrapper for generic function)
 export const updateBundleMetadata = (
   bundle: Bundle, 
   lastModified?: string,
   lastSynced?: string
-): Bundle => ({
-  ...bundle,
-  metadata: {
-    ...bundle.metadata, // Preserve existing metadata including isDeleted flag
-    lastModified: lastModified || getCurrentTimestamp(),
-    lastSynced: lastSynced || bundle.metadata?.lastSynced || EPOCH_TIMESTAMP,
-  }
-});
+): Bundle => updateMetadata(bundle, lastModified, lastSynced);
 
-// Initialize metadata for Bookmark
-export const initializeBookmarkMetadata = (bookmark: Bookmark): Bookmark => ({
-  ...bookmark,
-  metadata: {
-    lastModified: getCurrentTimestamp(),
-    lastSynced: getCurrentTimestamp(),
-  }
-});
+// Initialize metadata for Bookmark (wrapper for generic function)
+export const initializeBookmarkMetadata = (bookmark: Bookmark): Bookmark => initializeMetadata(bookmark);
 
-// Update Bookmark metadata
+// Update Bookmark metadata (wrapper for generic function)
 export const updateBookmarkMetadata = (
   bookmark: Bookmark, 
   lastModified?: string,
   lastSynced?: string
-): Bookmark => ({
-  ...bookmark,
-  metadata: {
-    ...bookmark.metadata,
-    lastModified: lastModified || getCurrentTimestamp(),
-    lastSynced: lastSynced || bookmark.metadata?.lastSynced || EPOCH_TIMESTAMP,
-  }
-});
+): Bookmark => updateMetadata(bookmark, lastModified, lastSynced);
 
-// Check if Bundle has metadata
-export const hasBundleMetadata = (bundle: Bundle): boolean => {
-  return !!bundle.metadata;
-};
+// Check if Bundle has metadata (wrapper for generic function)
+export const hasBundleMetadata = (bundle: Bundle): boolean => hasMetadata(bundle);
 
-// Check if Bookmark has metadata
-export const hasBookmarkMetadata = (bookmark: Bookmark): boolean => {
-  return !!bookmark.metadata;
-};
+// Check if Bookmark has metadata (wrapper for generic function)
+export const hasBookmarkMetadata = (bookmark: Bookmark): boolean => hasMetadata(bookmark);
 
-// Ensure Bundle has metadata (create if missing)
-export const ensureBundleMetadata = (bundle: Bundle): Bundle => {
-  if (hasBundleMetadata(bundle)) {
-    return bundle;
-  }
-  return initializeBundleMetadata(bundle);
-};
+// Ensure Bundle has metadata (wrapper for generic function)
+export const ensureBundleMetadata = (bundle: Bundle): Bundle => ensureMetadata(bundle);
 
-// Ensure Bookmark has metadata (create if missing)
-export const ensureBookmarkMetadata = (bookmark: Bookmark): Bookmark => {
-  if (hasBookmarkMetadata(bookmark)) {
-    return bookmark;
-  }
-  return initializeBookmarkMetadata(bookmark);
-};
+// Ensure Bookmark has metadata (wrapper for generic function)
+export const ensureBookmarkMetadata = (bookmark: Bookmark): Bookmark => ensureMetadata(bookmark);
 
-// Get last modified timestamp from Bundle
-export const getBundleLastModified = (bundle: Bundle): string => {
-  return bundle.metadata?.lastModified || EPOCH_TIMESTAMP;
-};
+// Get last modified timestamp from Bundle (wrapper for generic function)
+export const getBundleLastModified = (bundle: Bundle): string => getLastModified(bundle) || EPOCH_TIMESTAMP;
 
-// Get last synced timestamp from Bundle
-export const getBundleLastSynced = (bundle: Bundle): string => {
-  return bundle.metadata?.lastSynced || EPOCH_TIMESTAMP;
-};
+// Get last synced timestamp from Bundle (wrapper for generic function)
+export const getBundleLastSynced = (bundle: Bundle): string => getLastSynced(bundle) || EPOCH_TIMESTAMP;
 
-// Get last modified timestamp from Bookmark
-export const getBookmarkLastModified = (bookmark: Bookmark): string => {
-  return bookmark.metadata?.lastModified || EPOCH_TIMESTAMP;
-};
+// Get last modified timestamp from Bookmark (wrapper for generic function)
+export const getBookmarkLastModified = (bookmark: Bookmark): string => getLastModified(bookmark) || EPOCH_TIMESTAMP;
 
-// Get last synced timestamp from Bookmark
-export const getBookmarkLastSynced = (bookmark: Bookmark): string => {
-  return bookmark.metadata?.lastSynced || EPOCH_TIMESTAMP;
-};
+// Get last synced timestamp from Bookmark (wrapper for generic function)
+export const getBookmarkLastSynced = (bookmark: Bookmark): string => getLastSynced(bookmark) || EPOCH_TIMESTAMP;
 
 // Mark bookmark as deleted
 export const markBookmarkAsDeleted = (bookmark: Bookmark): Bookmark => ({
