@@ -6,7 +6,7 @@ import { createRoot } from '../../core/index.js';
 import { GistSyncShell } from '../../shell/gist-sync.js';
 import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
-import { useDebounce } from '../../../hooks/useDebounce.js';
+import { useDebounce } from '../../hooks/useDebounce.js';
 import { dialogStateRef } from './dialog-state-ref.js';
 
 interface BookmarkContextV2Config {
