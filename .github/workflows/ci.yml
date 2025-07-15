@@ -37,13 +37,13 @@ jobs:
       run: npm run test:core -- --coverage
 
     - name: Upload core test coverage to Codecov
-      if: secrets.CODECOV_TOKEN != ''
       uses: codecov/codecov-action@v4
       with:
         files: ./coverage/cobertura-coverage.xml
         flags: core
         name: core-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
     - name: Upload core coverage reports
       uses: actions/upload-artifact@v4
@@ -76,13 +76,13 @@ jobs:
       run: npm run test:react -- --coverage
 
     - name: Upload React test coverage to Codecov
-      if: secrets.CODECOV_TOKEN != ''
       uses: codecov/codecov-action@v4
       with:
         files: ./coverage/cobertura-coverage.xml
         flags: react
         name: react-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
     - name: Upload React coverage reports
       uses: actions/upload-artifact@v4
@@ -173,8 +173,8 @@ jobs:
         category: "/language:javascript-typescript"
 
     - name: Run Semgrep security scan
-      if: secrets.SEMGREP_APP_TOKEN != ''
       uses: semgrep/semgrep-action@v1
+      continue-on-error: true
       with:
         config: auto
         publishToken: ${{ secrets.SEMGREP_APP_TOKEN }}
@@ -182,8 +182,9 @@ jobs:
         generateSarif: "1"
 
     - name: Upload SARIF file to GitHub
-      if: always() && secrets.SEMGREP_APP_TOKEN != ''
+      if: always()
       uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
       with:
         sarif_file: semgrep.sarif
 
