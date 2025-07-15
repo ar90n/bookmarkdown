@@ -203,8 +203,6 @@ export class MockGistRepository implements GistRepository {
     // In mock, order is always correct since we control it
     const commits = updatedGist.commits;
     let foundNew = false;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    let foundBefore = false;
     let orderCorrect = false;
     
     // Commits are ordered newest first
@@ -213,7 +211,6 @@ export class MockGistRepository implements GistRepository {
         foundNew = true;
       }
       if (commit.version === beforeCommitHash) {
-        foundBefore = true;
         if (foundNew) {
           // Found new commit before old commit = correct order
           orderCorrect = true;
