@@ -1,10 +1,68 @@
 import { Root, Category, Bundle, Bookmark } from '../types/index.js';
 
+// Interface for entities that can have metadata
+export interface HasMetadata {
+  metadata?: {
+    lastModified?: string;
+    lastSynced?: string;
+    isDeleted?: boolean;
+  };
+}
+
 // Unix epoch timestamp for initial state
 export const EPOCH_TIMESTAMP = '1970-01-01T00:00:00.000Z';
 
 // Get current ISO timestamp
 export const getCurrentTimestamp = (): string => new Date().toISOString();
+
+// Generic metadata operations
+export const initializeMetadata = <T extends HasMetadata>(entity: T): T => {
+  const isRoot = 'version' in entity && 'categories' in entity;
+  
+  return {
+    ...entity,
+    metadata: {
+      lastModified: getCurrentTimestamp(),
+      // Root doesn't have lastSynced in metadata (managed by localStorage)
+      ...(isRoot ? {} : { lastSynced: getCurrentTimestamp() })
+    }
+  } as T;
+};
+
+export const updateMetadata = <T extends HasMetadata>(
+  entity: T,
+  lastModified?: string,
+  lastSynced?: string
+): T => {
+  const withMetadata = ensureMetadata(entity);
+  return {
+    ...withMetadata,
+    metadata: {
+      ...withMetadata.metadata,
+      lastModified: lastModified || withMetadata.metadata?.lastModified || getCurrentTimestamp(),
+      ...(lastSynced !== undefined && { lastSynced })
+    }
+  } as T;
+};
+
+export const hasMetadata = <T extends HasMetadata>(entity: T): boolean => {
+  return !!entity.metadata;
+};
+
+export const ensureMetadata = <T extends HasMetadata>(entity: T): T => {
+  if (hasMetadata(entity)) {
+    return entity;
+  }
+  return initializeMetadata(entity);
+};
+
+export const getLastModified = <T extends HasMetadata>(entity: T): string => {
+  return entity.metadata?.lastModified || '';
+};
+
+export const getLastSynced = <T extends HasMetadata>(entity: T): string => {
+  return entity.metadata?.lastSynced || '';
+};
 
 // Initialize metadata for Root
 export const initializeRootMetadata = (root: Root): Root => ({
