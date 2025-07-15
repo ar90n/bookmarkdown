@@ -358,50 +358,104 @@ export const compareBookmarksContent = (bm1: Bookmark, bm2: Bookmark): boolean =
   return allMatch;
 };
 
-// Propagate timestamp changes up the hierarchy
+// Generic tree traversal and update
+export interface TraverseOptions {
+  path: string[];
+  update?: (node: any, level: number) => any;
+  updateMetadata?: boolean;
+  timestamp?: string;
+}
+
+export const traverseAndUpdate = (root: Root, options: TraverseOptions): Root => {
+  const { path, update, updateMetadata, timestamp } = options;
+  const modifiedTime = timestamp || getCurrentTimestamp();
+  
+  if (path.length === 0) {
+    return root;
+  }
+  
+  const updateNode = (node: any, currentPath: string[], level: number): any => {
+    const isOnPath = level === 0 || (currentPath.length > 0 && path.slice(0, currentPath.length).every((p, i) => p === currentPath[i]));
+    
+    // Apply custom update if provided and we're at the target
+    const shouldApplyUpdate = update && currentPath.length === path.length;
+    let updatedNode = shouldApplyUpdate ? update(node, level) : node;
+    
+    // Apply metadata update if on the path and updateMetadata is true
+    if (updateMetadata && isOnPath) {
+      updatedNode = {
+        ...updatedNode,
+        metadata: {
+          ...updatedNode.metadata,
+          lastModified: modifiedTime,
+        }
+      };
+    }
+    
+    // Continue traversing if we're on the path
+    if (level === 0) {
+      // Root level
+      let foundMatch = false;
+      const updatedCategories = updatedNode.categories.map((category: Category) => {
+        if (category.name === path[0]) {
+          foundMatch = true;
+          return updateNode(category, [path[0]], 1);
+        }
+        return category;
+      });
+      
+      if (!foundMatch) {
+        return root; // Path not found, return original
+      }
+      
+      return {
+        ...updatedNode,
+        categories: updatedCategories
+      };
+    } else if (level === 1 && path.length > 1) {
+      // Category level
+      let foundMatch = false;
+      const updatedBundles = updatedNode.bundles.map((bundle: Bundle) => {
+        if (bundle.name === path[1]) {
+          foundMatch = true;
+          return updateNode(bundle, path.slice(0, 2), 2);
+        }
+        return bundle;
+      });
+      
+      if (!foundMatch && path.length > 1) {
+        return node; // Path not found, return original node
+      }
+      
+      return {
+        ...updatedNode,
+        bundles: updatedBundles
+      };
+    }
+    
+    return updatedNode;
+  };
+  
+  return updateNode(root, [], 0);
+};
+
+// Propagate timestamp changes up the hierarchy (using generic traversal)
 export const propagateTimestampToParents = (
   root: Root,
   categoryName: string,
   bundleName?: string,
   timestamp?: string
 ): Root => {
-  const modifiedTime = timestamp || getCurrentTimestamp();
-  
-  return {
-    ...root,
-    metadata: {
-      ...root.metadata,
-      lastModified: modifiedTime,
-    },
-    categories: root.categories.map(category => {
-      if (category.name === categoryName) {
-        return {
-          ...category,
-          metadata: {
-            ...category.metadata!,
-            lastModified: modifiedTime,
-          },
-          bundles: bundleName ? category.bundles.map(bundle => {
-            if (bundle.name === bundleName) {
-              return {
-                ...bundle,
-                metadata: {
-                  ...bundle.metadata!,
-                  lastModified: modifiedTime,
-                },
-              };
-            }
-            return bundle;
-          }) : category.bundles,
-        };
-      }
-      return category;
-    }),
-  };
+  const path = bundleName ? [categoryName, bundleName] : [categoryName];
+  return traverseAndUpdate(root, {
+    path,
+    updateMetadata: true,
+    timestamp
+  });
 };
 
-// Update bookmark and propagate timestamp to parents
-export const updateBookmarkWithPropagation = (
+// Update bookmark in tree
+export const updateBookmarkInTree = (
   root: Root,
   categoryName: string,
   bundleName: string,
@@ -410,45 +464,52 @@ export const updateBookmarkWithPropagation = (
 ): Root => {
   const timestamp = getCurrentTimestamp();
   
-  const updatedRoot = {
-    ...root,
-    categories: root.categories.map(category => {
-      if (category.name === categoryName) {
+  // First check if bookmark exists
+  let bookmarkExists = false;
+  root.categories.forEach(cat => {
+    if (cat.name === categoryName) {
+      cat.bundles.forEach(bundle => {
+        if (bundle.name === bundleName) {
+          bookmarkExists = bundle.bookmarks.some(b => b.id === bookmarkId);
+        }
+      });
+    }
+  });
+  
+  if (!bookmarkExists) {
+    return root;
+  }
+  
+  return traverseAndUpdate(root, {
+    path: [categoryName, bundleName],
+    update: (node, level) => {
+      if (level === 2 && node.name === bundleName) {
         return {
-          ...category,
-          bundles: category.bundles.map(bundle => {
-            if (bundle.name === bundleName) {
+          ...node,
+          bookmarks: node.bookmarks.map((bookmark: Bookmark) => {
+            if (bookmark.id === bookmarkId) {
               return {
-                ...bundle,
-                bookmarks: bundle.bookmarks.map(bookmark => {
-                  if (bookmark.id === bookmarkId) {
-                    return {
-                      ...bookmark,
-                      ...updates,
-                      metadata: {
-                        ...bookmark.metadata,
-                        lastModified: timestamp,
-                      },
-                    };
-                  }
-                  return bookmark;
-                }),
+                ...bookmark,
+                ...updates,
+                metadata: {
+                  ...bookmark.metadata,
+                  lastModified: timestamp,
+                },
               };
             }
-            return bundle;
-          }),
+            return bookmark;
+          })
         };
       }
-      return category;
-    }),
-  };
-  
-  // Propagate timestamp to parents
-  return propagateTimestampToParents(updatedRoot, categoryName, bundleName, timestamp);
+      return node;
+    },
+    updateMetadata: true,
+    timestamp
+  });
 };
 
-// Add bookmark and propagate timestamp to parents
-export const addBookmarkWithPropagation = (
+// Add bookmark to tree
+export const addBookmarkToTree = (
   root: Root,
   categoryName: string,
   bundleName: string,
@@ -457,33 +518,24 @@ export const addBookmarkWithPropagation = (
   const timestamp = getCurrentTimestamp();
   const bookmarkWithMeta = ensureBookmarkMetadata(bookmark);
   
-  const updatedRoot = {
-    ...root,
-    categories: root.categories.map(category => {
-      if (category.name === categoryName) {
+  return traverseAndUpdate(root, {
+    path: [categoryName, bundleName],
+    update: (node, level) => {
+      if (level === 2 && node.name === bundleName) {
         return {
-          ...category,
-          bundles: category.bundles.map(bundle => {
-            if (bundle.name === bundleName) {
-              return {
-                ...bundle,
-                bookmarks: [...bundle.bookmarks, bookmarkWithMeta],
-              };
-            }
-            return bundle;
-          }),
+          ...node,
+          bookmarks: [...node.bookmarks, bookmarkWithMeta]
         };
       }
-      return category;
-    }),
-  };
-  
-  // Propagate timestamp to parents
-  return propagateTimestampToParents(updatedRoot, categoryName, bundleName, timestamp);
+      return node;
+    },
+    updateMetadata: true,
+    timestamp
+  });
 };
 
-// Remove bookmark and propagate timestamp to parents
-export const removeBookmarkWithPropagation = (
+// Remove bookmark from tree
+export const removeBookmarkFromTree = (
   root: Root,
   categoryName: string,
   bundleName: string,
@@ -491,27 +543,43 @@ export const removeBookmarkWithPropagation = (
 ): Root => {
   const timestamp = getCurrentTimestamp();
   
-  const updatedRoot = {
-    ...root,
-    categories: root.categories.map(category => {
-      if (category.name === categoryName) {
+  return traverseAndUpdate(root, {
+    path: [categoryName, bundleName],
+    update: (node, level) => {
+      if (level === 2 && node.name === bundleName) {
         return {
-          ...category,
-          bundles: category.bundles.map(bundle => {
-            if (bundle.name === bundleName) {
-              return {
-                ...bundle,
-                bookmarks: bundle.bookmarks.filter(bookmark => bookmark.id !== bookmarkId),
-              };
-            }
-            return bundle;
-          }),
+          ...node,
+          bookmarks: node.bookmarks.filter((bookmark: Bookmark) => bookmark.id !== bookmarkId)
         };
       }
-      return category;
-    }),
-  };
-  
-  // Propagate timestamp to parents
-  return propagateTimestampToParents(updatedRoot, categoryName, bundleName, timestamp);
+      return node;
+    },
+    updateMetadata: true,
+    timestamp
+  });
 };
+
+// Update bookmark and propagate timestamp to parents (wrapper for new implementation)
+export const updateBookmarkWithPropagation = (
+  root: Root,
+  categoryName: string,
+  bundleName: string,
+  bookmarkId: string,
+  updates: Partial<Bookmark>
+): Root => updateBookmarkInTree(root, categoryName, bundleName, bookmarkId, updates);
+
+// Add bookmark and propagate timestamp to parents (wrapper for new implementation)
+export const addBookmarkWithPropagation = (
+  root: Root,
+  categoryName: string,
+  bundleName: string,
+  bookmark: Bookmark
+): Root => addBookmarkToTree(root, categoryName, bundleName, bookmark);
+
+// Remove bookmark and propagate timestamp to parents (wrapper for new implementation)
+export const removeBookmarkWithPropagation = (
+  root: Root,
+  categoryName: string,
+  bundleName: string,
+  bookmarkId: string
+): Root => removeBookmarkFromTree(root, categoryName, bundleName, bookmarkId);
