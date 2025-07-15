@@ -343,21 +343,13 @@ export const compareRootsContent = (root1: Root, root2: Root): boolean => {
     return false;
   }
   
-  // Compare number of categories
-  if (root1.categories.length !== root2.categories.length) {
-    return false;
-  }
-  
-  // Sort categories by name for consistent comparison
-  const cats1 = [...root1.categories].sort((a, b) => a.name.localeCompare(b.name));
-  const cats2 = [...root2.categories].sort((a, b) => a.name.localeCompare(b.name));
-  
-  for (let i = 0; i < cats1.length; i++) {
-    if (!compareCategoriesContent(cats1[i], cats2[i])) {
-      return false;
-    }
-  }
-  return true;
+  // Compare categories using generic function
+  return compareArraysByName(
+    root1.categories,
+    root2.categories,
+    (cat) => cat.name,
+    compareCategoriesContent
+  );
 };
 
 // Compare two categories for content equality (excluding metadata)
