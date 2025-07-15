@@ -373,20 +373,13 @@ export const compareBundlesContent = (bundle1: Bundle, bundle2: Bundle): boolean
     return false;
   }
   
-  if (bundle1.bookmarks.length !== bundle2.bookmarks.length) {
-    return false;
-  }
-  
-  // Sort bookmarks by id for consistent comparison
-  const bookmarks1 = [...bundle1.bookmarks].sort((a, b) => a.id.localeCompare(b.id));
-  const bookmarks2 = [...bundle2.bookmarks].sort((a, b) => a.id.localeCompare(b.id));
-  
-  for (let i = 0; i < bookmarks1.length; i++) {
-    if (!compareBookmarksContent(bookmarks1[i], bookmarks2[i])) {
-      return false;
-    }
-  }
-  return true;
+  // Compare bookmarks using generic function
+  return compareArraysByName(
+    bundle1.bookmarks,
+    bundle2.bookmarks,
+    (bookmark) => bookmark.id,
+    compareBookmarksContent
+  );
 };
 
 // Compare two bookmarks for content equality (excluding metadata and ID)
