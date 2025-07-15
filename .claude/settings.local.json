@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm test:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "mcp__playwright__browser_install",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run type-check:*)"
+    ],
+    "deny": []
+  }
+}
