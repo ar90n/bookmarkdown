@@ -4,9 +4,11 @@ import {
   CloudArrowUpIcon, 
   CheckCircleIcon, 
   ExclamationTriangleIcon, 
-  ArrowPathIcon
+  ArrowPathIcon,
+  PauseCircleIcon
 } from '@heroicons/react/24/outline';
 import { formatRelativeTime } from '../../lib/utils/time';
+import { dialogStateRef } from '../../lib/context/providers/dialog-state-ref';
 
 interface SyncStatusWithActionsProps {
   className?: string;
@@ -19,13 +21,32 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
 }) => {
   const bookmarkContext = useBookmarkContext();
   const dialog = useDialogContext();
-  const { isDirty, isLoading, isSyncing, lastSyncAt, error, getGistInfo, syncWithRemote } = bookmarkContext;
+  const { isDirty, isLoading, isSyncing, lastSyncAt, error, getGistInfo, syncWithRemote, isAutoSyncEnabled, loadFromRemote, saveToRemote } = bookmarkContext;
   const [actionLoading, setActionLoading] = useState<'sync' | null>(null);
+  
+  // Check if auto-sync is paused due to conflict
+  const hasUnresolvedConflict = dialogStateRef.hasUnresolvedConflict;
+  const isAutoSyncPaused = hasUnresolvedConflict && isAutoSyncEnabled();
   
   // Get etag info if available (V2 only)
   const gistInfo = getGistInfo?.() || {};
   
   const handleSync = async () => {
+    // If there's an unresolved conflict, show the dialog immediately
+    if (hasUnresolvedConflict) {
+      dialog.openSyncConflictDialog({
+        onLoadRemote: async () => {
+          await bookmarkContext.loadFromRemote();
+          dialogStateRef.hasUnresolvedConflict = false;
+        },
+        onSaveLocal: async () => {
+          await bookmarkContext.saveToRemote();
+          dialogStateRef.hasUnresolvedConflict = false;
+        }
+      });
+      return;
+    }
+    
     setActionLoading('sync');
     try {
       await syncWithRemote({
@@ -48,14 +69,19 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
   } else if (error) {
     statusColor = 'text-red-600';
     Icon = ExclamationTriangleIcon;
+  } else if (isAutoSyncPaused) {
+    statusColor = 'text-yellow-600';
+    Icon = PauseCircleIcon;
   } else if (!lastSyncAt) {
     statusColor = 'text-gray-400';
     Icon = CloudArrowUpIcon;
   } else if (isDirty) {
-    statusColor = 'text-yellow-600';
+    // When auto-sync is OFF, show orange color for pending changes
+    statusColor = !isAutoSyncEnabled() ? 'text-orange-600' : 'text-yellow-600';
     Icon = CloudArrowUpIcon;
   } else {
-    statusColor = 'text-green-600';
+    // When auto-sync is OFF, show gray color for synced state
+    statusColor = !isAutoSyncEnabled() ? 'text-gray-600' : 'text-green-600';
     Icon = CheckCircleIcon;
   }
   
@@ -71,9 +97,18 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
         <div className="text-sm">
           {error && <span className="text-red-600 font-medium">Sync error</span>}
           {!error && isSyncing && <span className="text-blue-600 font-medium">Auto-syncing...</span>}
-          {!error && !isSyncing && isDirty && <span className="text-yellow-600 font-medium">Changes pending</span>}
-          {!error && !isSyncing && !isDirty && lastSyncAt && <span className="text-green-600 font-medium">Synced</span>}
-          {!error && !isSyncing && !lastSyncAt && <span className="text-gray-500">Not synced</span>}
+          {!error && !isSyncing && isAutoSyncPaused && <span className="text-yellow-600 font-medium">Auto-sync paused</span>}
+          {!error && !isSyncing && !isAutoSyncPaused && isDirty && (
+            <span className={!isAutoSyncEnabled() ? "text-orange-600 font-medium" : "text-yellow-600 font-medium"}>
+              Changes pending
+            </span>
+          )}
+          {!error && !isSyncing && !isAutoSyncPaused && !isDirty && lastSyncAt && (
+            <span className={!isAutoSyncEnabled() ? "text-gray-600 font-medium" : "text-green-600 font-medium"}>
+              Synced
+            </span>
+          )}
+          {!error && !isSyncing && !isAutoSyncPaused && !lastSyncAt && <span className="text-gray-500">Not synced</span>}
         </div>
       </div>
       
@@ -97,6 +132,19 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
           </button>
         </div>
       )}
+      
+      {/* Auto-sync status */}
+      <div className="text-xs">
+        {isAutoSyncPaused && (
+          <span className="text-yellow-600 font-medium">Auto-sync: Paused</span>
+        )}
+        {!isAutoSyncPaused && isAutoSyncEnabled() && (
+          <span className="text-green-600 font-medium">Auto-sync: ON</span>
+        )}
+        {!isAutoSyncPaused && !isAutoSyncEnabled() && (
+          <span className="text-gray-500 font-medium">Auto-sync: OFF</span>
+        )}
+      </div>
       
       {/* Last sync time */}
       {lastSyncAt && (
