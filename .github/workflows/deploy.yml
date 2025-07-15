@@ -30,10 +30,16 @@ jobs:
     steps:
     - name: Check CI workflow result
       run: |
+        if [[ "${{ github.event.workflow_run.conclusion }}" == "cancelled" ]]; then
+          echo "⚠️ CI workflow was cancelled. Skipping deployment."
+          exit 0
+        fi
+        
         if [[ "${{ github.event.workflow_run.conclusion }}" != "success" ]]; then
           echo "❌ CI workflow failed. Deployment cancelled."
           exit 1
         fi
+        
         echo "✅ CI workflow completed successfully"
 
   # Build artifacts for deployment (only runs for direct push events)
