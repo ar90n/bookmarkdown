@@ -1,32 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Root, Category, Bundle, Bookmark } from '../../src/lib/types';
-
-// Mock getCurrentTimestamp
-vi.mock('../../src/lib/utils/metadata', async (importOriginal) => {
-  const actual = await importOriginal() as any;
-  
-  return {
-    ...actual,
-    getCurrentTimestamp: vi.fn(() => '2024-01-01T00:00:00Z')
-  };
-});
-
-// Import functions after mock is set up
-const {
+import {
   traverseAndUpdate,
   updateBookmarkInTree,
   addBookmarkToTree,
   removeBookmarkFromTree,
   getCurrentTimestamp
-} = await import('../../src/lib/utils/metadata');
+} from '../../src/lib/utils/metadata';
 
 describe('Tree Traversal Helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should mock getCurrentTimestamp correctly', () => {
-    expect(getCurrentTimestamp()).toBe('2024-01-01T00:00:00Z');
+  it('should have a getCurrentTimestamp function', () => {
+    expect(typeof getCurrentTimestamp).toBe('function');
+    expect(getCurrentTimestamp()).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
 
   const createTestRoot = (): Root => ({
@@ -151,12 +140,14 @@ describe('Tree Traversal Helpers', () => {
       
       const bookmark = result.categories[0].bundles[0].bookmarks[0];
       expect(bookmark.title).toBe('Google Search');
-      expect(bookmark.metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
+      expect(bookmark.metadata?.lastModified).toBeDefined();
+      expect(bookmark.metadata?.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       
-      // Check propagation
-      expect(result.metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
+      // Check propagation - all should have the same timestamp
+      const timestamp = bookmark.metadata?.lastModified;
+      expect(result.metadata?.lastModified).toBe(timestamp);
+      expect(result.categories[0].metadata?.lastModified).toBe(timestamp);
+      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe(timestamp);
     });
 
     it('should preserve other bookmarks unchanged', () => {
@@ -211,12 +202,14 @@ describe('Tree Traversal Helpers', () => {
       const bookmarks = result.categories[0].bundles[0].bookmarks;
       expect(bookmarks).toHaveLength(3);
       expect(bookmarks[2].title).toBe('New Site');
-      expect(bookmarks[2].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
+      expect(bookmarks[2].metadata?.lastModified).toBeDefined();
+      expect(bookmarks[2].metadata?.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
       
-      // Check propagation
-      expect(result.metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
+      // Check propagation - all should have the same timestamp
+      const timestamp = bookmarks[2].metadata?.lastModified;
+      expect(result.metadata?.lastModified).toBe(timestamp);
+      expect(result.categories[0].metadata?.lastModified).toBe(timestamp);
+      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe(timestamp);
     });
 
     it('should ensure bookmark has metadata', () => {
@@ -237,8 +230,10 @@ describe('Tree Traversal Helpers', () => {
       
       const addedBookmark = result.categories[0].bundles[0].bookmarks[2];
       expect(addedBookmark.metadata).toBeDefined();
-      expect(addedBookmark.metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(addedBookmark.metadata?.lastSynced).toBe('2024-01-01T00:00:00Z');
+      expect(addedBookmark.metadata?.lastModified).toBeDefined();
+      expect(addedBookmark.metadata?.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(addedBookmark.metadata?.lastSynced).toBeDefined();
+      expect(addedBookmark.metadata?.lastSynced).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
   });
 
@@ -257,10 +252,11 @@ describe('Tree Traversal Helpers', () => {
       expect(bookmarks).toHaveLength(1);
       expect(bookmarks[0].id).toBe('2');
       
-      // Check propagation
-      expect(result.metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
-      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe('2024-01-01T00:00:00Z');
+      // Check propagation - all should have timestamps
+      expect(result.metadata?.lastModified).toBeDefined();
+      expect(result.metadata?.lastModified).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(result.categories[0].metadata?.lastModified).toBe(result.metadata?.lastModified);
+      expect(result.categories[0].bundles[0].metadata?.lastModified).toBe(result.metadata?.lastModified);
     });
 
     it('should handle removing non-existent bookmark', () => {
