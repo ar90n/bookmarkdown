@@ -310,6 +310,32 @@ export const clearLocalLastSynced = (gistId: string): void => {
   }
 };
 
+// Generic function to compare arrays by sorting them by name and comparing each element
+export const compareArraysByName = <T>(
+  arr1: T[],
+  arr2: T[],
+  getName: (item: T) => string,
+  compareItem: (a: T, b: T) => boolean
+): boolean => {
+  // Check array lengths
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+  
+  // Sort arrays by name for consistent comparison
+  const sorted1 = [...arr1].sort((a, b) => getName(a).localeCompare(getName(b)));
+  const sorted2 = [...arr2].sort((a, b) => getName(a).localeCompare(getName(b)));
+  
+  // Compare each element
+  for (let i = 0; i < sorted1.length; i++) {
+    if (!compareItem(sorted1[i], sorted2[i])) {
+      return false;
+    }
+  }
+  
+  return true;
+};
+
 // Compare two roots for content equality (excluding metadata)
 export const compareRootsContent = (root1: Root, root2: Root): boolean => {
   // Compare version
