@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider.js';
 
 // Mock localStorage
@@ -8,40 +8,46 @@ const mockLocalStorage = {
   setItem: vi.fn(),
   removeItem: vi.fn()
 };
-Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
+Object.defineProperty(window, 'localStorage', { 
+  value: mockLocalStorage,
+  configurable: true 
+});
 
-// Mock the bookmark service
-const mockLoadFromRemote = vi.fn();
-const mockSaveToRemote = vi.fn();
-const mockGetGistInfo = vi.fn();
-const mockIsDirty = vi.fn();
+// Create fresh mocks for each test
+let mockLoadFromRemote: any;
+let mockSaveToRemote: any;
+let mockGetGistInfo: any;
+let mockIsDirty: any;
+let mockGetRoot: any;
 
 vi.mock('../../src/lib/adapters/bookmark-service.js', () => ({
-  createBookmarkService: vi.fn().mockImplementation(() => ({
-    getRoot: vi.fn().mockReturnValue({ categories: [] }),
-    isDirty: mockIsDirty,
-    hasRemoteChanges: vi.fn().mockResolvedValue({ success: true, data: false }),
-    loadFromRemote: mockLoadFromRemote,
-    saveToRemote: mockSaveToRemote,
-    addCategory: vi.fn().mockReturnValue({ success: true }),
-    removeCategory: vi.fn().mockReturnValue({ success: true }),
-    getGistInfo: mockGetGistInfo
-  }))
+  createBookmarkService: vi.fn()
 }));
 
-// Mock the sync shell
 vi.mock('../../src/lib/shell/gist-sync.js', () => ({
-  GistSyncShell: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue({ success: true }),
-    getGistInfo: vi.fn().mockReturnValue({ gistId: 'test-gist-123', etag: 'test-etag' })
-  }))
+  GistSyncShell: vi.fn()
 }));
 
 describe('BookmarkContext Initial Sync', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    cleanup(); // Clean up React Testing Library
+    
+    // Reset localStorage mock
+    mockLocalStorage.getItem.mockReset();
+    mockLocalStorage.setItem.mockReset();
+    mockLocalStorage.removeItem.mockReset();
     mockLocalStorage.getItem.mockReturnValue(null);
+    
+    // Create fresh mocks for each test
+    mockLoadFromRemote = vi.fn();
+    mockSaveToRemote = vi.fn();
+    mockGetGistInfo = vi.fn();
+    mockIsDirty = vi.fn();
+    mockGetRoot = vi.fn();
+    
+    // Set default mock implementations
     mockLoadFromRemote.mockResolvedValue({ 
       success: true, 
       data: { categories: [{ name: 'Synced Category', bundles: [] }] } 
@@ -52,10 +58,62 @@ describe('BookmarkContext Initial Sync', () => {
     });
     mockGetGistInfo.mockReturnValue({ gistId: 'test-gist-123', etag: 'test-etag' });
     mockIsDirty.mockReturnValue(false);
+    mockGetRoot.mockReturnValue({ categories: [] });
+    
+    // Setup service mock implementation
+    const { createBookmarkService } = vi.mocked(await import('../../src/lib/adapters/bookmark-service.js'));
+    createBookmarkService.mockImplementation(() => {
+      // Create a service instance that updates its internal state
+      let currentRoot = { categories: [] };
+      
+      const serviceInstance = {
+        getRoot: () => currentRoot,
+        isDirty: mockIsDirty,
+        hasRemoteChanges: vi.fn().mockResolvedValue({ success: true, data: false }),
+        loadFromRemote: vi.fn().mockImplementation(async () => {
+          const result = await mockLoadFromRemote();
+          if (result.success) {
+            currentRoot = result.data;
+          }
+          return result;
+        }),
+        saveToRemote: mockSaveToRemote,
+        addCategory: vi.fn().mockReturnValue({ success: true }),
+        removeCategory: vi.fn().mockReturnValue({ success: true }),
+        getGistInfo: mockGetGistInfo,
+        isSyncConfigured: vi.fn().mockReturnValue(true),
+        addBundle: vi.fn(),
+        removeBundle: vi.fn(),
+        renameBundle: vi.fn(),
+        addBookmark: vi.fn(),
+        addBookmarksBatch: vi.fn(),
+        updateBookmark: vi.fn(),
+        removeBookmark: vi.fn(),
+        moveBookmark: vi.fn(),
+        moveBundle: vi.fn(),
+        searchBookmarks: vi.fn().mockReturnValue([]),
+        getStats: vi.fn().mockReturnValue({ categoriesCount: 0, bundlesCount: 0, bookmarksCount: 0, tagsCount: 0 }),
+        renameCategory: vi.fn(),
+        forceReload: vi.fn()
+      };
+      
+      return serviceInstance as any;
+    });
+    
+    // Setup GistSyncShell mock implementation
+    const { GistSyncShell } = vi.mocked(await import('../../src/lib/shell/gist-sync.js'));
+    GistSyncShell.mockImplementation(() => ({
+      initialize: vi.fn().mockResolvedValue({ success: true }),
+      getGistInfo: vi.fn().mockReturnValue({ gistId: 'test-gist-123', etag: 'test-etag' }),
+      load: vi.fn(),
+      save: vi.fn(),
+      isRemoteUpdated: vi.fn()
+    } as any));
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    cleanup();
   });
 
   it('should immediately sync when Gist ID exists in localStorage and access token is provided', async () => {
@@ -71,9 +129,14 @@ describe('BookmarkContext Initial Sync', () => {
       filename: 'bookmarks.md'
     }));
 
-    // Wait for initialization
+    // Wait for initialization and async operations
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    
+    // Wait for loadFromRemote promise to resolve
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
 
     // loadFromRemote should have been called
@@ -113,6 +176,7 @@ describe('BookmarkContext Initial Sync', () => {
     // Setup: Gist ID in localStorage but no access token
     mockLocalStorage.getItem.mockImplementation((key) => {
       if (key === 'bookmarkdown_data_gist_id') return 'test-gist-123';
+      if (key === 'bookmarkdown_data_lastSyncAt') return null;
       return null;
     });
 
@@ -124,7 +188,7 @@ describe('BookmarkContext Initial Sync', () => {
 
     // Wait for initialization
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(500);
     });
 
     // loadFromRemote should NOT have been called
@@ -133,6 +197,7 @@ describe('BookmarkContext Initial Sync', () => {
     // Should have empty data
     expect(result.current.root.categories).toHaveLength(0);
     expect(result.current.lastSyncAt).toBeNull();
+    expect(result.current.initialSyncCompleted).toBe(false);
   });
 
   it('should handle sync errors gracefully', async () => {
