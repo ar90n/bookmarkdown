@@ -358,20 +358,13 @@ export const compareCategoriesContent = (cat1: Category, cat2: Category): boolea
     return false;
   }
   
-  if (cat1.bundles.length !== cat2.bundles.length) {
-    return false;
-  }
-  
-  // Sort bundles by name for consistent comparison
-  const bundles1 = [...cat1.bundles].sort((a, b) => a.name.localeCompare(b.name));
-  const bundles2 = [...cat2.bundles].sort((a, b) => a.name.localeCompare(b.name));
-  
-  for (let i = 0; i < bundles1.length; i++) {
-    if (!compareBundlesContent(bundles1[i], bundles2[i])) {
-      return false;
-    }
-  }
-  return true;
+  // Compare bundles using generic function
+  return compareArraysByName(
+    cat1.bundles,
+    cat2.bundles,
+    (bundle) => bundle.name,
+    compareBundlesContent
+  );
 };
 
 // Compare two bundles for content equality (excluding metadata)
