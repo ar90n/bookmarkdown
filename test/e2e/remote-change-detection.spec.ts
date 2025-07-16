@@ -126,7 +126,7 @@ test.describe('Remote Change Detection', () => {
     // Check if V2 context is enabled
     const isV2Enabled = await page.evaluate(() => {
       // @ts-ignore
-      return window.__VITE_USE_V2_CONTEXT__ || import.meta.env.VITE_USE_V2_CONTEXT === 'true';
+      return window.__VITE_USE_V2_CONTEXT__ === 'true';
     });
     
     console.log('V2 Context enabled:', isV2Enabled);
