@@ -1,5 +1,5 @@
 /*
- * HomePage Tests
+ * WelcomePage Tests
  * Tests for the landing page component
  */
 
@@ -45,19 +45,19 @@ vi.mock('../../../web/src/contexts/AppProvider', () => ({
   }),
 }));
 
-import { WelcomePage as HomePage } from '../../../web/src/pages/WelcomePage';
+import { WelcomePage } from '../../../web/src/pages/WelcomePage';
 
-describe('HomePage', () => {
-  const renderHomePage = () => {
+describe('WelcomePage', () => {
+  const renderWelcomePage = () => {
     return render(
       <BrowserRouter>
-        <HomePage />
+        <WelcomePage />
       </BrowserRouter>
     );
   };
 
   it('should render the main heading and description', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     expect(screen.getByRole('heading', { name: 'BookMarkDown' })).toBeInTheDocument();
     expect(screen.getByText(/A simple, powerful bookmark manager that stores your data in GitHub Gists using human-readable Markdown format/)).toBeInTheDocument();
@@ -65,7 +65,7 @@ describe('HomePage', () => {
 
   it('should show "Get Started" button when user is not authenticated', () => {
     // mockAuthContext.isAuthenticated is already false by default
-    renderHomePage();
+    renderWelcomePage();
     
     expect(screen.getByRole('link', { name: 'Get Started' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'View My Bookmarks' })).not.toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('HomePage', () => {
     // Temporarily set authenticated to true
     mockAuthContext.isAuthenticated = true;
     
-    renderHomePage();
+    renderWelcomePage();
     
     // When authenticated, navigation is shown in the sidebar
     expect(screen.getByRole('link', { name: /Bookmarks/ })).toBeInTheDocument();
@@ -88,7 +88,7 @@ describe('HomePage', () => {
   // Removed test for View Source button as it no longer exists in the WelcomePage
 
   it('should display features section', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     expect(screen.getByText('Markdown Format')).toBeInTheDocument();
     expect(screen.getByText('GitHub Sync')).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe('HomePage', () => {
   });
 
   it('should display data structure section', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     expect(screen.getByRole('heading', { name: 'Example Bookmark Structure' })).toBeInTheDocument();
     // The structure content is now shown as code snippets
@@ -110,7 +110,7 @@ describe('HomePage', () => {
   });
 
   it('should display how it works section', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     expect(screen.getByRole('heading', { name: 'How It Works' })).toBeInTheDocument();
     
@@ -130,7 +130,7 @@ describe('HomePage', () => {
   // Removed tests for call to action section as it no longer exists in the WelcomePage
 
   it('should have correct navigation links', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     const getStartedLink = screen.getByRole('link', { name: 'Get Started' });
     expect(getStartedLink.closest('a')).toHaveAttribute('href', '/login');
@@ -138,7 +138,7 @@ describe('HomePage', () => {
 
   it('should have correct navigation link for authenticated users', () => {
     mockAuthContext.isAuthenticated = true;
-    renderHomePage();
+    renderWelcomePage();
     
     const bookmarksLink = screen.getByRole('link', { name: /Bookmarks/ });
     expect(bookmarksLink.closest('a')).toHaveAttribute('href', '/bookmarks');
@@ -147,7 +147,7 @@ describe('HomePage', () => {
   });
 
   it('should display the emoji icons', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     // Main hero icon
     expect(screen.getByText('📚')).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe('HomePage', () => {
   });
 
   it('should have proper accessibility structure', () => {
-    renderHomePage();
+    renderWelcomePage();
     
     // Check heading hierarchy
     const mainHeading = screen.getByRole('heading', { name: 'BookMarkDown' });
