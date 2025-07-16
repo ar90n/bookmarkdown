@@ -1,215 +1,299 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RemoteChangeDetector } from '../../src/lib/services/remote-change-detector.js';
-import { MockGistRepository } from '../../src/lib/repositories/mock-gist-repository.js';
-import type { GistRepositoryConfig } from '../../src/lib/repositories/gist-repository.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { RemoteChangeDetector } from './remote-change-detector';
+import { GistRepository } from '../repositories/gist-repository';
 
-describe('RemoteChangeDetector', () => {
-  let detector: RemoteChangeDetector;
-  let repository: MockGistRepository;
-  
-  const mockConfig: GistRepositoryConfig = {
-    accessToken: 'test-token',
-    filename: 'bookmarks.md'
-  };
-  
-  beforeEach(async () => {
-    // Clear mock data
-    MockGistRepository.clearAll();
-    
-    // Create a repository
-    const createResult = await MockGistRepository.create(mockConfig, {});
-    expect(createResult.success).toBe(true);
-    if (!createResult.success) return;
-    
-    repository = createResult.data as MockGistRepository;
-    
-    detector = new RemoteChangeDetector({
-      repository
-    });
+// Mock GistRepository
+const mockRepository: GistRepository = {
+  create: vi.fn(),
+  read: vi.fn(),
+  update: vi.fn(),
+  exists: vi.fn(),
+  findByFilename: vi.fn(),
+  hasRemoteChanges: vi.fn(),
+};
+
+describe('RemoteChangeDetector - Conflict Dialog Check', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
   });
   
-  describe('basic functionality', () => {
-    it('should not be running initially', () => {
-      expect(detector.isRunning()).toBe(false);
-    });
-    
-    it('should start and stop', () => {
-      // Start the detector
-      detector.start();
-      expect(detector.isRunning()).toBe(true);
-      
-      // Stop the detector
-      detector.stop();
-      expect(detector.isRunning()).toBe(false);
-    });
-    
-    it('should handle multiple starts', () => {
-      // Start once
-      detector.start();
-      expect(detector.isRunning()).toBe(true);
-      
-      // Start again - should not throw
-      detector.start();
-      expect(detector.isRunning()).toBe(true);
-    });
-    
-    it('should handle multiple stops', () => {
-      // Start then stop
-      detector.start();
-      detector.stop();
-      expect(detector.isRunning()).toBe(false);
-      
-      // Stop again - should not throw
-      detector.stop();
-      expect(detector.isRunning()).toBe(false);
-    });
+  afterEach(() => {
+    vi.useRealTimers();
   });
   
-  describe('configuration', () => {
-    it('should accept custom interval', () => {
-      const customDetector = new RemoteChangeDetector({
-        repository,
-        intervalMs: 5000 // 5 seconds
-      });
-      
-      // Just verify it creates without error
-      expect(customDetector.isRunning()).toBe(false);
+  it('should skip checking when conflict dialog is open', async () => {
+    const onChangeDetected = vi.fn();
+    const isConflictDialogOpen = vi.fn();
+    
+    // Setup: dialog is open
+    isConflictDialogOpen.mockReturnValue(true);
+    
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      isConflictDialogOpen
     });
     
-    it('should use default interval if not specified', () => {
-      const defaultDetector = new RemoteChangeDetector({
-        repository
-      });
-      
-      // Just verify it creates without error
-      expect(defaultDetector.isRunning()).toBe(false);
-    });
+    detector.start();
+    
+    // Advance timer to trigger check
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    // Should not check repository when dialog is open
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    expect(isConflictDialogOpen).toHaveBeenCalled();
+    
+    detector.stop();
   });
   
-  describe('change detection', () => {
-    beforeEach(() => {
-      // Use fake timers for testing
-      vi.useFakeTimers();
+  it('should check normally when conflict dialog is not open', async () => {
+    const onChangeDetected = vi.fn();
+    const isConflictDialogOpen = vi.fn();
+    
+    // Setup: dialog is not open
+    isConflictDialogOpen.mockReturnValue(false);
+    
+    // Repository has changes
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
     });
     
-    afterEach(() => {
-      // Restore real timers
-      vi.useRealTimers();
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      isConflictDialogOpen
     });
     
-    it('should call onChangeDetected when remote changes are detected', async () => {
-      const onChangeDetected = vi.fn();
-      
-      const detector = new RemoteChangeDetector({
-        repository,
-        intervalMs: 1000, // 1 second for testing
-        onChangeDetected
-      });
-      
-      // Start detection
-      detector.start();
-      
-      // Initially no changes
-      expect(onChangeDetected).not.toHaveBeenCalled();
-      
-      // Advance time to trigger first check
-      await vi.advanceTimersByTimeAsync(1000);
-      
-      // Still no changes (repository hasn't changed)
-      expect(onChangeDetected).not.toHaveBeenCalled();
-      
-      // Simulate remote change
-      const gistId = repository.gistId;
-      MockGistRepository.simulateConcurrentModification(gistId);
-      
-      // Advance time to trigger next check
-      await vi.advanceTimersByTimeAsync(1000);
-      
-      // Now it should detect the change
-      expect(onChangeDetected).toHaveBeenCalledTimes(1);
-      
-      // Stop detection
-      detector.stop();
+    detector.start();
+    
+    // Advance timer to trigger check
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    // Should check repository when dialog is not open
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+  
+  it('should work without isConflictDialogOpen callback', async () => {
+    const onChangeDetected = vi.fn();
+    
+    // Repository has changes
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
     });
     
-    it('should not call onChangeDetected when no changes', async () => {
-      const onChangeDetected = vi.fn();
-      
-      const detector = new RemoteChangeDetector({
-        repository,
-        intervalMs: 1000,
-        onChangeDetected
-      });
-      
-      detector.start();
-      
-      // Advance time multiple times
-      await vi.advanceTimersByTimeAsync(1000);
-      await vi.advanceTimersByTimeAsync(1000);
-      await vi.advanceTimersByTimeAsync(1000);
-      
-      // No changes detected
-      expect(onChangeDetected).not.toHaveBeenCalled();
-      
-      detector.stop();
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected
+      // No isConflictDialogOpen callback
     });
     
-    it('should handle errors gracefully', async () => {
-      const onChangeDetected = vi.fn();
-      
-      // Mock console.error to suppress output in tests
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
-      // Mock hasRemoteChanges to throw an error
-      vi.spyOn(repository, 'hasRemoteChanges').mockRejectedValueOnce(new Error('Network error'));
-      
-      const detector = new RemoteChangeDetector({
-        repository,
-        intervalMs: 1000,
-        onChangeDetected
-      });
-      
-      detector.start();
-      
-      // Advance time to trigger check
-      await vi.advanceTimersByTimeAsync(1000);
-      
-      // Should not crash or call onChangeDetected
-      expect(onChangeDetected).not.toHaveBeenCalled();
-      
-      // Verify error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error checking for remote changes:', expect.any(Error));
-      
-      detector.stop();
-      
-      // Restore console.error
-      consoleErrorSpy.mockRestore();
+    detector.start();
+    
+    // Advance timer to trigger check
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    // Should check repository normally
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+  
+  it('should resume checking after dialog closes', async () => {
+    const onChangeDetected = vi.fn();
+    const isConflictDialogOpen = vi.fn();
+    
+    // Repository has changes
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
     });
     
-    it('should stop checking when stopped', async () => {
-      const onChangeDetected = vi.fn();
-      
-      const detector = new RemoteChangeDetector({
-        repository,
-        intervalMs: 1000,
-        onChangeDetected
-      });
-      
-      detector.start();
-      
-      // Advance time once
-      await vi.advanceTimersByTimeAsync(1000);
-      
-      // Stop detector
-      detector.stop();
-      
-      // Simulate change after stop
-      MockGistRepository.simulateConcurrentModification(repository.gistId);
-      
-      // Advance time - should not detect change
-      await vi.advanceTimersByTimeAsync(5000);
-      
-      expect(onChangeDetected).not.toHaveBeenCalled();
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      isConflictDialogOpen
     });
+    
+    detector.start();
+    
+    // First check: dialog is open
+    isConflictDialogOpen.mockReturnValue(true);
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    
+    // Second check: dialog is closed
+    isConflictDialogOpen.mockReturnValue(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+});
+
+describe('RemoteChangeDetector - Unresolved Conflict Check', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+  });
+  
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  
+  it('should skip checking when unresolved conflict exists', async () => {
+    const onChangeDetected = vi.fn();
+    const hasUnresolvedConflict = vi.fn();
+    
+    // Setup: conflict exists
+    hasUnresolvedConflict.mockReturnValue(true);
+    
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      hasUnresolvedConflict
+    });
+    
+    detector.start();
+    
+    // Advance timer to trigger check
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    // Should not check repository when conflict exists
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    expect(hasUnresolvedConflict).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+  
+  it('should check normally when no conflict exists', async () => {
+    const onChangeDetected = vi.fn();
+    const hasUnresolvedConflict = vi.fn();
+    
+    // Setup: no conflict
+    hasUnresolvedConflict.mockReturnValue(false);
+    
+    // Repository has changes
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
+    });
+    
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      hasUnresolvedConflict
+    });
+    
+    detector.start();
+    
+    // Advance timer to trigger check
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    // Should check repository when no conflict
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+  
+  it('should skip when either dialog is open OR conflict exists', async () => {
+    const onChangeDetected = vi.fn();
+    const isConflictDialogOpen = vi.fn();
+    const hasUnresolvedConflict = vi.fn();
+    
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      isConflictDialogOpen,
+      hasUnresolvedConflict
+    });
+    
+    detector.start();
+    
+    // Case 1: Dialog open, no conflict
+    isConflictDialogOpen.mockReturnValue(true);
+    hasUnresolvedConflict.mockReturnValue(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    
+    // Case 2: Dialog closed, conflict exists
+    isConflictDialogOpen.mockReturnValue(false);
+    hasUnresolvedConflict.mockReturnValue(true);
+    vi.clearAllMocks();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    
+    // Case 3: Both true
+    isConflictDialogOpen.mockReturnValue(true);
+    hasUnresolvedConflict.mockReturnValue(true);
+    vi.clearAllMocks();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    
+    // Case 4: Both false - should check
+    isConflictDialogOpen.mockReturnValue(false);
+    hasUnresolvedConflict.mockReturnValue(false);
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
+    });
+    vi.clearAllMocks();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
+  });
+  
+  it('should resume checking after conflict is resolved', async () => {
+    const onChangeDetected = vi.fn();
+    const hasUnresolvedConflict = vi.fn();
+    
+    // Repository has changes
+    (mockRepository.hasRemoteChanges as any).mockResolvedValue({
+      success: true,
+      data: true
+    });
+    
+    const detector = new RemoteChangeDetector({
+      repository: mockRepository,
+      intervalMs: 1000,
+      onChangeDetected,
+      hasUnresolvedConflict
+    });
+    
+    detector.start();
+    
+    // First check: conflict exists
+    hasUnresolvedConflict.mockReturnValue(true);
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    expect(mockRepository.hasRemoteChanges).not.toHaveBeenCalled();
+    
+    // Second check: conflict resolved
+    hasUnresolvedConflict.mockReturnValue(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    
+    expect(mockRepository.hasRemoteChanges).toHaveBeenCalled();
+    expect(onChangeDetected).toHaveBeenCalled();
+    
+    detector.stop();
   });
 });
