@@ -19,13 +19,16 @@ comment:
 flags:
   core:
     paths:
-      - src/core/
-      - src/adapters/
-      - src/parsers/
-      - src/schemas/
-      - src/shell/
-      - src/types/
-      - src/utils/
+      - web/src/lib/core/
+      - web/src/lib/adapters/
+      - web/src/lib/parsers/
+      - web/src/lib/schemas/
+      - web/src/lib/shell/
+      - web/src/lib/types/
+      - web/src/lib/utils/
   react:
     paths:
-      - web/src/
+      - web/src/components/
+      - web/src/pages/
+      - web/src/hooks/
+      - web/src/utils/

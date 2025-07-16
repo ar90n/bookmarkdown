@@ -44,6 +44,9 @@ jobs:
         name: core-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
 
     - name: Upload core coverage reports
       uses: actions/upload-artifact@v4
@@ -83,6 +86,9 @@ jobs:
         name: react-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
 
     - name: Upload React coverage reports
       uses: actions/upload-artifact@v4
