@@ -1,0 +1,112 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Configure OAuth service URL for production
+      run: |
+        echo "VITE_OAUTH_SERVICE_URL=https://bookmarkdown-github-oauth.ar90n.net" > web/.env.production
+
+    - name: Build all targets
+      run: npm run build:all
+
+    - name: Create extension package
+      run: |
+        cd dist/extension
+        zip -r ../../bookmarkdown-extension-v${{ inputs.version }}.zip .
+        cd ../..
+
+    - name: Create library package
+      run: |
+        cd dist/browser
+        zip -r ../../bookmarkdown-library-v${{ inputs.version }}.zip .
+        cd ../..
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat << 'EOF' > release_notes.md
+        ## BookMarkDown v${{ inputs.version }}
+
+        ### 🚀 Highlights
+        
+        - 🔐 **Secure OAuth Authentication**: GitHub OAuth via Cloudflare Worker
+        - ⚛️ **Modern React SPA**: Beautiful UI with Tailwind CSS
+        - 🔄 **Real-time Sync**: Automatic synchronization with conflict detection
+        - 📱 **Responsive Design**: Works on desktop and mobile
+        - 🔌 **Chrome Extension**: Tab capture bridge for easy bookmarking
+        - 🧪 **Well-tested**: Comprehensive test coverage
+        
+        ### 📦 Downloads
+        
+        - `bookmarkdown-extension-v${{ inputs.version }}.zip` - Chrome extension package
+        - `bookmarkdown-library-v${{ inputs.version }}.zip` - Browser library for developers
+        
+        ### 🌐 Live Demo
+        
+        Visit [https://bookmarkdown.ar90n.net](https://bookmarkdown.ar90n.net) to try BookMarkDown.
+        
+        ### 📚 Documentation
+        
+        - [README](https://github.com/ar90n/bookmarkdown#readme) - Getting started guide
+        - [Chrome Extension Setup](https://github.com/ar90n/bookmarkdown#chrome-extension) - Extension installation
+        
+        ### 🤝 Contributing
+        
+        See our [contributing guidelines](https://github.com/ar90n/bookmarkdown#contributing) for details.
+        EOF
+
+    - name: Create GitHub Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: v${{ inputs.version }}
+        name: v${{ inputs.version }}
+        bodyFile: release_notes.md
+        artifacts: |
+          bookmarkdown-extension-v${{ inputs.version }}.zip
+          bookmarkdown-library-v${{ inputs.version }}.zip
+        prerelease: ${{ inputs.prerelease }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload extension to artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: extension-v${{ inputs.version }}
+        path: bookmarkdown-extension-v${{ inputs.version }}.zip
+
+    - name: Upload library to artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: library-v${{ inputs.version }}
+        path: bookmarkdown-library-v${{ inputs.version }}.zip
