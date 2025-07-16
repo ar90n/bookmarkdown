@@ -115,7 +115,7 @@ test.describe('Dialog Operations', () => {
       await page.click('button[type="submit"]:has-text("Create Category")');
       
       // Should see error
-      await expect(page.locator('text=/Category.*already exists/i')).toBeVisible();
+      await expect(page.locator('text=/Category.*already exists/i').first()).toBeVisible();
       
       // Close dialog if still open
       const cancelButton = page.locator('button:has-text("Cancel")');
@@ -189,7 +189,7 @@ test.describe('Dialog Operations', () => {
       await page.click('button[type="submit"]:has-text("Create Bundle")');
       
       // Should see error
-      await expect(page.locator('text=/Bundle.*already exists/i')).toBeVisible();
+      await expect(page.locator('text=/Bundle.*already exists/i').first()).toBeVisible();
       
       // Close dialog if still open
       const cancelButton = page.locator('button:has-text("Cancel")');
