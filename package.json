@@ -1,6 +1,6 @@
 {
   "name": "bookmarkdown",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A simple and portable bookmark management service using GitHub Gist as data storage with Markdown format",
   "main": "dist/index.js",
   "type": "module",
