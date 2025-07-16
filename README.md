@@ -5,6 +5,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.0+-61dafb.svg)](https://reactjs.org/)
+![Built with vibe coding](https://img.shields.io/badge/built%20with-vibe%20coding-ff69b4)
 
 A simple and portable bookmark management service using GitHub Gist as data storage with Markdown format. Inspired by Toby, BookMarkDown prioritizes human-readable data, avoiding vendor lock-in, and maintaining simplicity.
 
