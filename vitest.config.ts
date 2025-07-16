@@ -25,6 +25,10 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'cobertura'],
+      include: [
+        'web/src/**/*.{ts,tsx}',
+        'src/**/*.{ts,tsx}'
+      ],
       exclude: [
         'node_modules/',
         'dist/',
@@ -33,7 +37,11 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.config.*',
         '**/index.ts',
-        '**/main.tsx'
+        '**/main.tsx',
+        '**/*.test.{ts,tsx}',
+        '**/setup*.ts',
+        'web/src/App.tsx',
+        'web/src/vite-env.d.ts'
       ]
     }
   }
