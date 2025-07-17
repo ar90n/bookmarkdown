@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RemoteChangeDetector } from './remote-change-detector';
-import { GistRepository } from '../repositories/gist-repository';
+import { RemoteChangeDetector } from '../../src/lib/services/remote-change-detector';
+import { GistRepository } from '../../src/lib/repositories/gist-repository';
 
 // Mock GistRepository
 const mockRepository: GistRepository = {
