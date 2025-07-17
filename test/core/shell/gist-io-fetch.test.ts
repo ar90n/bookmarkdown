@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGistClient } from '../../../web/src/lib/shell/gist-io-fetch';
-import type { GistConfig } from '../../src/lib/shell/gist-io';
+import type { GistConfig } from '../../../web/src/lib/shell/gist-io';
 
 // Mock fetch globally
 global.fetch = vi.fn();
