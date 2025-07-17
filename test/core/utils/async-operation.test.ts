@@ -255,6 +255,11 @@ describe('Async Operation Utilities', () => {
       vi.useFakeTimers();
     });
 
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
     it.skip('should debounce multiple calls', async () => {
       const operation = vi.fn().mockResolvedValue('result');
       const debounced = debounceAsync(operation, 100);
@@ -311,11 +316,14 @@ describe('Async Operation Utilities', () => {
 
       const promise = debounced('arg');
       
-      // Ensure we advance timers to trigger the debounced operation
+      // Immediately set up the rejection expectation to avoid unhandled rejection
+      const expectation = expect(promise).rejects.toThrow('Operation failed');
+      
+      // Advance timers to trigger the debounced operation
       await vi.runAllTimersAsync();
       
-      // Expect the promise to reject with the error
-      await expect(promise).rejects.toThrow('Operation failed');
+      // Wait for the expectation
+      await expectation;
       expect(operation).toHaveBeenCalledWith('arg');
     });
 
@@ -345,6 +353,11 @@ describe('Async Operation Utilities', () => {
   describe('throttleAsync', () => {
     beforeEach(() => {
       vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
     });
 
     it('should throttle multiple calls', async () => {
