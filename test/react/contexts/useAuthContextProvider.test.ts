@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useAuthContextProvider } from '../../../web/src/lib/context/providers/useAuthContextProvider';
-import { GitHubUser, AuthTokens } from '../../src/lib/context/AuthContext';
+import { GitHubUser, AuthTokens } from '../../../web/src/lib/context/AuthContext';
 
 // Mock fetch globally
 global.fetch = vi.fn();

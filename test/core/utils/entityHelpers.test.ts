@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock time module
-vi.mock('../../../web/src/lib/utils/time', () => ({
+// Mock metadata module which contains getCurrentTimestamp
+vi.mock('../../../web/src/lib/utils/metadata', () => ({
   getCurrentTimestamp: vi.fn(() => '2024-01-01T00:00:00.000Z')
 }));
 import {
@@ -25,11 +25,6 @@ import {
   type EntityWithMetadata,
   type EntityWithId
 } from '../../../web/src/utils/entityHelpers';
-
-// Mock getCurrentTimestamp
-vi.mock('../../src/lib/utils/metadata', () => ({
-  getCurrentTimestamp: vi.fn(() => '2024-01-01T00:00:00.000Z')
-}));
 
 describe('Entity Helpers', () => {
   beforeEach(() => {

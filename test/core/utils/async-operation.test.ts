@@ -310,10 +310,13 @@ describe('Async Operation Utilities', () => {
       const debounced = debounceAsync(operation, 100);
 
       const promise = debounced('arg');
-
+      
+      // Ensure we advance timers to trigger the debounced operation
       await vi.runAllTimersAsync();
       
+      // Expect the promise to reject with the error
       await expect(promise).rejects.toThrow('Operation failed');
+      expect(operation).toHaveBeenCalledWith('arg');
     });
 
     it('should allow separate executions after delay', async () => {
