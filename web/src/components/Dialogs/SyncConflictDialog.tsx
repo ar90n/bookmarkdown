@@ -22,7 +22,7 @@ export const SyncConflictDialog: React.FC<SyncConflictDialogProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" data-testid="sync-conflict-dialog">
       <div className="bg-white rounded-lg max-w-lg w-full shadow-xl">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">

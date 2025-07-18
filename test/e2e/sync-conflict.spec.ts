@@ -31,7 +31,7 @@ test.describe('Sync conflict resolution', () => {
     await page.goto('/bookmarks');
     
     // Wait for initial load
-    await page.waitForSelector('h2:has-text("Test Category")', { timeout: 10000 });
+    await page.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
     
     // Make a local change
     await createBookmark(page, {
@@ -42,31 +42,22 @@ test.describe('Sync conflict resolution', () => {
     });
     
     // Simulate remote change by updating the mock
-    const remoteData = {
-      ...initialData,
-      categories: [{
-        ...initialData.categories[0],
-        bundles: [{
-          ...initialData.categories[0].bundles[0],
-          bookmarks: [
-            ...initialData.categories[0].bundles[0].bookmarks,
-            {
-              id: 'remote-bookmark',
-              title: 'Remote Change',
-              url: 'https://remote-change.com',
-              created: new Date().toISOString()
-            }
-          ]
-        }]
-      }]
-    };
+    const remoteMarkdown = `# Bookmarks
+
+## Test Category
+
+### Test Bundle
+
+- [Test Bookmark 1](https://example1.com)
+- [Test Bookmark 2](https://example2.com)
+- [Remote Change](https://remote-change.com)`;
     
     await mockGistAPI(page, {
       defaultGist: {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(remoteData)
+            content: remoteMarkdown
           }
         },
         updated_at: new Date(Date.now() + 1000).toISOString() // Newer timestamp
@@ -87,21 +78,11 @@ test.describe('Sync conflict resolution', () => {
 
   test('should resolve conflict by choosing local version', async ({ page }) => {
     // Set up conflict scenario
-    const localData = {
-      categories: [{
-        id: 'cat-1',
-        name: 'Local Category',
-        bundles: []
-      }]
-    };
-    
-    const remoteData = {
-      categories: [{
-        id: 'cat-1',
-        name: 'Remote Category',
-        bundles: []
-      }]
-    };
+    const remoteMarkdown = `# Bookmarks
+
+## Remote Category
+
+### Remote Bundle`;
     
     // Start with remote data
     await mockGistAPI(page, {
@@ -109,7 +90,7 @@ test.describe('Sync conflict resolution', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(remoteData)
+            content: remoteMarkdown
           }
         },
         updated_at: new Date().toISOString()
@@ -118,7 +99,7 @@ test.describe('Sync conflict resolution', () => {
     
     // Navigate and make local change
     await page.goto('/bookmarks');
-    await page.waitForSelector('h3:has-text("Remote Category")');
+    await page.waitForSelector('h4:has-text("Remote Bundle")');
     
     // Change category name locally
     // This would typically be done through UI, but for testing we'll trigger sync with conflict
@@ -165,17 +146,11 @@ test.describe('Sync conflict resolution', () => {
   });
 
   test('should resolve conflict by choosing remote version', async ({ page }) => {
-    const remoteData = {
-      categories: [{
-        id: 'cat-1',
-        name: 'Remote Category',
-        bundles: [{
-          id: 'bundle-1',
-          name: 'Remote Bundle',
-          bookmarks: []
-        }]
-      }]
-    };
+    const remoteMarkdown = `# Bookmarks
+
+## Remote Category
+
+### Remote Bundle`;
     
     // Set up remote data
     await mockGistAPI(page, {
@@ -183,7 +158,7 @@ test.describe('Sync conflict resolution', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(remoteData)
+            content: remoteMarkdown
           }
         },
         updated_at: new Date().toISOString()
@@ -200,28 +175,20 @@ test.describe('Sync conflict resolution', () => {
     });
     
     // Update remote data to create conflict
-    const updatedRemoteData = {
-      ...remoteData,
-      categories: [{
-        ...remoteData.categories[0],
-        bundles: [{
-          ...remoteData.categories[0].bundles[0],
-          bookmarks: [{
-            id: 'remote-bookmark',
-            title: 'Remote Bookmark',
-            url: 'https://remote-bookmark.com',
-            created: new Date().toISOString()
-          }]
-        }]
-      }]
-    };
+    const updatedRemoteMarkdown = `# Bookmarks
+
+## Remote Category
+
+### Remote Bundle
+
+- [Remote Bookmark](https://remote-bookmark.com)`;
     
     await mockGistAPI(page, {
       defaultGist: {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(updatedRemoteData)
+            content: updatedRemoteMarkdown
           }
         },
         updated_at: new Date(Date.now() + 1000).toISOString()
@@ -241,7 +208,7 @@ test.describe('Sync conflict resolution', () => {
     await waitForSync(page);
     
     // Verify remote version is loaded
-    await expect(page.locator('h3:has-text("Remote Bundle")')).toBeVisible();
+    await expect(page.locator('h4:has-text("Remote Bundle")')).toBeVisible();
     await expect(page.locator('text="Remote Bookmark"')).toBeVisible();
     
     // Verify local bookmark is gone
@@ -260,7 +227,7 @@ test.describe('Sync conflict resolution', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(createTestBookmarkData())
+            content: createTestBookmarkMarkdown()
           }
         },
         updated_at: new Date().toISOString()
@@ -326,7 +293,7 @@ test.describe('Sync conflict resolution', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(createTestBookmarkData())
+            content: createTestBookmarkMarkdown()
           }
         },
         updated_at: new Date().toISOString()

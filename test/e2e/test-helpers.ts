@@ -10,11 +10,15 @@ export interface AuthData {
     login: string;
     name: string;
     avatar_url: string;
+    id?: number;
+    email?: string;
   };
   tokens: {
     accessToken: string;
+    scopes?: string[];
+    expiresAt?: Date;
   };
-  lastLoginAt?: string;
+  lastLoginAt: string;
 }
 
 export interface GistData {

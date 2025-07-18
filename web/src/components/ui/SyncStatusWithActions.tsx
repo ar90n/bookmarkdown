@@ -90,7 +90,7 @@ export const SyncStatusWithActions: React.FC<SyncStatusWithActionsProps> = ({
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       {/* Status indicator */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-testid="sync-status" data-sync-status={isProcessing ? 'syncing' : error ? 'error' : isDirty ? 'pending' : lastSyncAt ? 'synced' : 'not-synced'}>
         <Icon 
           className={`h-5 w-5 ${statusColor} ${isProcessing ? 'animate-spin' : ''}`}
         />
