@@ -317,11 +317,11 @@ describe('SettingsPage', () => {
       };
       
       vi.spyOn(window, 'FileReader').mockImplementation(() => {
-        setTimeout(() => {
+        Promise.resolve().then(() => {
           if (mockFileReader.onload) {
             mockFileReader.onload({ target: { result: fileContent } });
           }
-        }, 0);
+        });
         return mockFileReader as any;
       });
 
@@ -350,11 +350,11 @@ describe('SettingsPage', () => {
       };
       
       vi.spyOn(window, 'FileReader').mockImplementation(() => {
-        setTimeout(() => {
+        Promise.resolve().then(() => {
           if (mockFileReader.onload) {
             mockFileReader.onload({ target: { result: fileContent } });
           }
-        }, 0);
+        });
         return mockFileReader as any;
       });
 

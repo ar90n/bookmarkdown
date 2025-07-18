@@ -269,6 +269,7 @@ describe('useAuthContextProvider', () => {
     });
 
     it('should set loading state during login', async () => {
+      vi.useFakeTimers();
       vi.mocked(fetch).mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve({
           ok: true,
@@ -279,7 +280,9 @@ describe('useAuthContextProvider', () => {
       const { result } = renderHook(() => useAuthContextProvider({}));
       
       const loginPromise = act(async () => {
-        await result.current.login('test-token');
+        const promise = result.current.login('test-token');
+        vi.advanceTimersByTime(100);
+        await promise;
       });
       
       expect(result.current.isLoading).toBe(true);
@@ -287,6 +290,7 @@ describe('useAuthContextProvider', () => {
       await loginPromise;
       
       expect(result.current.isLoading).toBe(false);
+      vi.useRealTimers();
     });
   });
 

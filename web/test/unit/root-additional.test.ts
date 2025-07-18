@@ -46,7 +46,9 @@ describe('Root Additional Operations', () => {
         const updatedTimestamp = testRoot.metadata.lastModified;
         
         // Add a small delay to ensure timestamps differ
-        await new Promise(resolve => setTimeout(resolve, 10));
+        vi.useFakeTimers();
+        vi.advanceTimersByTime(10);
+        vi.useRealTimers();
         
         const result = markBookmarkAsDeletedInRoot(testRoot, 'Category 1', 'Bundle 1', bookmarkId);
         
