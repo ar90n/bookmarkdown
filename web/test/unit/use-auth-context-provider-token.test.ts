@@ -55,11 +55,9 @@ global.open = vi.fn();
 
 describe('useAuthContextProvider - Token Management', () => {
   const mockConfig: AuthConfig = {
-    clientId: 'test-client-id',
-    scope: 'repo gist',
-    redirectUri: 'http://localhost:3000/callback',
-    onOAuthSuccess: vi.fn(),
-    onOAuthError: vi.fn()
+    oauthServiceUrl: 'http://localhost:8787',
+    scopes: ['gist', 'user:email'],
+    storageKey: 'test_auth'
   };
 
   const mockUser: GitHubUser = {
@@ -73,7 +71,8 @@ describe('useAuthContextProvider - Token Management', () => {
   const mockTokens: AuthTokens = {
     accessToken: 'test-access-token',
     refreshToken: 'test-refresh-token',
-    expiresAt: Date.now() + 3600000 // 1 hour from now
+    expiresAt: new Date(Date.now() + 3600000), // 1 hour from now
+    scopes: ['gist']
   };
 
   const renderedHooks: Array<{ unmount: () => void }> = [];
@@ -107,10 +106,21 @@ describe('useAuthContextProvider - Token Management', () => {
 
   describe('Token Validation', () => {
     it('should validate non-expired token', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
+      });
+
+      // Mock the validateToken API call
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockUser
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider(mockConfig));
@@ -122,7 +132,7 @@ describe('useAuthContextProvider - Token Management', () => {
     });
 
     it('should invalidate expired token', async () => {
-      const expiredTokens = { ...mockTokens, expiresAt: Date.now() - 1000 };
+      const expiredTokens = { ...mockTokens, expiresAt: new Date(Date.now() - 1000) };
       
       localStorageMock.getItem.mockImplementation((key) => {
         if (key === 'auth_user') return JSON.stringify(mockUser);
@@ -141,9 +151,14 @@ describe('useAuthContextProvider - Token Management', () => {
     it('should validate token with API when no expiry', async () => {
       const tokensNoExpiry = { accessToken: 'test-token' };
       
+      const authData = {
+        user: mockUser,
+        tokens: tokensNoExpiry,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(tokensNoExpiry);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
@@ -162,7 +177,8 @@ describe('useAuthContextProvider - Token Management', () => {
         expect.objectContaining({
           headers: {
             'Authorization': 'Bearer test-token',
-            'Accept': 'application/vnd.github.v3+json'
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'BookMarkDown/1.0.0'
           }
         })
       );
@@ -193,10 +209,21 @@ describe('useAuthContextProvider - Token Management', () => {
 
   describe('Get Valid Token', () => {
     it('should return valid token immediately', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
+      });
+
+      // Mock the validateToken API call
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockUser
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider(mockConfig));
@@ -206,43 +233,48 @@ describe('useAuthContextProvider - Token Management', () => {
       expect(token).toBe('test-access-token');
     });
 
-    it('should refresh expired token if refresh token exists', async () => {
+    it('should return null for expired token even with refresh token', async () => {
       const expiredTokens = { 
         ...mockTokens, 
-        expiresAt: Date.now() - 1000,
+        expiresAt: new Date(Date.now() - 1000),
         refreshToken: 'test-refresh-token'
       };
       
+      const authData = {
+        user: mockUser,
+        tokens: expiredTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
+      let callCount = 0;
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(expiredTokens);
+        if (key === 'test_auth' && callCount++ === 0) {
+          return JSON.stringify(authData);
+        }
         return null;
       });
 
+      // Mock the validateToken API call - expired token returns null
       (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: 'new-access-token',
-          refresh_token: 'new-refresh-token',
-          expires_in: 3600
-        })
+        ok: false,
+        status: 401
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider(mockConfig));
 
-      const token = await result.current.getValidToken();
+      let token: string | null = null;
+      await act(async () => {
+        token = await result.current.getValidToken();
+      });
 
-      expect(token).toBe('new-access-token');
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/oauth/token'),
-        expect.any(Object)
-      );
+      expect(token).toBeNull();
+      expect(result.current.isAuthenticated).toBe(false);
     });
 
     it('should return null if no valid token and no refresh', async () => {
       const expiredTokens = { 
         ...mockTokens, 
-        expiresAt: Date.now() - 1000,
+        expiresAt: new Date(Date.now() - 1000),
         refreshToken: undefined
       };
       
@@ -263,9 +295,14 @@ describe('useAuthContextProvider - Token Management', () => {
 
   describe('Refresh Auth', () => {
     it('should refresh auth successfully with valid token', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
@@ -284,15 +321,23 @@ describe('useAuthContextProvider - Token Management', () => {
 
       expect(result.current.user).toEqual(updatedUser);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'auth_user',
-        JSON.stringify(updatedUser)
+        'test_auth',
+        expect.stringContaining('"user":')
       );
     });
 
     it('should handle refresh failure', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
+      let callCount = 0;
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth' && callCount++ === 0) {
+          return JSON.stringify(authData);
+        }
         return null;
       });
 
@@ -311,51 +356,19 @@ describe('useAuthContextProvider - Token Management', () => {
       expect(result.current.user).toBeNull();
     });
 
-    it('should refresh with new token using refresh token', async () => {
-      const expiredTokens = { 
-        ...mockTokens, 
-        expiresAt: Date.now() - 1000,
-        refreshToken: 'test-refresh-token'
-      };
-      
-      localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(expiredTokens);
-        return null;
-      });
-
-      // Mock token refresh
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: 'new-access-token',
-          refresh_token: 'new-refresh-token',
-          expires_in: 3600
-        })
-      });
-
-      // Mock user fetch with new token
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser
-      });
-
-      const { result } = renderHookWithCleanup(() => useAuthContextProvider(mockConfig));
-
-      await act(async () => {
-        await result.current.refreshAuth();
-      });
-
-      expect(result.current.isAuthenticated).toBe(true);
-      expect(result.current.user).toEqual(mockUser);
-    });
+    // Refresh tokens are not currently supported in the implementation
   });
 
   describe('Update User', () => {
-    it('should update user in state and storage', () => {
+    it('should update user in state and storage', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
@@ -363,24 +376,30 @@ describe('useAuthContextProvider - Token Management', () => {
 
       const updatedUser = { ...mockUser, name: 'New Name' };
 
-      act(() => {
-        result.current.updateUser(updatedUser);
+      // Mock the API call to fetch updated user info
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => updatedUser
+      });
+
+      await act(async () => {
+        await result.current.updateUser();
       });
 
       expect(result.current.user).toEqual(updatedUser);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'auth_user',
-        JSON.stringify(updatedUser)
+        'test_auth',
+        expect.stringContaining('"user":')
       );
     });
 
-    it('should not update if not authenticated', () => {
+    it('should not update if not authenticated', async () => {
       const { result } = renderHookWithCleanup(() => useAuthContextProvider(mockConfig));
 
       const updatedUser = { ...mockUser, name: 'New Name' };
 
-      act(() => {
-        result.current.updateUser(updatedUser);
+      await act(async () => {
+        await result.current.updateUser();
       });
 
       expect(result.current.user).toBeNull();

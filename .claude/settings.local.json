@@ -18,7 +18,8 @@
       "Bash(find:*)",
       "Bash(npm ls:*)",
       "WebFetch(domain:github.com)",
-      "Bash(gh repo view:*)"
+      "Bash(gh repo view:*)",
+      "Bash(npx vitest run:*)"
     ],
     "deny": []
   }
