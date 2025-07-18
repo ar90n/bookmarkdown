@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkData } from './test-helpers';
+import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkData, createTestBookmarkMarkdown } from './test-helpers';
 
 test.describe('Sync conflict resolution', () => {
   test.beforeEach(async ({ page }) => {
@@ -20,7 +20,7 @@ test.describe('Sync conflict resolution', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: JSON.stringify(initialData)
+            content: createTestBookmarkMarkdown()
           }
         },
         updated_at: new Date().toISOString()
@@ -31,7 +31,7 @@ test.describe('Sync conflict resolution', () => {
     await page.goto('/bookmarks');
     
     // Wait for initial load
-    await page.waitForSelector('h3:has-text("Test Category")');
+    await page.waitForSelector('h2:has-text("Test Category")', { timeout: 10000 });
     
     // Make a local change
     await createBookmark(page, {
