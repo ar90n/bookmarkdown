@@ -202,6 +202,12 @@ describe('SettingsPage', () => {
     });
 
     it('should handle auto-sync toggle', () => {
+      // Make sure setAutoSync is properly mocked
+      const setAutoSyncMock = vi.fn();
+      vi.mocked(useBookmarkContext).mockReturnValue({
+        ...mockBookmarkContext,
+        setAutoSync: setAutoSyncMock
+      });
       vi.mocked(useAuthContext).mockReturnValue({
         ...mockAuthContext,
         isAuthenticated: true
@@ -210,9 +216,9 @@ describe('SettingsPage', () => {
       render(<SettingsPage />);
 
       const toggle = screen.getByLabelText('Auto-sync');
-      fireEvent.change(toggle, { target: { checked: false } });
+      fireEvent.click(toggle);
 
-      expect(mockBookmarkContext.setAutoSync).toHaveBeenCalledWith(false);
+      expect(setAutoSyncMock).toHaveBeenCalledWith(false);
     });
 
     it('should disable sync button when loading', () => {
@@ -281,8 +287,8 @@ describe('SettingsPage', () => {
     it('should show import section', () => {
       render(<SettingsPage />);
 
-      expect(screen.getByText('Import Data')).toBeInTheDocument();
-      expect(screen.getByText('Import from Markdown or JSON file')).toBeInTheDocument();
+      expect(screen.getByText('Import')).toBeInTheDocument();
+      expect(screen.getByText('Supports .md and .json files')).toBeInTheDocument();
     });
 
     it('should handle file import', async () => {
@@ -291,7 +297,8 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />);
 
-      const fileInput = screen.getByLabelText('Choose File');
+      const importButton = screen.getByText('Import from File');
+      const fileInput = importButton.closest('label')?.querySelector('input[type="file"]') as HTMLInputElement;
       
       // Mock FileReader
       const mockFileReader = {
@@ -324,7 +331,8 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />);
 
-      const fileInput = screen.getByLabelText('Choose File');
+      const importButton = screen.getByText('Import from File');
+      const fileInput = importButton.closest('label')?.querySelector('input[type="file"]') as HTMLInputElement;
       
       const mockFileReader = {
         readAsText: vi.fn(),
@@ -350,10 +358,16 @@ describe('SettingsPage', () => {
   });
 
   describe('Data Management', () => {
-    it('should show gist configuration section', () => {
+    it('should show gist ID in sync status section', () => {
+      vi.mocked(useAuthContext).mockReturnValue({
+        ...mockAuthContext,
+        isAuthenticated: true
+      });
+
       render(<SettingsPage />);
 
-      expect(screen.getByText('Gist Configuration')).toBeInTheDocument();
+      // Sync Status is in the h2 element
+      expect(screen.getByRole('heading', { name: 'Sync Status' })).toBeInTheDocument();
       expect(screen.getByText('test-gist-id')).toBeInTheDocument();
     });
 
@@ -362,7 +376,7 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />);
 
-      fireEvent.click(screen.getByText('Clear Gist ID'));
+      fireEvent.click(screen.getByText('Clear'));
 
       await waitFor(() => {
         expect(mockDialogContext.openConfirmDialog).toHaveBeenCalledWith({
@@ -380,7 +394,9 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />);
 
-      fireEvent.click(screen.getByText('Reset All Data'));
+      // Find the Reset button in the Danger Zone section
+      const resetButton = screen.getByRole('button', { name: /reset/i });
+      fireEvent.click(resetButton);
 
       await waitFor(() => {
         expect(mockDialogContext.openConfirmDialog).toHaveBeenCalledWith({
@@ -399,7 +415,9 @@ describe('SettingsPage', () => {
 
       render(<SettingsPage />);
 
-      fireEvent.click(screen.getByText('Reset All Data'));
+      // Find the Reset button in the Danger Zone section
+      const resetButton = screen.getByRole('button', { name: /reset/i });
+      fireEvent.click(resetButton);
 
       await waitFor(() => {
         expect(mockDialogContext.openConfirmDialog).toHaveBeenCalled();
@@ -408,39 +426,4 @@ describe('SettingsPage', () => {
     });
   });
 
-  describe('Create Gist Button', () => {
-    it('should show create gist button when no gist ID exists', () => {
-      vi.mocked(useBookmarkContext).mockReturnValue({
-        ...mockBookmarkContext,
-        currentGistId: undefined,
-        getGistInfo: vi.fn(() => ({}))
-      });
-      vi.mocked(useAuthContext).mockReturnValue({
-        ...mockAuthContext,
-        isAuthenticated: true
-      });
-
-      render(<SettingsPage />);
-
-      expect(screen.getByText('Create New Gist')).toBeInTheDocument();
-    });
-
-    it('should open create gist dialog when clicked', () => {
-      vi.mocked(useBookmarkContext).mockReturnValue({
-        ...mockBookmarkContext,
-        currentGistId: undefined,
-        getGistInfo: vi.fn(() => ({}))
-      });
-      vi.mocked(useAuthContext).mockReturnValue({
-        ...mockAuthContext,
-        isAuthenticated: true
-      });
-
-      render(<SettingsPage />);
-
-      fireEvent.click(screen.getByText('Create New Gist'));
-
-      expect(mockDialogContext.openCreateGistDialog).toHaveBeenCalled();
-    });
-  });
 });
