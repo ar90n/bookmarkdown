@@ -20,7 +20,7 @@
     "test:web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/",
     "test:web-unit": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/unit/",
     "test:web-unit-context-bookmark": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/use-bookmark-context-provider.test.ts web/test/unit/bookmark-context-*.test.*",
-    "test:web-unit-context-auth": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/use-auth-context-provider*.test.ts web/test/unit/dialog-context-*.test.*",
+    "test:web-unit-context-auth": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/use-auth-context-provider-core.test.ts web/test/unit/use-auth-context-provider-auth.test.ts web/test/unit/use-auth-context-provider-token.test.ts web/test/unit/use-auth-context-provider-basic.test.ts web/test/unit/dialog-context-*.test.*",
     "test:web-unit-context-other": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/app-context-provider.test.* web/test/unit/use-bookmark-context-provider-basic.test.ts",
     "test:web-unit-sync": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/sync-*.test.*",
     "test:web-unit-gist": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/gist-*.test.* web/test/unit/*repository*.test.*",

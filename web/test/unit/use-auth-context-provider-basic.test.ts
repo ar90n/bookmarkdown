@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, waitFor } from '../test-utils';
 import { useAuthContextProvider } from '../../src/lib/context/providers/useAuthContextProvider';
 import { GitHubUser, AuthTokens } from '../../src/lib/context/AuthContext';
 
@@ -77,171 +77,179 @@ describe('useAuthContextProvider - Basic Tests', () => {
     expiresAt: undefined
   };
 
+  const renderedHooks: Array<{ unmount: () => void }> = [];
+
+  const renderHookWithCleanup = <T,>(callback: () => T) => {
+    const result = renderHook(callback);
+    renderedHooks.push(result);
+    return result;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.clearAllTimers();
+    localStorageMock.getItem.mockReturnValue(null);
+    sessionStorageMock.getItem.mockReturnValue(null);
     mockLocation.search = '';
     mockLocation.href = 'http://localhost:3000/test';
+    (global.fetch as any).mockClear();
   });
 
-  it('should initialize with default state', () => {
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    expect(result.current.user).toBe(null);
-    expect(result.current.tokens).toBe(null);
-    expect(result.current.isAuthenticated).toBe(false);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe(null);
-    expect(result.current.lastLoginAt).toBe(null);
+  afterEach(() => {
+    // Unmount all rendered hooks
+    renderedHooks.forEach(hook => hook.unmount());
+    renderedHooks.length = 0;
+    vi.restoreAllMocks();
+    vi.clearAllTimers();
   });
 
-  it('should load auth data from localStorage', async () => {
-    const storedData = {
-      user: mockUser,
-      tokens: mockTokens,
-      lastLoginAt: new Date().toISOString()
-    };
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(storedData));
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    await waitFor(() => {
+  describe('Authentication State', () => {
+    it('should initialize with unauthenticated state', () => {
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.user).toBeNull();
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should restore auth state from localStorage', () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'auth_user') return JSON.stringify(mockUser);
+        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        return null;
+      });
+
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.user).toEqual(mockUser);
-      expect(result.current.tokens).toEqual(mockTokens);
+    });
+  });
+
+  describe('Basic Operations', () => {
+    it('should set and clear errors', () => {
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      act(() => {
+        result.current.setError('Test error');
+      });
+
+      expect(result.current.error).toBe('Test error');
+
+      act(() => {
+        result.current.clearError();
+      });
+
+      expect(result.current.error).toBeNull();
+    });
+
+    it('should update user information', () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'auth_user') return JSON.stringify(mockUser);
+        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        return null;
+      });
+
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      const updatedUser = { ...mockUser, name: 'Updated Name' };
+
+      act(() => {
+        result.current.updateUser(updatedUser);
+      });
+
+      expect(result.current.user).toEqual(updatedUser);
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_user', JSON.stringify(updatedUser));
+    });
+  });
+
+  describe('Token Operations', () => {
+    it('should get access token when authenticated', async () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'auth_user') return JSON.stringify(mockUser);
+        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        return null;
+      });
+
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      const token = await result.current.getValidToken();
+
+      expect(token).toBe('test-token');
+    });
+
+    it('should return null token when not authenticated', async () => {
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
+      const token = await result.current.getValidToken();
+
+      expect(token).toBeNull();
+    });
+  });
+
+  describe('Logout', () => {
+    it('should clear all auth data on logout', () => {
+      localStorageMock.getItem.mockImplementation((key) => {
+        if (key === 'auth_user') return JSON.stringify(mockUser);
+        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        return null;
+      });
+
+      const { result } = renderHookWithCleanup(() => useAuthContextProvider({
+        clientId: 'test-client',
+        scope: 'gist',
+        redirectUri: 'http://localhost:3000/callback',
+        onOAuthSuccess: vi.fn(),
+        onOAuthError: vi.fn()
+      }));
+
       expect(result.current.isAuthenticated).toBe(true);
-    });
-  });
 
-  it('should login with valid token', async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockUser
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        headers: new Headers({ 'X-OAuth-Scopes': 'gist' })
-      } as Response);
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    await act(async () => {
-      await result.current.login('valid-token');
-    });
-    
-    expect(result.current.user).toEqual(mockUser);
-    expect(result.current.tokens?.accessToken).toBe('valid-token');
-    expect(result.current.isAuthenticated).toBe(true);
-    expect(result.current.error).toBe(null);
-  });
+      act(() => {
+        result.current.logout();
+      });
 
-  it('should handle invalid token', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: false,
-      status: 401
-    } as Response);
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    await act(async () => {
-      await result.current.login('invalid-token');
+      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.user).toBeNull();
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_user');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_tokens');
     });
-    
-    expect(result.current.user).toBe(null);
-    expect(result.current.isAuthenticated).toBe(false);
-    expect(result.current.error).toBe('Invalid or expired token');
-  });
-
-  it('should logout successfully', async () => {
-    localStorageMock.getItem.mockReturnValue(JSON.stringify({
-      user: mockUser,
-      tokens: mockTokens,
-      lastLoginAt: new Date().toISOString()
-    }));
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    await waitFor(() => {
-      expect(result.current.isAuthenticated).toBe(true);
-    });
-    
-    await act(async () => {
-      await result.current.logout();
-    });
-    
-    expect(result.current.user).toBe(null);
-    expect(result.current.tokens).toBe(null);
-    expect(result.current.isAuthenticated).toBe(false);
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('bookmark_auth');
-  });
-
-  it('should validate token', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockUser
-    } as Response);
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    const isValid = await result.current.validateToken('test-token');
-    
-    expect(isValid).toBe(true);
-  });
-
-  it('should handle OAuth callback', async () => {
-    const authData = btoa(JSON.stringify({ user: mockUser, tokens: mockTokens }));
-    const state = 'test-state';
-    
-    sessionStorageMock.getItem.mockReturnValue(state);
-    mockLocation.search = `?auth=${authData}&state=${state}`;
-    
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    await waitFor(() => {
-      expect(result.current.user).toEqual(mockUser);
-      expect(result.current.tokens).toEqual(mockTokens);
-      expect(result.current.isAuthenticated).toBe(true);
-    });
-  });
-
-  it('should initiate OAuth login', async () => {
-    const oauthServiceUrl = 'https://oauth.example.com';
-    const { result } = renderHook(() => useAuthContextProvider({ oauthServiceUrl }));
-    
-    await act(async () => {
-      await result.current.loginWithOAuth();
-    });
-    
-    expect(sessionStorageMock.setItem).toHaveBeenCalledWith('oauth_state', expect.any(String));
-    expect(mockLocation.href).toContain(`${oauthServiceUrl}/auth/github`);
-  });
-
-  it('should set and clear errors', () => {
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    act(() => {
-      result.current.setError('Test error');
-    });
-    
-    expect(result.current.error).toBe('Test error');
-    
-    act(() => {
-      result.current.clearError();
-    });
-    
-    expect(result.current.error).toBe(null);
-  });
-
-  it('should reset auth state', () => {
-    const { result } = renderHook(() => useAuthContextProvider({}));
-    
-    act(() => {
-      result.current.resetAuth();
-    });
-    
-    expect(result.current.user).toBe(null);
-    expect(result.current.tokens).toBe(null);
-    expect(result.current.error).toBe(null);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.isAuthenticated).toBe(false);
   });
 });
