@@ -43,6 +43,14 @@ const BroadcastChannelMock = vi.fn().mockImplementation((name: string) => {
 describe('useBookmarkContextProvider', () => {
   let mockService: any;
   let mockSyncShell: any;
+  const renderedHooks: Array<{ unmount: () => void }> = [];
+
+  // Helper to render hook with automatic cleanup
+  const renderHookWithCleanup = <T,>(callback: () => T) => {
+    const result = renderHook(callback);
+    renderedHooks.push(result);
+    return result;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,12 +101,16 @@ describe('useBookmarkContextProvider', () => {
   });
 
   afterEach(() => {
+    // Unmount all rendered hooks
+    renderedHooks.forEach(hook => hook.unmount());
+    renderedHooks.length = 0;
+    
     vi.clearAllMocks();
   });
 
   describe('Initialization', () => {
     it('should initialize with default state', () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(result.current.root.categories).toEqual([]);
       expect(result.current.isLoading).toBe(false);
@@ -110,7 +122,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should initialize service without sync shell when no access token', () => {
-      renderHook(() => useBookmarkContextProvider({}));
+      renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(createBookmarkService).toHaveBeenCalledWith(undefined);
     });
@@ -122,7 +134,7 @@ describe('useBookmarkContextProvider', () => {
         gistId: 'test-gist-id'
       };
       
-      renderHook(() => useBookmarkContextProvider(config));
+      renderHookWithCleanup(() => useBookmarkContextProvider(config));
       
       await waitFor(() => {
         expect(GistSyncShell).toHaveBeenCalledWith({
@@ -142,7 +154,7 @@ describe('useBookmarkContextProvider', () => {
     it('should handle sync shell initialization failure', async () => {
       mockSyncShell.initialize.mockReturnValue(failure(new Error('Init failed')));
       
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -154,7 +166,7 @@ describe('useBookmarkContextProvider', () => {
     it('should load gist ID from localStorage', () => {
       localStorageMock.getItem.mockReturnValue('stored-gist-id');
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(localStorageMock.getItem).toHaveBeenCalledWith('bookmarkdown_data_gist_id');
       expect(result.current.currentGistId).toBe('stored-gist-id');
@@ -163,7 +175,7 @@ describe('useBookmarkContextProvider', () => {
     it('should use provided gist ID if localStorage is empty', () => {
       localStorageMock.getItem.mockReturnValue(null);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         gistId: 'config-gist-id'
       }));
       
@@ -171,7 +183,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should initialize BroadcastChannel', () => {
-      renderHook(() => useBookmarkContextProvider({}));
+      renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(BroadcastChannelMock).toHaveBeenCalledWith('bookmarkdown_sync');
     });
@@ -179,7 +191,7 @@ describe('useBookmarkContextProvider', () => {
     it('should perform initial sync when gist ID and token exist', async () => {
       localStorageMock.getItem.mockReturnValue('stored-gist-id');
       
-      renderHook(() => useBookmarkContextProvider({
+      renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -191,7 +203,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('Category Operations', () => {
     it('should add category successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addCategory('Test Category');
@@ -204,7 +216,7 @@ describe('useBookmarkContextProvider', () => {
     it('should handle add category error', async () => {
       mockService.addCategory.mockReturnValue(failure(new Error('Category exists')));
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addCategory('Test Category');
@@ -214,7 +226,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should remove category successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.removeCategory('Test Category');
@@ -225,7 +237,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should rename category successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.renameCategory('Old Name', 'New Name');
@@ -238,7 +250,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('Bundle Operations', () => {
     it('should add bundle successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addBundle('Category', 'Bundle');
@@ -249,7 +261,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should remove bundle successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.removeBundle('Category', 'Bundle');
@@ -260,7 +272,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should rename bundle successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.renameBundle('Category', 'Old Bundle', 'New Bundle');
@@ -271,7 +283,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should move bundle successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.moveBundle('Source Category', 'Bundle', 'Target Category');
@@ -290,7 +302,7 @@ describe('useBookmarkContextProvider', () => {
     };
 
     it('should add bookmark successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addBookmark('Category', 'Bundle', testBookmark);
@@ -302,7 +314,7 @@ describe('useBookmarkContextProvider', () => {
 
     it('should add bookmarks batch successfully', async () => {
       const bookmarks = [testBookmark, { ...testBookmark, title: 'Another' }];
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addBookmarksBatch('Category', 'Bundle', bookmarks);
@@ -314,7 +326,7 @@ describe('useBookmarkContextProvider', () => {
 
     it('should update bookmark successfully', async () => {
       const updates = { title: 'Updated Title' };
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.updateBookmark('Category', 'Bundle', 'bookmark-id', updates);
@@ -325,7 +337,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should remove bookmark successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.removeBookmark('Category', 'Bundle', 'bookmark-id');
@@ -336,7 +348,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should move bookmark successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.moveBookmark('Source Cat', 'Source Bundle', 'Target Cat', 'Target Bundle', 'bookmark-id');
@@ -352,7 +364,7 @@ describe('useBookmarkContextProvider', () => {
       const searchResults = [{ bookmarkId: 'id1', categoryName: 'cat1', bundleName: 'bundle1' }];
       mockService.searchBookmarks.mockReturnValue(searchResults);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const results = result.current.searchBookmarks({ query: 'test' });
       
@@ -368,7 +380,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should load from remote successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -388,7 +400,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should save to remote successfully', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -412,7 +424,7 @@ describe('useBookmarkContextProvider', () => {
       mockService.isDirty.mockReturnValue(true);
       
       const onConflict = vi.fn();
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -437,7 +449,7 @@ describe('useBookmarkContextProvider', () => {
         return null;
       });
       
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token',
         autoSync: true
       }));
@@ -457,7 +469,7 @@ describe('useBookmarkContextProvider', () => {
       const onConflictDuringAutoSync = vi.fn();
       mockService.isDirty.mockReturnValue(true);
       
-      renderHook(() => useBookmarkContextProvider({
+      renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token',
         onConflictDuringAutoSync
       }));
@@ -475,7 +487,7 @@ describe('useBookmarkContextProvider', () => {
     it('should auto-load remote changes when no local changes', async () => {
       mockService.isDirty.mockReturnValue(false);
       
-      renderHook(() => useBookmarkContextProvider({
+      renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -494,7 +506,7 @@ describe('useBookmarkContextProvider', () => {
         failure(new Error('Shell not initialized'))
       );
       
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -509,7 +521,7 @@ describe('useBookmarkContextProvider', () => {
   describe('Import/Export Operations', () => {
     it('should import markdown data', async () => {
       const markdownData = '# Test\n## Category\n### Bundle\n- [Title](https://example.com)';
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.importData(markdownData, 'markdown');
@@ -533,7 +545,7 @@ describe('useBookmarkContextProvider', () => {
         }]
       });
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.importData(jsonData, 'json');
@@ -545,7 +557,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should handle import errors', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.importData('invalid json', 'json');
@@ -555,7 +567,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should export data as markdown', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const exported = await result.current.exportData('markdown');
       
@@ -564,7 +576,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should export data as JSON', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const exported = await result.current.exportData('json');
       
@@ -575,7 +587,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('State Management', () => {
     it('should clear error', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       // Set an error
       act(() => {
@@ -593,7 +605,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should reset state', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       // Make some changes
       await act(async () => {
@@ -614,7 +626,7 @@ describe('useBookmarkContextProvider', () => {
     it('should manage auto-sync setting', () => {
       localStorageMock.getItem.mockReturnValue('false');
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(result.current.isAutoSyncEnabled()).toBe(false);
       
@@ -629,7 +641,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('Gist ID Management', () => {
     it('should save gist ID', () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       act(() => {
         result.current.saveGistId('new-gist-id');
@@ -640,7 +652,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should clear gist ID', () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       act(() => {
         result.current.clearGistId();
@@ -655,7 +667,7 @@ describe('useBookmarkContextProvider', () => {
         throw new Error('localStorage error');
       });
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       // Should not throw
       act(() => {
@@ -669,7 +681,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('Business Logic', () => {
     it('should check if can drop bookmark', () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const canDrop = result.current.canDropBookmark(
         { categoryName: 'Cat1', bundleName: 'Bundle1', bookmarkId: 'id1' },
@@ -681,7 +693,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should not allow dropping bookmark to same location', () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const canDrop = result.current.canDropBookmark(
         { categoryName: 'Cat1', bundleName: 'Bundle1', bookmarkId: 'id1' },
@@ -700,7 +712,7 @@ describe('useBookmarkContextProvider', () => {
         ]
       });
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const canDrop = result.current.canDropBundle(
         { categoryName: 'Cat1', bundleName: 'Bundle1' },
@@ -719,7 +731,7 @@ describe('useBookmarkContextProvider', () => {
       };
       mockService.getRoot.mockReturnValue(mockRoot);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const categories = result.current.getCategories();
       
@@ -731,7 +743,7 @@ describe('useBookmarkContextProvider', () => {
         categories: [{ name: 'Cat1', bundles: [] }]
       });
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(result.current.hasCategories()).toBe(true);
     });
@@ -754,7 +766,7 @@ describe('useBookmarkContextProvider', () => {
       };
       mockService.getRoot.mockReturnValue(mockRoot);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const source = result.current.getSourceBundle('Cat1', 'Bundle1');
       
@@ -768,7 +780,7 @@ describe('useBookmarkContextProvider', () => {
       const stats = { totalCategories: 2, totalBundles: 4, totalBookmarks: 10 };
       mockService.getStats.mockReturnValue(stats);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(result.current.getStats()).toEqual(stats);
     });
@@ -777,13 +789,13 @@ describe('useBookmarkContextProvider', () => {
       const gistInfo = { gistId: 'test-id', filename: 'test.md' };
       mockService.getGistInfo.mockReturnValue(gistInfo);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       expect(result.current.getGistInfo()).toEqual(gistInfo);
     });
 
     it('should check if sync is configured', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -795,7 +807,7 @@ describe('useBookmarkContextProvider', () => {
 
   describe('BroadcastChannel Communication', () => {
     it('should broadcast updates to other tabs', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addCategory('Test');
@@ -808,7 +820,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should receive updates from other tabs', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       const messageHandler = mockBroadcastChannel.onmessage!;
       
@@ -826,7 +838,7 @@ describe('useBookmarkContextProvider', () => {
     });
 
     it('should close broadcast channel on unmount', () => {
-      const { unmount } = renderHook(() => useBookmarkContextProvider({}));
+      const { unmount } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       unmount();
       
@@ -838,7 +850,7 @@ describe('useBookmarkContextProvider', () => {
     it('should handle service not initialized errors', async () => {
       vi.mocked(createBookmarkService).mockReturnValue(null as any);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await act(async () => {
         await result.current.addCategory('Test');
@@ -851,13 +863,13 @@ describe('useBookmarkContextProvider', () => {
     it('should handle export error when service not initialized', async () => {
       vi.mocked(createBookmarkService).mockReturnValue(null as any);
       
-      const { result } = renderHook(() => useBookmarkContextProvider({}));
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({}));
       
       await expect(result.current.exportData('json')).rejects.toThrow('Service not initialized');
     });
 
     it('should retry initialization', async () => {
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -872,7 +884,7 @@ describe('useBookmarkContextProvider', () => {
     it('should handle retry initialization failure', async () => {
       mockService.loadFromRemote.mockReturnValue(failure(new Error('Load failed')));
       
-      const { result } = renderHook(() => useBookmarkContextProvider({
+      const { result } = renderHookWithCleanup(() => useBookmarkContextProvider({
         accessToken: 'test-token'
       }));
       
@@ -894,7 +906,7 @@ describe('useBookmarkContextProvider', () => {
       
       const createSyncShell = vi.fn(() => customSyncShell);
       
-      renderHook(() => useBookmarkContextProvider({
+      renderHookWithCleanup(() => useBookmarkContextProvider({
         createSyncShell
       }));
       
