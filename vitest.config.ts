@@ -14,8 +14,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./test/setup.ts', './test/setup-react.ts', './test/setup-mocks.ts'],
     include: [
-      'test/**/*.test.ts',
-      'test/**/*.test.tsx',
       'web/src/lib/**/*.test.ts',
       'web/src/lib/**/*.test.tsx',
       'web/**/*.test.ts',
