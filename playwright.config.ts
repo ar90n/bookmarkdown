@@ -58,10 +58,6 @@ export default defineConfig({
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
   ] : [
     // Full browser matrix for local testing
     {
@@ -102,9 +98,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: process.env.CI ? 'npm run preview:web' : 'npm run dev:web',
+    command: process.env.CI ? 'npm run build:web && npm run preview:web' : 'npm run dev:web',
     url: process.env.CI ? 'http://127.0.0.1:3000' : 'http://localhost:3000',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // 3 minutes for CI
     env: {
       CI: process.env.CI ? 'true' : '',
