@@ -662,7 +662,7 @@ jobs:
 
   build:
     name: Build & Bundle Analysis
-    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, quality-checks]
+    needs: [test-core, test-react, test-web-unit-context-bookmark, test-web-unit-context-auth, test-web-unit-context-other, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, quality-checks]
     runs-on: ubuntu-latest
     
     steps:
@@ -743,7 +743,7 @@ jobs:
   # Summary job that depends on all CI jobs
   ci-complete:
     name: CI Complete
-    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, test-e2e, security-scan, quality-checks, build]
+    needs: [test-core, test-react, test-web-unit-context-bookmark, test-web-unit-context-auth, test-web-unit-context-other, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, test-e2e, security-scan, quality-checks, build]
     runs-on: ubuntu-latest
     if: always()
     
@@ -753,7 +753,9 @@ jobs:
         # Check if any required jobs failed
         if [[ "${{ needs.test-core.result }}" != "success" ]] || \
            [[ "${{ needs.test-react.result }}" != "success" ]] || \
-           [[ "${{ needs.test-web-unit-context.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web-unit-context-bookmark.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web-unit-context-auth.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web-unit-context-other.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-sync.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-gist.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-services.result }}" != "success" ]] || \
