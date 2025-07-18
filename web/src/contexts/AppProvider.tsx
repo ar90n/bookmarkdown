@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppContextValue, AppConfig, useAppContextProvider } from 'bookmarkdown';
+import { AppContextValue, AppConfig, useAppContextProvider } from '../lib';
 import { DialogProvider } from './DialogContext';
 
 // Create React context for the BookMarkDown app context

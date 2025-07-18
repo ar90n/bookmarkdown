@@ -149,6 +149,15 @@ export const markBookmarkAsDeletedInRoot = (
   bundleName: string, 
   bookmarkId: string
 ): Root => {
+  // First check if the bookmark exists
+  const category = root.categories.find(c => c.name === categoryName);
+  if (!category) return root;
+  
+  const bundle = category.bundles.find(b => b.name === bundleName);
+  if (!bundle) return root;
+  
+  const bookmarkExists = bundle.bookmarks.some(b => b.id === bookmarkId);
+  if (!bookmarkExists) return root;
   
   const updatedRoot = {
     ...root,
