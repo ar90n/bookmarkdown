@@ -40,7 +40,7 @@ export const ErrorNotification: React.FC<ErrorNotificationProps> = ({
   const iconColor = isConflictError ? 'text-yellow-600' : 'text-red-600';
   
   return (
-    <div className={`fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg border ${bgColor} z-50`}>
+    <div className={`fixed top-4 right-4 max-w-md p-4 rounded-lg shadow-lg border ${bgColor} z-50`} data-testid="error-notification">
       <div className="flex items-start">
         <ExclamationTriangleIcon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} />
         

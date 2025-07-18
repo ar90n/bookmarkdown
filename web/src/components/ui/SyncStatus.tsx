@@ -67,6 +67,7 @@ export const SyncStatus: React.FC = () => {
     <div 
       className="flex items-center gap-2 text-sm"
       data-testid="sync-status"
+      data-sync-status={status}
       title={tooltipText}
     >
       <Icon 
