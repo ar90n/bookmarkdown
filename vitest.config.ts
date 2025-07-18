@@ -13,6 +13,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.ts', './test/setup-react.ts', './test/setup-mocks.ts'],
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+        maxForks: 1
+      }
+    },
+    testTimeout: 30000,
     include: [
       'test/**/*.test.ts',
       'test/**/*.test.tsx',
