@@ -97,8 +97,8 @@ jobs:
         path: coverage/
         retention-days: 7
 
-  test-web-unit-context:
-    name: Web Unit Tests - Context
+  test-web-unit-context-bookmark:
+    name: Web Unit Tests - Context (Bookmark)
     runs-on: ubuntu-latest
     
     steps:
@@ -117,15 +117,15 @@ jobs:
     - name: Build library for web tests
       run: npm run build:lib
 
-    - name: Run web unit context tests with coverage
-      run: npm run test:web-unit-context -- --coverage
+    - name: Run web unit context bookmark tests with coverage
+      run: npm run test:web-unit-context-bookmark -- --coverage
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
         files: ./coverage/cobertura-coverage.xml
-        flags: web-unit-context
-        name: web-unit-context-coverage
+        flags: web-unit-context-bookmark
+        name: web-unit-context-bookmark-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
         root_dir: ./
@@ -135,7 +135,91 @@ jobs:
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       with:
-        name: web-unit-context-coverage-${{ github.run_id }}
+        name: web-unit-context-bookmark-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
+  test-web-unit-context-auth:
+    name: Web Unit Tests - Context (Auth)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for web tests
+      run: npm run build:lib
+
+    - name: Run web unit context auth tests with coverage
+      run: npm run test:web-unit-context-auth -- --coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: web-unit-context-auth
+        name: web-unit-context-auth-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-unit-context-auth-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
+  test-web-unit-context-other:
+    name: Web Unit Tests - Context (Other)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for web tests
+      run: npm run build:lib
+
+    - name: Run web unit context other tests with coverage
+      run: npm run test:web-unit-context-other -- --coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: web-unit-context-other
+        name: web-unit-context-other-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-unit-context-other-coverage-${{ github.run_id }}
         path: coverage/
         retention-days: 7
 
