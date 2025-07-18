@@ -17,9 +17,14 @@ export default defineConfig({
     poolOptions: {
       forks: {
         singleFork: true,
-        maxForks: 1
+        maxForks: 1,
+        // Limit concurrent test files to reduce memory usage
+        maxThreads: 1,
+        minThreads: 1
       }
     },
+    // Run tests sequentially to reduce memory usage
+    fileParallelism: false,
     testTimeout: 30000,
     include: [
       'test/**/*.test.ts',

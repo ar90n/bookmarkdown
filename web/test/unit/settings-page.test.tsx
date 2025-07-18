@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '../test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '../test-utils';
 import { SettingsPage } from '../../src/pages/SettingsPage';
 import { useAuthContext, useBookmarkContext, useDialogContext } from '../../src/contexts/AppProvider';
 
@@ -83,6 +83,15 @@ describe('SettingsPage', () => {
       }
       return originalCreateElement(tag);
     });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllTimers();
+    vi.clearAllMocks();
+    mockClick.mockClear();
+    mockRemove.mockClear();
+    vi.restoreAllMocks();
   });
 
   describe('Page Header', () => {
