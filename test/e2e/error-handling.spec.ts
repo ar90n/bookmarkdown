@@ -45,7 +45,7 @@ test.describe('Error handling and recovery', () => {
     });
     
     // Trigger manual sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show error initially
     await expect(page.locator('[data-testid="error-notification"], [data-testid="sync-status"]:has-text("Error")')).toBeVisible({
@@ -82,7 +82,7 @@ test.describe('Error handling and recovery', () => {
     await page.goto('/bookmarks');
     
     // Try to sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show auth error
     await expect(page.locator('text=/authentication|unauthorized|credentials/i')).toBeVisible({
@@ -116,7 +116,7 @@ test.describe('Error handling and recovery', () => {
     await page.goto('/bookmarks');
     
     // Try to sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show rate limit error
     await expect(page.locator('text=/rate limit/i')).toBeVisible({
@@ -207,7 +207,7 @@ test.describe('Error handling and recovery', () => {
     await context.setOffline(true);
     
     // Try to sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show offline indicator
     await expect(page.locator('text=/offline|no.*connection|network.*error/i')).toBeVisible({
@@ -250,7 +250,7 @@ test.describe('Error handling and recovery', () => {
     await page.goto('/bookmarks');
     
     // Try to sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show server error
     await expect(page.locator('text=/server error|something went wrong|try again/i')).toBeVisible({
@@ -285,7 +285,7 @@ test.describe('Error handling and recovery', () => {
     await page.goto('/bookmarks');
     
     // Try to sync
-    await page.click('button:has-text("Sync Now")');
+    await page.click('button:has-text("Sync")');
     
     // Should show timeout error within reasonable time
     await expect(page.locator('text=/timeout|taking too long|slow/i')).toBeVisible({

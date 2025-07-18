@@ -28,7 +28,14 @@ test.describe('Cross-tab synchronization', () => {
           id: 'test-gist-123',
           files: {
             'bookmarks.md': {
-              content: JSON.stringify(createTestBookmarkData())
+              content: `# Bookmarks
+
+## Test Category
+
+### Test Bundle
+
+- [Test Bookmark 1](https://example1.com)
+- [Test Bookmark 2](https://example2.com)`
             }
           },
           updated_at: new Date().toISOString()
@@ -47,9 +54,9 @@ test.describe('Cross-tab synchronization', () => {
     await page1.goto('/bookmarks');
     await page2.goto('/bookmarks');
     
-    // Wait for initial load in both tabs
-    await page1.waitForSelector('h3:has-text("Test Category")');
-    await page2.waitForSelector('h3:has-text("Test Category")');
+    // Wait for initial load in both tabs - check for bundle or bookmark
+    await page1.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
+    await page2.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
     
     // Create a bookmark in tab 1
     await createBookmark(page1, {
@@ -77,8 +84,8 @@ test.describe('Cross-tab synchronization', () => {
     await page2.goto('/bookmarks');
     
     // Wait for initial load
-    await page1.waitForSelector('h3:has-text("Test Category")');
-    await page2.waitForSelector('h3:has-text("Test Category")');
+    await page1.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
+    await page2.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
     
     // Add a new category in tab 1
     await page1.click('button:has-text("Add Category")');
@@ -168,8 +175,8 @@ test.describe('Cross-tab synchronization', () => {
     await page2.goto('/bookmarks');
     
     // Wait for initial load
-    await page1.waitForSelector('h3:has-text("Test Category")');
-    await page2.waitForSelector('h3:has-text("Test Category")');
+    await page1.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
+    await page2.waitForSelector('h4:has-text("Test Bundle")', { timeout: 10000 });
     
     // Simulate tab 2 going offline
     await page2.context().setOffline(true);
