@@ -14,15 +14,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: 2,
   
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   
   /* Global timeout */
-  timeout: process.env.CI ? 60000 : 30000,
+  timeout: 60000,
   expect: {
-    timeout: process.env.CI ? 10000 : 5000,
+    timeout: 10000,
   },
   
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -31,7 +31,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.CI ? 'http://127.0.0.1:3000' : 'http://localhost:3000',
+    baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -42,14 +42,13 @@ export default defineConfig({
     /* Record video on failure */
     video: 'retain-on-failure',
     
-    /* Set timeout for CI */
-    actionTimeout: process.env.CI ? 30000 : 10000,
-    navigationTimeout: process.env.CI ? 30000 : 30000,
+    /* Set timeout */
+    actionTimeout: 30000,
+    navigationTimeout: 30000,
   },
 
   /* Configure projects for major browsers */
-  projects: process.env.CI ? [
-    // Only test on core browsers in CI for faster feedback
+  projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
@@ -57,53 +56,14 @@ export default defineConfig({
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-    },
-  ] : [
-    // Full browser matrix for local testing
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
-
-    /* Test against branded browsers. */
-    {
-      name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: process.env.CI ? 'npm run build:web && npm run preview:web' : 'npm run dev:web',
-    url: process.env.CI ? 'http://127.0.0.1:3000' : 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // 3 minutes for CI
-    env: {
-      CI: process.env.CI ? 'true' : '',
-    },
+    command: 'npm run build:web && npm run preview:web',
+    url: 'http://localhost:3000',
+    reuseExistingServer: false,
+    timeout: 180 * 1000, // 3 minutes
   },
 });
