@@ -74,7 +74,8 @@ describe('useAuthContextProvider - Basic Tests', () => {
   const mockTokens: AuthTokens = {
     accessToken: 'test-token',
     scopes: ['gist'],
-    expiresAt: undefined
+    expiresAt: undefined,
+    refreshToken: undefined
   };
 
   const renderedHooks: Array<{ unmount: () => void }> = [];
@@ -106,11 +107,9 @@ describe('useAuthContextProvider - Basic Tests', () => {
   describe('Authentication State', () => {
     it('should initialize with unauthenticated state', () => {
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       expect(result.current.isAuthenticated).toBe(false);
@@ -120,18 +119,21 @@ describe('useAuthContextProvider - Basic Tests', () => {
     });
 
     it('should restore auth state from localStorage', () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       expect(result.current.isAuthenticated).toBe(true);
@@ -142,11 +144,9 @@ describe('useAuthContextProvider - Basic Tests', () => {
   describe('Basic Operations', () => {
     it('should set and clear errors', () => {
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       act(() => {
@@ -162,46 +162,64 @@ describe('useAuthContextProvider - Basic Tests', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('should update user information', () => {
+    it('should update user information', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       const updatedUser = { ...mockUser, name: 'Updated Name' };
 
-      act(() => {
-        result.current.updateUser(updatedUser);
+      // Mock the API call to fetch updated user info
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => updatedUser
+      });
+
+      await act(async () => {
+        await result.current.updateUser();
       });
 
       expect(result.current.user).toEqual(updatedUser);
-      expect(localStorageMock.setItem).toHaveBeenCalledWith('auth_user', JSON.stringify(updatedUser));
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('test_auth', expect.stringContaining('"user":'));
     });
   });
 
   describe('Token Operations', () => {
     it('should get access token when authenticated', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth') return JSON.stringify(authData);
         return null;
       });
 
+      // Mock the validateToken API call
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockUser
+      });
+
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       const token = await result.current.getValidToken();
@@ -211,11 +229,9 @@ describe('useAuthContextProvider - Basic Tests', () => {
 
     it('should return null token when not authenticated', async () => {
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       const token = await result.current.getValidToken();
@@ -225,31 +241,36 @@ describe('useAuthContextProvider - Basic Tests', () => {
   });
 
   describe('Logout', () => {
-    it('should clear all auth data on logout', () => {
+    it('should clear all auth data on logout', async () => {
+      const authData = {
+        user: mockUser,
+        tokens: mockTokens,
+        lastLoginAt: new Date().toISOString()
+      };
+      
+      let callCount = 0;
       localStorageMock.getItem.mockImplementation((key) => {
-        if (key === 'auth_user') return JSON.stringify(mockUser);
-        if (key === 'auth_tokens') return JSON.stringify(mockTokens);
+        if (key === 'test_auth' && callCount++ === 0) {
+          return JSON.stringify(authData);
+        }
         return null;
       });
 
       const { result } = renderHookWithCleanup(() => useAuthContextProvider({
-        clientId: 'test-client',
-        scope: 'gist',
-        redirectUri: 'http://localhost:3000/callback',
-        onOAuthSuccess: vi.fn(),
-        onOAuthError: vi.fn()
+        oauthServiceUrl: 'http://localhost:8787',
+        scopes: ['gist', 'user:email'],
+        storageKey: 'test_auth'
       }));
 
       expect(result.current.isAuthenticated).toBe(true);
 
-      act(() => {
-        result.current.logout();
+      await act(async () => {
+        await result.current.logout();
       });
 
       expect(result.current.isAuthenticated).toBe(false);
       expect(result.current.user).toBeNull();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_user');
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_tokens');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('test_auth');
     });
   });
 });
