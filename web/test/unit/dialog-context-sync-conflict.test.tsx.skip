@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, render, screen } from '../test-utils';
 import { DialogProvider, useDialogContext } from '../../src/contexts/DialogContext';
 import React from 'react';
@@ -22,8 +22,30 @@ describe('DialogContext - Sync Conflict Dialog', () => {
     <DialogProvider>{children}</DialogProvider>
   );
 
+  const renderedHooks: Array<{ unmount: () => void }> = [];
+
+  const renderHookWithCleanup = <T,>(callback: () => T, options?: any) => {
+    const result = renderHook(callback, options);
+    renderedHooks.push(result);
+    return result;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    // Unmount all rendered hooks
+    renderedHooks.forEach(hook => hook.unmount());
+    renderedHooks.length = 0;
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it('should have sync conflict dialog methods', () => {
-    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    const { result } = renderHookWithCleanup(() => useDialogContext(), { wrapper });
     
     expect(result.current.syncConflictDialog).toBeDefined();
     expect(result.current.openSyncConflictDialog).toBeDefined();
@@ -31,7 +53,7 @@ describe('DialogContext - Sync Conflict Dialog', () => {
   });
 
   it('should initially have sync conflict dialog closed', () => {
-    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    const { result } = renderHookWithCleanup(() => useDialogContext(), { wrapper });
     
     expect(result.current.syncConflictDialog.isOpen).toBe(false);
     expect(result.current.syncConflictDialog.onLoadRemote).toBe(null);
@@ -39,7 +61,7 @@ describe('DialogContext - Sync Conflict Dialog', () => {
   });
 
   it('should open sync conflict dialog with handlers', () => {
-    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    const { result } = renderHookWithCleanup(() => useDialogContext(), { wrapper });
     
     const mockLoadRemote = vi.fn();
     const mockSaveLocal = vi.fn();
@@ -57,7 +79,7 @@ describe('DialogContext - Sync Conflict Dialog', () => {
   });
 
   it('should close sync conflict dialog', () => {
-    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    const { result } = renderHookWithCleanup(() => useDialogContext(), { wrapper });
     
     // First open it
     act(() => {
@@ -161,7 +183,7 @@ describe('DialogContext - Sync Conflict Dialog', () => {
   });
 
   it('should handle multiple dialogs independently', () => {
-    const { result } = renderHook(() => useDialogContext(), { wrapper });
+    const { result } = renderHookWithCleanup(() => useDialogContext(), { wrapper });
     
     // Open confirm dialog
     act(() => {

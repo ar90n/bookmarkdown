@@ -57,14 +57,23 @@ function customRenderHook<TProps, TResult>(
     ...options,
   });
 
+  // Store original unmount
+  const originalUnmount = result.unmount;
+
   // Return with custom unmount
   return {
     ...result,
     unmount: () => {
-      result.unmount();
+      // Call original unmount first
+      originalUnmount();
+      // Remove container from DOM
       if (container.parentNode) {
         container.parentNode.removeChild(container);
       }
+      // Clear any remaining timers
+      vi.clearAllTimers();
+      // Clear all mocks
+      vi.clearAllMocks();
     },
   };
 }
