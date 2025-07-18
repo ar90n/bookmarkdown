@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, cleanup } from '@testing-library/react';
+import { renderHook, act, cleanup } from '../test-utils';
 import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider.js';
 
 // Mock localStorage

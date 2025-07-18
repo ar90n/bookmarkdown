@@ -15,7 +15,8 @@
       "Bash(cp:*)",
       "Bash(gh run list:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm ls:*)"
     ],
     "deny": []
   }

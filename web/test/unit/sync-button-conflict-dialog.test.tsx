@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../test-utils';
 import { SyncStatusWithActions } from '../../src/components/ui/SyncStatusWithActions';
 import { useBookmarkContext, useDialogContext } from '../../src/contexts/AppProvider';
 import { dialogStateRef } from '../../src/lib/context/providers/dialog-state-ref';

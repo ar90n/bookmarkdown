@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act } from '../test-utils';
 import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider';
 import { createBookmarkService } from '../../src/lib/adapters/bookmark-service.js';
 import { dialogStateRef, dialogCallbackRef } from '../../src/lib/context/providers/dialog-state-ref.js';
