@@ -97,6 +97,48 @@ jobs:
         path: coverage/
         retention-days: 7
 
+  test-web:
+    name: Web Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for web tests
+      run: npm run build:lib
+
+    - name: Run web tests with coverage
+      run: npm run test:web -- --coverage
+
+    - name: Upload web test coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: web
+        name: web-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
+
+    - name: Upload web coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
   test-e2e:
     name: E2E Tests  
     runs-on: ubuntu-latest
@@ -242,7 +284,7 @@ jobs:
 
   build:
     name: Build & Bundle Analysis
-    needs: [test-core, test-react, quality-checks]
+    needs: [test-core, test-react, test-web, quality-checks]
     runs-on: ubuntu-latest
     
     steps:
@@ -323,7 +365,7 @@ jobs:
   # Summary job that depends on all CI jobs
   ci-complete:
     name: CI Complete
-    needs: [test-core, test-react, test-e2e, security-scan, quality-checks, build]
+    needs: [test-core, test-react, test-web, test-e2e, security-scan, quality-checks, build]
     runs-on: ubuntu-latest
     if: always()
     
@@ -333,6 +375,7 @@ jobs:
         # Check if any required jobs failed
         if [[ "${{ needs.test-core.result }}" != "success" ]] || \
            [[ "${{ needs.test-react.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web.result }}" != "success" ]] || \
            [[ "${{ needs.quality-checks.result }}" != "success" ]] || \
            [[ "${{ needs.build.result }}" != "success" ]]; then
           echo "❌ Required CI checks failed"
@@ -358,6 +401,7 @@ jobs:
         echo "|-----|--------|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Core Tests | ${{ needs.test-core.result == 'success' && '✅' || '❌' }} | ${{ needs.test-core.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| React Tests | ${{ needs.test-react.result == 'success' && '✅' || '❌' }} | ${{ needs.test-react.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web Tests | ${{ needs.test-web.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| E2E Tests | ${{ needs.test-e2e.result == 'success' && '✅' || '⚠️' }} | ${{ needs.test-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Security Scan | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Quality Checks | ${{ needs.quality-checks.result == 'success' && '✅' || '❌' }} | ${{ needs.quality-checks.result }} |" >> $GITHUB_STEP_SUMMARY
