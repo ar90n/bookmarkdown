@@ -41,9 +41,12 @@ describe('Root Additional Operations', () => {
 
   describe('Soft Delete Operations', () => {
     describe('markBookmarkAsDeletedInRoot', () => {
-      it('should mark bookmark as deleted', () => {
+      it('should mark bookmark as deleted', async () => {
         const bookmarkId = testRoot.categories[0].bundles[0].bookmarks[0].id;
         const updatedTimestamp = testRoot.metadata.lastModified;
+        
+        // Add a small delay to ensure timestamps differ
+        await new Promise(resolve => setTimeout(resolve, 10));
         
         const result = markBookmarkAsDeletedInRoot(testRoot, 'Category 1', 'Bundle 1', bookmarkId);
         

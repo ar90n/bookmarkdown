@@ -370,6 +370,18 @@ export const moveBundleToCategory = (
     return root;
   }
 
+  // Check if source category exists
+  const sourceCategory = root.categories.find(c => c.name === fromCategory);
+  if (!sourceCategory) {
+    return root; // Return unchanged if source category doesn't exist
+  }
+  
+  // Check if bundle exists in source category
+  const bundleExists = sourceCategory.bundles.some(b => b.name === bundleName);
+  if (!bundleExists) {
+    return root; // Return unchanged if bundle doesn't exist
+  }
+
   // Check if bundle name already exists in target category
   const targetCategory = root.categories.find(c => c.name === toCategory);
   if (targetCategory && targetCategory.bundles.some(b => b.name === bundleName)) {
