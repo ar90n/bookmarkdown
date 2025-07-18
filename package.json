@@ -10,7 +10,7 @@
     "build:extension": "vite build --config vite.extension.config.ts",
     "build:web": "vite build --config vite.web.config.ts",
     "build:all": "npm run build && npm run build:lib && npm run build:extension && npm run build:web",
-    "preview:web": "vite preview --config vite.web.config.ts --port 3000",
+    "preview:web": "vite preview --config vite.web.config.ts --port 3000 --outDir ../dist/web",
     "dev": "tsx watch web/src/lib/index.ts",
     "dev:web": "vite --config vite.web.config.ts",
     "start": "node dist/index.js",

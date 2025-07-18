@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '../test-utils';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '../test-utils';
 import { BookmarksPage } from '../../src/pages/BookmarksPage';
 import { useBookmarkContext, useDialogContext } from '../../src/contexts/AppProvider';
 import { useChromeExtension } from '../../src/hooks/useChromeExtension';
@@ -82,6 +82,13 @@ describe('BookmarksPage', () => {
     vi.mocked(useDialogContext).mockReturnValue(mockDialogContext);
     vi.mocked(useChromeExtension).mockReturnValue(mockChromeExtension);
     vi.mocked(useToast).mockReturnValue(mockToast);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllTimers();
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.mocked(useMobile).mockReturnValue(false);
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act, waitFor, cleanup } from '@testing-library/react';
 import { useAuthContextProvider } from '../../src/lib/context/providers/useAuthContextProvider';
 import { AuthConfig, GitHubUser, AuthTokens } from '../../src/lib/context/AuthContext';
 
@@ -84,7 +84,12 @@ describe('useAuthContextProvider', () => {
   });
 
   afterEach(() => {
+    cleanup();
+    vi.clearAllTimers();
+    vi.clearAllMocks();
     vi.restoreAllMocks();
+    localStorageMock.clear();
+    sessionStorageMock.clear();
   });
 
   describe('Initialization', () => {

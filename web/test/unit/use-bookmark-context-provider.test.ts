@@ -105,7 +105,18 @@ describe('useBookmarkContextProvider', () => {
     renderedHooks.forEach(hook => hook.unmount());
     renderedHooks.length = 0;
     
+    // Clear all timers
+    vi.clearAllTimers();
     vi.clearAllMocks();
+    
+    // Clear mock implementations to free memory
+    mockService = null as any;
+    mockSyncShell = null as any;
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+    }
   });
 
   describe('Initialization', () => {
