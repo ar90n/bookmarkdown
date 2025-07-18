@@ -14,12 +14,21 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./test/setup.ts', './test/setup-react.ts', './test/setup-mocks.ts'],
     include: [
+      'test/**/*.test.ts',
+      'test/**/*.test.tsx',
       'web/src/lib/**/*.test.ts',
       'web/src/lib/**/*.test.tsx',
       'web/**/*.test.ts',
       'web/**/*.test.tsx'
     ],
-    exclude: ['node_modules', 'dist', 'extension'],
+    exclude: [
+      'node_modules', 
+      'dist', 
+      'extension',
+      // Exclude deleted duplicate files
+      'test/core/utils/async-operation.test.ts',
+      'test/core/utils/entityHelpers.test.ts'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'cobertura'],
