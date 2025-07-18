@@ -81,7 +81,7 @@ describe('useBookmarkContextProvider', () => {
       saveToRemote: vi.fn(() => success({ gistId: 'test-gist-id' })),
       hasRemoteChanges: vi.fn(() => success(false)),
       isDirty: vi.fn(() => false),
-      getGistInfo: vi.fn(() => null),
+      getGistInfo: vi.fn(() => ({ gistId: 'test-gist-id', filename: 'bookmarks.md' })),
       checkConflicts: vi.fn(() => success([]))
     };
     
@@ -735,7 +735,7 @@ describe('useBookmarkContextProvider', () => {
       
       const categories = result.current.getCategories();
       
-      expect(categories).toEqual(['Cat1', 'Cat2']);
+      expect(categories).toEqual(mockRoot.categories);
     });
 
     it('should check if has categories', () => {
