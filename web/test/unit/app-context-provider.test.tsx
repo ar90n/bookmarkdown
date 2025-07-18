@@ -125,8 +125,12 @@ describe('useAppContextProvider - Sync Initialization', () => {
     expect(mockLoadFromRemote).not.toHaveBeenCalled();
 
     // Simulate the bookmark context becoming configured
-    // Since we're waiting 1 second intervals, we need to advance time
-    await new Promise(resolve => setTimeout(resolve, 3500));
+    // Use fake timers to avoid real waiting
+    vi.useFakeTimers();
+    const waitPromise = new Promise(resolve => setTimeout(resolve, 3500));
+    vi.advanceTimersByTime(3500);
+    await waitPromise;
+    vi.useRealTimers();
 
     // Verify that loadFromRemote was not called because sync never became configured
     expect(mockLoadFromRemote).not.toHaveBeenCalled();

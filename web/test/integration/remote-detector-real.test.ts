@@ -43,7 +43,11 @@ describe('RemoteChangeDetector Real-time Test', () => {
     repo.hasRemoteChanges = hasRemoteChangesSpy;
     
     // Wait for 1 second (detector should not have run yet with 10s interval)
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    vi.useFakeTimers();
+    const waitPromise = new Promise(resolve => setTimeout(resolve, 1000));
+    vi.advanceTimersByTime(1000);
+    await waitPromise;
+    vi.useRealTimers();
     
     // Should not have been called yet
     expect(hasRemoteChangesSpy).not.toHaveBeenCalled();
