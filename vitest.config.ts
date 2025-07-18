@@ -16,15 +16,18 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true,
+        singleFork: false,
         maxForks: 1,
         // Limit concurrent test files to reduce memory usage
         maxThreads: 1,
-        minThreads: 1
+        minThreads: 1,
+        isolate: true
       }
     },
     // Run tests sequentially to reduce memory usage
     fileParallelism: false,
+    // Increase teardown timeout for proper cleanup
+    teardownTimeout: 10000,
     testTimeout: 30000,
     include: [
       'test/**/*.test.ts',
