@@ -223,6 +223,90 @@ jobs:
         path: coverage/
         retention-days: 7
 
+  test-web-unit-services:
+    name: Web Unit Tests - Services
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for web tests
+      run: npm run build:lib
+
+    - name: Run web unit services tests with coverage
+      run: npm run test:web-unit-services -- --coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: web-unit-services
+        name: web-unit-services-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-unit-services-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
+  test-web-unit-pages:
+    name: Web Unit Tests - Pages
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build library for web tests
+      run: npm run build:lib
+
+    - name: Run web unit pages tests with coverage
+      run: npm run test:web-unit-pages -- --coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/cobertura-coverage.xml
+        flags: web-unit-pages
+        name: web-unit-pages-coverage
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        root_dir: ./
+        working-directory: .
+        verbose: true
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-unit-pages-coverage-${{ github.run_id }}
+        path: coverage/
+        retention-days: 7
+
   test-web-unit-utils:
     name: Web Unit Tests - Utils
     runs-on: ubuntu-latest
@@ -494,7 +578,7 @@ jobs:
 
   build:
     name: Build & Bundle Analysis
-    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-utils, test-web-integration, test-web-others, quality-checks]
+    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, quality-checks]
     runs-on: ubuntu-latest
     
     steps:
@@ -575,7 +659,7 @@ jobs:
   # Summary job that depends on all CI jobs
   ci-complete:
     name: CI Complete
-    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-utils, test-web-integration, test-web-others, test-e2e, security-scan, quality-checks, build]
+    needs: [test-core, test-react, test-web-unit-context, test-web-unit-sync, test-web-unit-gist, test-web-unit-services, test-web-unit-pages, test-web-unit-utils, test-web-integration, test-web-others, test-e2e, security-scan, quality-checks, build]
     runs-on: ubuntu-latest
     if: always()
     
@@ -588,6 +672,8 @@ jobs:
            [[ "${{ needs.test-web-unit-context.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-sync.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-gist.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web-unit-services.result }}" != "success" ]] || \
+           [[ "${{ needs.test-web-unit-pages.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-unit-utils.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-integration.result }}" != "success" ]] || \
            [[ "${{ needs.test-web-others.result }}" != "success" ]] || \
@@ -619,6 +705,8 @@ jobs:
         echo "| Web Unit Tests - Context | ${{ needs.test-web-unit-context.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-context.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web Unit Tests - Sync | ${{ needs.test-web-unit-sync.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-sync.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web Unit Tests - Gist | ${{ needs.test-web-unit-gist.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-gist.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web Unit Tests - Services | ${{ needs.test-web-unit-services.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-services.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Web Unit Tests - Pages | ${{ needs.test-web-unit-pages.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-pages.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web Unit Tests - Utils | ${{ needs.test-web-unit-utils.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-unit-utils.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web Integration Tests | ${{ needs.test-web-integration.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-integration.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Web Component Tests | ${{ needs.test-web-others.result == 'success' && '✅' || '❌' }} | ${{ needs.test-web-others.result }} |" >> $GITHUB_STEP_SUMMARY
