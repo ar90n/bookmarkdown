@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, renderHook, act } from '@testing-library/react';
+import { render, renderHook, act } from '../test-utils';
 import { DialogProvider, useDialogContext } from '../../src/contexts/DialogContext';
 import { dialogCallbackRef } from '../../src/lib/context/providers/dialog-state-ref.js';
 

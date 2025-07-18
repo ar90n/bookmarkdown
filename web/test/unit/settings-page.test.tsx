@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '../test-utils';
 import { SettingsPage } from '../../src/pages/SettingsPage';
 import { useAuthContext, useBookmarkContext, useDialogContext } from '../../src/contexts/AppProvider';
 
@@ -29,25 +29,9 @@ vi.mock('@heroicons/react/24/outline', () => ({
   ArrowTopRightOnSquareIcon: () => <span>ExternalIcon</span>
 }));
 
-// Mock file download
-const mockCreateElement = vi.fn();
+// Mock file download functions
 const mockClick = vi.fn();
 const mockRemove = vi.fn();
-document.createElement = vi.fn().mockImplementation((tag) => {
-  if (tag === 'a') {
-    return {
-      href: '',
-      download: '',
-      click: mockClick,
-      remove: mockRemove,
-      style: {}
-    };
-  }
-  return mockCreateElement(tag);
-});
-
-document.body.appendChild = vi.fn();
-document.body.removeChild = vi.fn();
 URL.createObjectURL = vi.fn(() => 'blob:test-url');
 URL.revokeObjectURL = vi.fn();
 
@@ -85,6 +69,20 @@ describe('SettingsPage', () => {
     vi.mocked(useAuthContext).mockReturnValue(mockAuthContext);
     vi.mocked(useBookmarkContext).mockReturnValue(mockBookmarkContext);
     vi.mocked(useDialogContext).mockReturnValue(mockDialogContext);
+    
+    // Mock creating anchor elements for file downloads
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'a') {
+        const anchor = originalCreateElement('a');
+        Object.defineProperties(anchor, {
+          click: { value: mockClick, writable: true },
+          remove: { value: mockRemove, writable: true }
+        });
+        return anchor;
+      }
+      return originalCreateElement(tag);
+    });
   });
 
   describe('Page Header', () => {

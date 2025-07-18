@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act, waitFor } from '../test-utils';
 import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider.js';
 import { MockGistRepository } from '../../src/lib/repositories/mock-gist-repository.js';
 import { GistSyncShell } from '../../src/lib/shell/gist-sync.js';

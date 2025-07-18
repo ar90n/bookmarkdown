@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act, render, screen } from '@testing-library/react';
+import { renderHook, act, render, screen } from '../test-utils';
 import { DialogProvider, useDialogContext } from '../../src/contexts/DialogContext';
 import React from 'react';
 
