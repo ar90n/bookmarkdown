@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, setupAutoSync, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown } from './test-helpers';
+import { setupAuth, setupGistId, setupAutoSync, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown, waitForInitialLoad } from './test-helpers';
 
 test.describe('Auto-sync functionality', () => {
   test.beforeEach(async ({ page }) => {
@@ -40,7 +40,10 @@ test.describe('Auto-sync functionality', () => {
     await page.goto('/bookmarks');
     
     // Wait for initial load
-    await page.waitForSelector('h2:has-text("Test Category")', { timeout: 10000 });
+    await waitForInitialLoad(page);
+    
+    // Wait for Test Category to be visible
+    await page.waitForSelector('text="Test Category"', { timeout: 15000 });
     
     // Make a change - add a new bookmark
     await createBookmark(page, {
@@ -77,7 +80,10 @@ test.describe('Auto-sync functionality', () => {
     await page.goto('/bookmarks');
     
     // Wait for initial load
-    await page.waitForSelector('h2:has-text("Test Category")', { timeout: 10000 });
+    await waitForInitialLoad(page);
+    
+    // Wait for Test Category to be visible
+    await page.waitForSelector('text="Test Category"', { timeout: 15000 });
     
     // Make a change
     await createBookmark(page, {

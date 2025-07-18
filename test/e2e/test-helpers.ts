@@ -11,8 +11,10 @@ export interface AuthData {
     name: string;
     avatar_url: string;
   };
-  token: string;
-  lastSyncAt?: string;
+  tokens: {
+    accessToken: string;
+  };
+  lastLoginAt?: string;
 }
 
 export interface GistData {
@@ -35,13 +37,16 @@ export async function setupAuth(page: Page, authData?: Partial<AuthData>) {
       name: 'Test User',
       avatar_url: 'https://github.com/testuser.png'
     },
-    token: 'test-token',
-    lastSyncAt: new Date().toISOString()
+    tokens: {
+      accessToken: 'test-token'
+    },
+    lastLoginAt: new Date().toISOString()
   };
 
   const auth = { ...defaultAuth, ...authData };
 
   await page.addInitScript((authData) => {
+    // Set auth data
     localStorage.setItem('bookmark_auth', JSON.stringify(authData));
   }, auth);
 }
@@ -73,7 +78,8 @@ export async function mockGistAPI(page: Page, config: {
   failRequests?: boolean;
   delayMs?: number;
 }) {
-  await page.route('https://api.github.com/gists**', async (route, request) => {
+  
+  await page.route('https://api.github.com/**', async (route, request) => {
     const method = request.method();
     const url = new URL(request.url());
     
@@ -88,15 +94,18 @@ export async function mockGistAPI(page: Page, config: {
       return;
     }
 
+    
     // Handle different API endpoints
     if (method === 'GET' && url.pathname === '/gists') {
       // List gists
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(config.gists || [])
+        body: JSON.stringify(config.gists || []),
+        headers: {
+          'content-type': 'application/json'
+        }
       });
-    } else if (method === 'GET' && url.pathname.match(/\/gists\/[a-z0-9]+$/)) {
+    } else if (method === 'GET' && url.pathname.match(/\/gists\/[a-zA-Z0-9\-]+$/)) {
       // Get specific gist
       const gistId = url.pathname.split('/').pop();
       const gist = config.gists?.find(g => g.id === gistId) || config.defaultGist;
@@ -104,16 +113,17 @@ export async function mockGistAPI(page: Page, config: {
       if (gist) {
         await route.fulfill({
           status: 200,
-          contentType: 'application/json',
           body: JSON.stringify(gist),
           headers: {
             'etag': `"${Date.now()}"`,
+            'content-type': 'application/json',
+            'access-control-expose-headers': 'etag'
           }
         });
       } else {
         await route.fulfill({ status: 404 });
       }
-    } else if (method === 'PATCH' && url.pathname.match(/\/gists\/[a-z0-9]+$/)) {
+    } else if (method === 'PATCH' && url.pathname.match(/\/gists\/[a-zA-Z0-9\-]+$/)) {
       // Update gist
       const requestBody = await request.postData();
       const updated = {
@@ -124,10 +134,11 @@ export async function mockGistAPI(page: Page, config: {
       
       await route.fulfill({
         status: 200,
-        contentType: 'application/json',
         body: JSON.stringify(updated),
         headers: {
           'etag': `"${Date.now()}"`,
+          'content-type': 'application/json',
+          'access-control-expose-headers': 'etag'
         }
       });
     } else if (method === 'POST' && url.pathname === '/gists') {
@@ -142,8 +153,10 @@ export async function mockGistAPI(page: Page, config: {
       
       await route.fulfill({
         status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify(created)
+        body: JSON.stringify(created),
+        headers: {
+          'content-type': 'application/json'
+        }
       });
     } else {
       // Default: continue with original request
@@ -213,6 +226,22 @@ export async function waitForSync(page: Page) {
 }
 
 /**
+ * Wait for initial data to load
+ */
+export async function waitForInitialLoad(page: Page) {
+  // Wait for network to be idle
+  await page.waitForLoadState('networkidle');
+  
+  // Wait for either data or empty state
+  try {
+    await page.waitForSelector('text="Test Category"', { timeout: 5000 });
+  } catch {
+    // If test category not found, wait for empty state
+    await page.waitForSelector('text="No bookmarks yet"', { timeout: 15000 });
+  }
+}
+
+/**
  * Create a bookmark through UI
  */
 export async function createBookmark(page: Page, data: {
@@ -237,8 +266,8 @@ export async function createBookmark(page: Page, data: {
     await page.waitForSelector('input#bundleName', { state: 'hidden' });
   }
 
-  // Create bookmark
-  await page.click('button[title="Add Bookmark"]');
+  // Create bookmark - look for add bookmark button
+  await page.click('button:has-text("Add Bookmark"), button:has-text("+ Add Another Bookmark")');
   await page.fill('input#bookmarkUrl', data.url);
   await page.fill('input#bookmarkTitle', data.title);
   await page.click('button[type="submit"]:has-text("Add Bookmark")');
