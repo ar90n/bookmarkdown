@@ -13,7 +13,9 @@
       "Bash(npx tsc:*)",
       "Bash(npm run type-check:*)",
       "Bash(cp:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

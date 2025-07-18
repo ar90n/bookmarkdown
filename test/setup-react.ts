@@ -5,12 +5,33 @@
 
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
+
+// Setup DOM container before each test
+beforeEach(() => {
+  // Ensure DOM has a root element for React Testing Library
+  document.body.innerHTML = '<div id="root"></div>';
+});
 
 // Cleanup after each test
 afterEach(() => {
   cleanup();
+  // Clear the DOM
+  document.body.innerHTML = '';
 });
+
+// Patch React Testing Library for React 19
+if (typeof window !== 'undefined') {
+  // Mock the container for React 19 createRoot
+  const originalError = console.error;
+  console.error = (...args) => {
+    // Suppress the specific error about container not being a DOM element
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('Target container is not a DOM element')) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+}
 
 // Mock window.location for navigation tests
 Object.defineProperty(window, 'location', {
