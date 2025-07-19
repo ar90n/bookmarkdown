@@ -8,8 +8,17 @@ test.describe('Error handling and recovery', () => {
     
     // Set up a default gist
     await setupGistId(page, 'test-gist-123');
+  });
+
+  test('should allow manual retry on network errors', async ({ page }) => {
+    let attemptCount = 0;
     
-    // Mock default gist for initial load
+    // Disable auto-sync to prevent conflicts
+    await page.addInitScript(() => {
+      localStorage.setItem('autoSyncEnabled', 'false');
+    });
+    
+    // Mock API for initial load
     await mockGistAPI(page, {
       defaultGist: {
         id: 'test-gist-123',
@@ -21,14 +30,17 @@ test.describe('Error handling and recovery', () => {
         updated_at: new Date().toISOString()
       }
     });
-  });
-
-  test('should allow manual retry on network errors', async ({ page }) => {
-    let attemptCount = 0;
     
-    // Navigate to bookmarks first
+    // Navigate to bookmarks
     await page.goto('/bookmarks');
     await waitForInitialLoad(page);
+    
+    // Handle any initial conflict dialog
+    const initialConflictDialog = page.locator('[role="dialog"]:has-text("Sync Conflict")');
+    if (await initialConflictDialog.isVisible({ timeout: 2000 })) {
+      await page.click('button:has-text("Continue Editing")');
+      await initialConflictDialog.waitFor({ state: 'hidden' });
+    }
     
     // Make a change first to have something to sync
     await createBookmark(page, {
@@ -36,7 +48,8 @@ test.describe('Error handling and recovery', () => {
       title: 'Retry Test Bookmark'
     });
     
-    // Now set up route to intercept sync attempts
+    // Clear existing routes and set up new route to intercept sync attempts
+    await page.unroute('https://api.github.com/**');
     await page.route('https://api.github.com/gists/test-gist-123', async (route) => {
       const method = route.request().method();
       if (method === 'PATCH') {
@@ -59,8 +72,20 @@ test.describe('Error handling and recovery', () => {
           });
         }
       } else {
-        // Continue with default handling for non-PATCH requests
-        await route.continue();
+        // Allow GET requests to succeed with current data
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'test-gist-123',
+            files: { 'bookmarks.md': { content: createTestBookmarkMarkdown() } },
+            updated_at: new Date().toISOString()
+          }),
+          headers: {
+            'etag': `"${Date.now()}"`,
+            'access-control-expose-headers': 'etag'
+          }
+        });
       }
     });
     
@@ -86,16 +111,32 @@ test.describe('Error handling and recovery', () => {
     // Wait for successful sync
     await waitForSync(page);
     
+    // Debug: log attemptCount
+    console.log('attemptCount:', attemptCount);
+    
     // Verify sync succeeded eventually after manual retries
     expect(attemptCount).toBe(3);
   });
 
   test('should handle authentication errors', async ({ page }) => {
-    // Navigate to bookmarks first
+    // Mock API for initial load
+    await mockGistAPI(page, {
+      defaultGist: {
+        id: 'test-gist-123',
+        files: {
+          'bookmarks.md': {
+            content: createTestBookmarkMarkdown()
+          }
+        },
+        updated_at: new Date().toISOString()
+      }
+    });
+    
+    // Navigate to bookmarks
     await page.goto('/bookmarks');
     await waitForInitialLoad(page);
     
-    // Re-route API to return 401
+    // Clear existing routes and set up 401 error response
     await page.unroute('https://api.github.com/**');
     await page.route('https://api.github.com/**', async (route) => {
       await route.fulfill({
@@ -116,19 +157,32 @@ test.describe('Error handling and recovery', () => {
       timeout: 10000
     });
     
-    // Check for error notification or any error message
-    const errorVisible = await page.locator('[data-testid="error-notification"], text=/error|failed|401|unauthorized/i').isVisible({
+    // Check for error notification with authentication error message
+    const errorNotification = page.locator('[data-testid="error-notification"], .notification-error, div:has-text("Authentication failed")');
+    await expect(errorNotification.first()).toBeVisible({
       timeout: 5000
     });
-    expect(errorVisible).toBeTruthy();
   });
 
   test('should handle rate limit errors', async ({ page }) => {
-    // Navigate to bookmarks first
+    // Mock API for initial load
+    await mockGistAPI(page, {
+      defaultGist: {
+        id: 'test-gist-123',
+        files: {
+          'bookmarks.md': {
+            content: createTestBookmarkMarkdown()
+          }
+        },
+        updated_at: new Date().toISOString()
+      }
+    });
+    
+    // Navigate to bookmarks
     await page.goto('/bookmarks');
     await waitForInitialLoad(page);
     
-    // Re-route API to return rate limit error
+    // Clear existing routes and set up rate limit error response
     await page.unroute('https://api.github.com/**');
     await page.route('https://api.github.com/**', async (route) => {
       await route.fulfill({
@@ -154,11 +208,11 @@ test.describe('Error handling and recovery', () => {
       timeout: 10000
     });
     
-    // Check for rate limit error or any error message
-    const errorVisible = await page.locator('[data-testid="error-notification"], text=/error|failed|403|rate/i').isVisible({
+    // Check for error notification
+    const errorNotification = page.locator('[data-testid="error-notification"], .notification-error, div:has-text("rate limit")');
+    await expect(errorNotification.first()).toBeVisible({
       timeout: 5000
     });
-    expect(errorVisible).toBeTruthy();
   });
 
   test('should handle localStorage errors gracefully', async ({ page }) => {

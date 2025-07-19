@@ -21,7 +21,8 @@
       "Bash(gh repo view:*)",
       "Bash(npx vitest run:*)",
       "Bash(act:*)",
-      "Bash(CI=true act -j test-e2e-chromium -P ubuntu-latest=catthehacker/ubuntu:act-latest)"
+      "Bash(CI=true act -j test-e2e-chromium -P ubuntu-latest=catthehacker/ubuntu:act-latest)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
