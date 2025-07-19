@@ -254,18 +254,34 @@ export async function createBookmark(page: Page, data: {
   url: string;
   title: string;
 }) {
+  // Default category and bundle if not provided
+  const categoryName = data.category || 'Default Category';
+  const bundleName = data.bundle || 'Default Bundle';
+  
   // Create category if needed
-  if (data.category && !await page.locator(`h3:has-text("${data.category}")`).isVisible()) {
-    await page.click('button:has-text("Add Category")');
-    await page.fill('input#categoryName', data.category);
+  if (!await page.locator(`h3:has-text("${categoryName}")`).isVisible()) {
+    // Check if there are any categories at all
+    const hasCategories = await page.locator('h3').count() > 0;
+    if (hasCategories) {
+      await page.click('button:has-text("Add Category")');
+    } else {
+      // First category - use different button
+      const createFirstButton = page.locator('button:has-text("Create First Category")');
+      if (await createFirstButton.isVisible()) {
+        await createFirstButton.click();
+      } else {
+        await page.click('button:has-text("Add Category")');
+      }
+    }
+    await page.fill('input#categoryName', categoryName);
     await page.click('button[type="submit"]:has-text("Create Category")');
     await page.waitForSelector('input#categoryName', { state: 'hidden' });
   }
 
   // Create bundle if needed
-  if (data.bundle && !await page.locator(`text="${data.bundle}"`).isVisible()) {
+  if (!await page.locator(`h4:has-text("${bundleName}")`).isVisible()) {
     await page.click('button[title="Add Bundle"]');
-    await page.fill('input#bundleName', data.bundle);
+    await page.fill('input#bundleName', bundleName);
     await page.click('button[type="submit"]:has-text("Create Bundle")');
     await page.waitForSelector('input#bundleName', { state: 'hidden' });
   }
