@@ -154,6 +154,36 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   // Ref for debounced auto-sync
   const debouncedAutoSyncRef = useRef<(() => void) | null>(null);
   
+  // Sync lock for exclusive control
+  const syncLockRef = useRef<boolean>(false);
+  
+  // Helper for exclusive sync operations
+  const withSyncLock = useCallback(async <T,>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> => {
+    if (syncLockRef.current) {
+      console.log(`[Sync] ${operationName} skipped - another sync operation is in progress`);
+      throw new Error('Another sync operation is in progress');
+    }
+    
+    console.log(`[Sync] ${operationName} started`);
+    syncLockRef.current = true;
+    setIsSyncing(true);
+    
+    try {
+      const result = await operation();
+      console.log(`[Sync] ${operationName} completed`);
+      return result;
+    } catch (error) {
+      console.log(`[Sync] ${operationName} failed:`, error);
+      throw error;
+    } finally {
+      syncLockRef.current = false;
+      setIsSyncing(false);
+    }
+  }, []);
+  
   // Helper to update state after operations
   const updateState = useCallback(() => {
     if (service.current) {
@@ -412,16 +442,16 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Remote operations
   const loadFromRemote = useCallback(async () => {
-    if (!service.current) {
-      throw new Error('Service not initialized');
-    }
-    
-    setIsLoading(true);
-    setIsSyncing(true);
-    setError(null);
-    
-    try {
-      const result = await service.current.loadFromRemote();
+    return withSyncLock(async () => {
+      if (!service.current) {
+        throw new Error('Service not initialized');
+      }
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const result = await service.current.loadFromRemote();
       if (result.success) {
         setRoot(result.data);
         setIsDirty(false);
@@ -461,28 +491,29 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           throw result.error;
         }
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(errorMessage);
-      // Mark initial sync as completed even on error to show local data
-      setInitialSyncCompleted(true);
-      throw error; // Re-throw so caller can handle
-    } finally {
-      setIsLoading(false);
-      setIsSyncing(false);
-    }
-  }, [saveGistId, config.accessToken, doRetryInitialization]);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(errorMessage);
+        // Mark initial sync as completed even on error to show local data
+        setInitialSyncCompleted(true);
+        throw error; // Re-throw so caller can handle
+      } finally {
+        setIsLoading(false);
+      }
+    }, 'loadFromRemote');
+  }, [saveGistId, config.accessToken, doRetryInitialization, withSyncLock]);
   
   const saveToRemote = useCallback(async () => {
-    if (!service.current) {
-      throw new Error('Service not initialized');
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const result = await service.current.saveToRemote();
+    return withSyncLock(async () => {
+      if (!service.current) {
+        throw new Error('Service not initialized');
+      }
+      
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const result = await service.current.saveToRemote();
       if (result.success) {
         setIsDirty(false);
         setLastSyncAt(new Date());
@@ -515,24 +546,26 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           throw result.error;
         }
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(errorMessage);
-      throw error; // Re-throw so caller can handle
-    } finally {
-      setIsLoading(false);
-    }
-  }, [saveGistId, config.accessToken, doRetryInitialization]);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(errorMessage);
+        throw error; // Re-throw so caller can handle
+      } finally {
+        setIsLoading(false);
+      }
+    }, 'saveToRemote');
+  }, [saveGistId, config.accessToken, doRetryInitialization, withSyncLock]);
   
   // Simplified sync (no merge conflicts in V2)
   const syncWithRemote = useCallback(async (options?: {
     onConflict?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
   }) => {
-    if (!service.current) {
-      throw new Error('Service not initialized');
-    }
-    
-    try {
+    return withSyncLock(async () => {
+      if (!service.current) {
+        throw new Error('Service not initialized');
+      }
+      
+      try {
       // Check for remote changes
       let hasChangesResult = await service.current.hasRemoteChanges();
       if (!hasChangesResult.success) {
@@ -583,12 +616,13 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           await saveToRemote();
         }
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(errorMessage);
-      throw error;
-    }
-  }, [isDirty, loadFromRemote, saveToRemote, doRetryInitialization]);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(errorMessage);
+        throw error;
+      }
+    }, 'syncWithRemote');
+  }, [isDirty, loadFromRemote, saveToRemote, doRetryInitialization, withSyncLock]);
   
   // Conflict resolution - simplified for V2
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -692,13 +726,12 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, []);
   
   const canDropBookmark = useCallback((item: { categoryName: string; bundleName: string; bookmarkId: string }, targetCategory: string, targetBundle: string): boolean => {
-    // Allow all drops for now - we handle reordering in the drop handler
-    console.log('[canDropBookmark]', {
-      from: `${item.categoryName}/${item.bundleName}`,
-      to: `${targetCategory}/${targetBundle}`,
-      sameBundle: item.categoryName === targetCategory && item.bundleName === targetBundle
-    });
-    return true; // Allow drops to same bundle for reordering
+    // Don't allow dropping in the same bundle (reordering disabled)
+    if (item.categoryName === targetCategory && item.bundleName === targetBundle) {
+      return false;
+    }
+    // Allow drops to different bundles
+    return true;
   }, []);
   
   const canDropBundle = useCallback((bundleName: string, fromCategory: string, toCategory: string): boolean => {
@@ -766,6 +799,12 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     
     // Skip auto-sync if there's an unresolved conflict
     if (dialogStateRef.hasUnresolvedConflict) {
+      return;
+    }
+    
+    // Skip auto-sync if another sync operation is in progress
+    if (syncLockRef.current) {
+      console.log('[AutoSync] Skipped - another sync operation is in progress');
       return;
     }
     
