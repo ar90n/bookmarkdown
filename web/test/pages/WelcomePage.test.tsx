@@ -22,7 +22,7 @@ const mockAuthContext = {
   loginWithOAuth: vi.fn(),
 };
 
-vi.mock('../../../web/src/contexts/AppProvider', () => ({
+vi.mock('../../src/contexts/AppProvider', () => ({
   useAuthContext: () => mockAuthContext,
   useAppContext: () => ({
     auth: mockAuthContext,
@@ -45,7 +45,7 @@ vi.mock('../../../web/src/contexts/AppProvider', () => ({
   }),
 }));
 
-import { WelcomePage } from '../../../web/src/pages/WelcomePage';
+import { WelcomePage } from '../../src/pages/WelcomePage';
 
 describe('WelcomePage', () => {
   const renderWelcomePage = () => {

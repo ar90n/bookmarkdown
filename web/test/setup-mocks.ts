@@ -43,7 +43,7 @@ const createMockBookmarkContext = (overrides = {}) => ({
 });
 
 // Mock the AppProvider module
-vi.mock('../../web/src/contexts/AppProvider', () => {
+vi.mock('../src/contexts/AppProvider', () => {
   let mockAuthValue = createMockAuthContext();
   let mockBookmarkValue = createMockBookmarkContext();
   

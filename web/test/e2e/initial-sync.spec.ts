@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, mockGistAPI, createTestBookmarkData } from './test-helpers';
+import { setupAuth, setupGistId, mockGistAPI, createTestBookmarkData } from '../../../test/e2e/test-helpers';
 
 test.describe('Initial sync on page load', () => {
   test('should sync from remote when gist ID exists', async ({ page }) => {

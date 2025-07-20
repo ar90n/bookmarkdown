@@ -1,5 +1,5 @@
 import { test, expect, Browser, BrowserContext, Page } from '@playwright/test';
-import { setupAuth, setupGistId, mockGistAPI, createBookmark, createTestBookmarkData, waitForAuth, waitForInitialLoad } from './test-helpers';
+import { setupAuth, setupGistId, mockGistAPI, createBookmark, createTestBookmarkData, waitForAuth, waitForInitialLoad } from '../../../test/e2e/test-helpers';
 
 test.describe.skip('Cross-tab synchronization', () => {
   // スキップ理由: GitHub認証エラーにより初期データがロードされず、BroadcastChannelでの同期テストができないため

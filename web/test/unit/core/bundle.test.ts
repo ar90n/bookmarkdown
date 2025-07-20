@@ -11,8 +11,8 @@ import {
   removeBundleByName,
   renameBundleByName,
   markBundleAsDeleted
-} from '../../web/src/lib/core/bundle.js';
-import { Bundle, BookmarkInput, BookmarkUpdate } from '../../web/src/lib/types/index.js';
+} from '../../../src/lib/core/bundle.js';
+import { Bundle, BookmarkInput, BookmarkUpdate } from '../../../src/lib/types/index.js';
 
 describe('bundle core functions', () => {
   describe('createBundle', () => {

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkData, createTestBookmarkMarkdown } from './test-helpers';
+import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkData, createTestBookmarkMarkdown } from '../../../test/e2e/test-helpers';
 
 test.describe.skip('Sync conflict resolution', () => {
   // TODO: Update these tests to match the new remote-first architecture

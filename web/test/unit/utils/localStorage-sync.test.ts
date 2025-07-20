@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { getLocalLastSynced, setLocalLastSynced, clearLocalLastSynced } from '../../web/src/lib/utils/metadata';
+import { getLocalLastSynced, setLocalLastSynced, clearLocalLastSynced } from '../../../src/lib/utils/metadata';
 
 // Mock localStorage
 const localStorageMock = (() => {

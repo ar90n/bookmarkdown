@@ -12,8 +12,8 @@ import {
   removeBookmarkFromRoot,
   searchBookmarksInRoot,
   getStatsFromRoot
-} from '../../web/src/lib/core/root.js';
-import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter } from '../../web/src/lib/types/index.js';
+} from '../../../src/lib/core/root.js';
+import { Root, BookmarkInput, BookmarkUpdate, BookmarkFilter } from '../../../src/lib/types/index.js';
 
 describe('root core functions', () => {
   describe('createRoot', () => {

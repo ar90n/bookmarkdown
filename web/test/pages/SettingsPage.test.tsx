@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { SettingsPage } from '../../../web/src/pages/SettingsPage';
+import { SettingsPage } from '../../src/pages/SettingsPage';
 
 // Mock all dependencies
-vi.mock('../../../web/src/contexts/AppProvider', () => ({
+vi.mock('../../src/contexts/AppProvider', () => ({
   useAuthContext: () => ({
     user: null,
     tokens: null,

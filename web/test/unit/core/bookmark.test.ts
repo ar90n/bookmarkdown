@@ -7,8 +7,8 @@ import {
   removeBookmarkById,
   addBookmark,
   updateBookmarkById
-} from '../../web/src/lib/core/bookmark.js';
-import { Bookmark, BookmarkInput, BookmarkUpdate, BookmarkFilter } from '../../web/src/lib/types/index.js';
+} from '../../../src/lib/core/bookmark.js';
+import { Bookmark, BookmarkInput, BookmarkUpdate, BookmarkFilter } from '../../../src/lib/types/index.js';
 
 describe('bookmark core functions', () => {
   describe('createBookmark', () => {

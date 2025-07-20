@@ -16,8 +16,8 @@ import {
   updateCategoryByName,
   removeCategoryByName,
   renameCategoryByName
-} from '../../web/src/lib/core/category.js';
-import { Category } from '../../web/src/lib/types/index.js';
+} from '../../../src/lib/core/category.js';
+import { Category } from '../../../src/lib/types/index.js';
 
 describe('category core functions', () => {
   describe('markCategoryAsDeleted', () => {
