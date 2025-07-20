@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./test/setup.ts', './test/setup-react.ts', './test/setup-mocks.ts'],
+    setupFiles: ['./web/test/setup.ts', './web/test/setup-react.ts', './web/test/setup-mocks.ts'],
     pool: 'threads',
     poolOptions: {
       threads: {
