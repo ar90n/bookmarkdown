@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useBookmarkContext, useDialogContext } from '../contexts/AppProvider';
-import { DnDProvider, DraggableBookmark, DraggableBundle, DroppableBundle, DroppableCategory } from '../components/dnd';
+import { DnDProvider, DraggableBookmark, DraggableBundle, DraggableCategory, DroppableBundle, DroppableCategory, DroppableCategories, DroppableBundleContainer, DroppableBookmarkGrid } from '../components/dnd';
 import { useChromeExtension } from '../hooks/useChromeExtension';
 import { useToast } from '../hooks/useToast';
 import { useMobile } from '../hooks/useMobile';
@@ -284,29 +284,33 @@ export const BookmarksPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filterActiveCategories(bookmark.root.categories).map((category) => (
-              <DroppableCategory key={category.name} categoryName={category.name}>
-                <CategoryComponent 
-                  category={category}
-                  collapsedCategories={collapsedCategories}
-                  collapsedBundles={collapsedBundles}
-                  toggleCategory={toggleCategory}
-                  toggleBundle={toggleBundle}
-                  dialog={dialog}
-                  handleEditCategory={handleEditCategory}
-                  handleDeleteCategory={handleDeleteCategory}
-                  handleEditBundle={handleEditBundle}
-                  handleDeleteBundle={handleDeleteBundle}
-                  handleEditBookmark={handleEditBookmark}
-                  handleDeleteBookmark={handleDeleteBookmark}
-                  isMobile={isMobile}
-                  handleMoveBookmark={handleMoveBookmark}
-                  handleMoveBundle={handleMoveBundle}
-                />
-              </DroppableCategory>
-            ))}
-          </div>
+          <DroppableCategories categoryCount={filterActiveCategories(bookmark.root.categories).length}>
+            <div className="space-y-6">
+              {filterActiveCategories(bookmark.root.categories).map((category, index) => (
+                <DraggableCategory key={category.name} categoryName={category.name} index={index}>
+                  <DroppableCategory key={category.name} categoryName={category.name} bundleCount={filterActiveBundles(category.bundles).length}>
+                    <CategoryComponent 
+                      category={category}
+                      collapsedCategories={collapsedCategories}
+                      collapsedBundles={collapsedBundles}
+                      toggleCategory={toggleCategory}
+                      toggleBundle={toggleBundle}
+                      dialog={dialog}
+                      handleEditCategory={handleEditCategory}
+                      handleDeleteCategory={handleDeleteCategory}
+                      handleEditBundle={handleEditBundle}
+                      handleDeleteBundle={handleDeleteBundle}
+                      handleEditBookmark={handleEditBookmark}
+                      handleDeleteBookmark={handleDeleteBookmark}
+                      isMobile={isMobile}
+                      handleMoveBookmark={handleMoveBookmark}
+                      handleMoveBundle={handleMoveBundle}
+                    />
+                  </DroppableCategory>
+                </DraggableCategory>
+              ))}
+            </div>
+          </DroppableCategories>
         )}
       </div>
 
@@ -440,13 +444,14 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filterActiveBundles(category.bundles).map((bundle) => {
-                const bundleKey = `${category.name}/${bundle.name}`;
-                return (
-                <DraggableBundle key={bundle.name} bundle={bundle} categoryName={category.name}>
-                  <DroppableBundle categoryName={category.name} bundleName={bundle.name}>
-                    <BundleComponent 
+            <DroppableBundleContainer categoryName={category.name} bundleCount={filterActiveBundles(category.bundles).length}>
+              <div className="space-y-4">
+                {filterActiveBundles(category.bundles).map((bundle, index) => {
+                  const bundleKey = `${category.name}/${bundle.name}`;
+                  return (
+                  <DraggableBundle key={bundle.name} bundle={bundle} categoryName={category.name} index={index}>
+                    <DroppableBundle categoryName={category.name} bundleName={bundle.name} bookmarkCount={filterActiveBookmarks(bundle.bookmarks).length}>
+                      <BundleComponent 
                       bundle={bundle}
                       bundleKey={bundleKey}
                       category={category}
@@ -460,12 +465,13 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                       isMobile={isMobile}
                       handleMoveBookmark={handleMoveBookmark}
                       handleMoveBundle={handleMoveBundle}
-                    />
-                  </DroppableBundle>
-                </DraggableBundle>
-                );
-              })}
-            </div>
+                      />
+                    </DroppableBundle>
+                  </DraggableBundle>
+                  );
+                })}
+              </div>
+            </DroppableBundleContainer>
           )}
         </div>
       )}
@@ -589,13 +595,19 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
             </div>
           ) : (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filterActiveBookmarks(bundle.bookmarks).map((bookmark) => (
+              <DroppableBookmarkGrid 
+                categoryName={category.name} 
+                bundleName={bundle.name} 
+                bookmarkCount={filterActiveBookmarks(bundle.bookmarks).length}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {filterActiveBookmarks(bundle.bookmarks).map((bookmark, index) => (
                   <DraggableBookmark 
                     key={bookmark.id} 
                     bookmark={bookmark} 
                     categoryName={category.name} 
                     bundleName={bundle.name}
+                    index={index}
                   >
                     <a 
                       href={bookmark.url} 
@@ -672,7 +684,7 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                     </a>
                   </DraggableBookmark>
                 ))}
-              </div>
+              </DroppableBookmarkGrid>
               <div className="text-center pt-4 border-t border-gray-100 mt-4">
                 <button 
                   onClick={() => dialog.openBookmarkDialog(category.name, bundle.name)}

@@ -322,6 +322,30 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       setError(result.error.message);
     }
   }, [updateState]);
+
+  // Reorder operations
+  const reorderCategories = useCallback(async (categoryName: string, newIndex: number) => {
+    if (!service.current) return;
+    
+    const result = service.current.reorderCategories(categoryName, newIndex);
+    if (result.success) {
+      updateState();
+    } else {
+      setError(result.error.message);
+    }
+  }, [updateState]);
+
+  const reorderBundles = useCallback(async (categoryName: string, bundleName: string, newIndex: number) => {
+    if (!service.current) return;
+    
+    const result = service.current.reorderBundles(categoryName, bundleName, newIndex);
+    if (result.success) {
+      updateState();
+    } else {
+      setError(result.error.message);
+    }
+  }, [updateState]);
+
   
   // Query operations
   const searchBookmarks = useCallback((filter?: BookmarkFilter): BookmarkSearchResult[] => {
@@ -668,8 +692,13 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, []);
   
   const canDropBookmark = useCallback((item: { categoryName: string; bundleName: string; bookmarkId: string }, targetCategory: string, targetBundle: string): boolean => {
-    // Don't allow dropping to same location
-    return !(item.categoryName === targetCategory && item.bundleName === targetBundle);
+    // Allow all drops for now - we handle reordering in the drop handler
+    console.log('[canDropBookmark]', {
+      from: `${item.categoryName}/${item.bundleName}`,
+      to: `${targetCategory}/${targetBundle}`,
+      sameBundle: item.categoryName === targetCategory && item.bundleName === targetBundle
+    });
+    return true; // Allow drops to same bundle for reordering
   }, []);
   
   const canDropBundle = useCallback((bundleName: string, fromCategory: string, toCategory: string): boolean => {
@@ -863,6 +892,8 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     removeBookmark,
     moveBookmark,
     moveBundle,
+    reorderCategories,
+    reorderBundles,
     searchBookmarks,
     getStats,
     

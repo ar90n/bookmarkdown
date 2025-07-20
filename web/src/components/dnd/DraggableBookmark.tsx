@@ -7,6 +7,7 @@ interface DraggableBookmarkProps {
   bookmark: Bookmark;
   categoryName: string;
   bundleName: string;
+  index: number;
   children: React.ReactNode;
 }
 
@@ -15,12 +16,14 @@ interface DragItem {
   bookmarkId: string;
   categoryName: string;
   bundleName: string;
+  index: number;
 }
 
 export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
   bookmark,
   categoryName,
   bundleName,
+  index,
   children
 }) => {
   const bookmarkContext = useBookmarkContext();
@@ -41,6 +44,7 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
       bookmarkId: bookmark.id,
       categoryName,
       bundleName,
+      index,
     } as DragItem,
     canDrag: () => {
       // Use service state for business logic
@@ -51,11 +55,12 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [bookmark, categoryName, bundleName, bookmarkContext]);
+  }), [bookmark, categoryName, bundleName, index, bookmarkContext]);
 
   return (
     <div
       ref={drag}
+      data-bookmark-item
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',

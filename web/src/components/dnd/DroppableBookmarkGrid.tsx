@@ -3,11 +3,12 @@ import { useDrop } from 'react-dnd';
 import { useBookmarkContext } from '../../contexts/AppProvider';
 import { calculateDropIndex } from '../../lib/utils/dnd-helpers';
 
-interface DroppableBundleProps {
+interface DroppableBookmarkGridProps {
   categoryName: string;
   bundleName: string;
+  bookmarkCount: number;
   children: React.ReactNode;
-  bookmarkCount?: number;
+  className?: string;
 }
 
 interface DragItem {
@@ -18,11 +19,12 @@ interface DragItem {
   index?: number;
 }
 
-export const DroppableBundle: React.FC<DroppableBundleProps> = ({
+export const DroppableBookmarkGrid: React.FC<DroppableBookmarkGridProps> = ({
   categoryName,
   bundleName,
+  bookmarkCount,
   children,
-  bookmarkCount = 0
+  className
 }) => {
   const bookmark = useBookmarkContext();
   const ref = useRef<HTMLDivElement>(null);
@@ -30,28 +32,18 @@ export const DroppableBundle: React.FC<DroppableBundleProps> = ({
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'bookmark',
     canDrop: (item: DragItem) => {
-      // Use service state for business logic
+      // Don't allow dropping in the same bundle (reordering is disabled)
+      if (item.categoryName === categoryName && item.bundleName === bundleName) {
+        return false;
+      }
       return bookmark.canDropBookmark(item, categoryName, bundleName);
     },
     drop: async (item: DragItem, monitor) => {
       try {
-        // Check if this is a reorder within the same bundle
+        // Only allow moving between different bundles, no reordering within the same bundle
         if (item.categoryName === categoryName && item.bundleName === bundleName) {
-          // Calculate drop index based on mouse position
-          const clientOffset = monitor.getClientOffset();
-          if (clientOffset && ref.current) {
-            const dropIndex = calculateDropIndex(ref.current, clientOffset, bookmarkCount);
-            
-            // Only reorder if the index has changed
-            if (item.index !== undefined && dropIndex !== item.index) {
-              await bookmark.reorderBookmarks(
-                categoryName,
-                bundleName,
-                item.bookmarkId,
-                dropIndex
-              );
-            }
-          }
+          // Same bundle - do nothing (reordering is disabled)
+          return;
         } else {
           // Different bundle - use move operation
           await bookmark.moveBookmark(
@@ -63,8 +55,7 @@ export const DroppableBundle: React.FC<DroppableBundleProps> = ({
           );
         }
       } catch (error) {
-        console.error('[DROP ERROR] Failed to move/reorder bookmark:', error);
-        // The error will be handled by the context provider and shown in the UI
+        console.error('[DroppableBookmarkGrid ERROR] Failed to move bookmark:', error);
       }
     },
     collect: (monitor) => ({
@@ -80,10 +71,15 @@ export const DroppableBundle: React.FC<DroppableBundleProps> = ({
   };
 
   return (
-    <div ref={combinedRef}>
-      {React.cloneElement(children as React.ReactElement, {
-        bundleDropHighlight: isOver && canDrop,
-      })}
+    <div 
+      ref={combinedRef}
+      className={className}
+      style={{
+        backgroundColor: isOver && canDrop ? '#e6f3ff' : undefined,
+        transition: 'background-color 0.2s ease',
+      }}
+    >
+      {children}
     </div>
   );
 };

@@ -16,8 +16,12 @@ vi.mock('../../src/components/dnd', () => ({
   DnDProvider: ({ children }: any) => <div>{children}</div>,
   DraggableBookmark: ({ children }: any) => <div>{children}</div>,
   DraggableBundle: ({ children }: any) => <div>{children}</div>,
+  DraggableCategory: ({ children }: any) => <div>{children}</div>,
   DroppableBundle: ({ children }: any) => <div>{children}</div>,
-  DroppableCategory: ({ children }: any) => <div>{children}</div>
+  DroppableCategory: ({ children }: any) => <div>{children}</div>,
+  DroppableCategories: ({ children }: any) => <div>{children}</div>,
+  DroppableBundleContainer: ({ children }: any) => <div>{children}</div>,
+  DroppableBookmarkGrid: ({ children }: any) => <div>{children}</div>
 }));
 vi.mock('../../src/components/ui/Toast', () => ({
   Toast: ({ message, onClose }: any) => (

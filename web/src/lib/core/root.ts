@@ -432,3 +432,134 @@ export const moveBundleToCategory = (
     categories: updatedCategories
   }, getCurrentTimestamp());
 };
+
+// Reorder operations
+export const reorderCategoriesInRoot = (root: Root, categoryName: string, newIndex: number): Root => {
+  const categories = [...root.categories];
+  const currentIndex = categories.findIndex(c => c.name === categoryName);
+  
+  if (currentIndex === -1 || currentIndex === newIndex) {
+    return root;
+  }
+  
+  // Remove from current position
+  const [category] = categories.splice(currentIndex, 1);
+  
+  // When moving forward (to a higher index), we need to subtract 1 from newIndex
+  // because removing the item shifts all items after it down by one position
+  const targetIndex = currentIndex < newIndex ? newIndex - 1 : newIndex;
+  
+  // Insert at new position
+  categories.splice(targetIndex, 0, category);
+  
+  const updatedRoot = {
+    ...root,
+    categories
+  };
+  
+  return updateRootMetadata(updatedRoot, getCurrentTimestamp());
+};
+
+export const reorderBundlesInRoot = (
+  root: Root, 
+  categoryName: string, 
+  bundleName: string, 
+  newIndex: number
+): Root => {
+  const updatedRoot = {
+    ...root,
+    categories: updateCategoryByName(
+      root.categories,
+      categoryName,
+      category => {
+        const bundles = [...category.bundles];
+        const currentIndex = bundles.findIndex(b => b.name === bundleName);
+        
+        if (currentIndex === -1 || currentIndex === newIndex) {
+          return category;
+        }
+        
+        // Remove from current position
+        const [bundle] = bundles.splice(currentIndex, 1);
+        
+        // When moving forward (to a higher index), we need to subtract 1 from newIndex
+        // because removing the item shifts all items after it down by one position
+        const targetIndex = currentIndex < newIndex ? newIndex - 1 : newIndex;
+        
+        // Insert at new position
+        bundles.splice(targetIndex, 0, bundle);
+        
+        return updateCategoryMetadata({
+          ...category,
+          bundles
+        });
+      }
+    )
+  };
+  
+  return updateRootMetadata(updatedRoot, getCurrentTimestamp());
+};
+
+export const reorderBookmarksInRoot = (
+  root: Root,
+  categoryName: string,
+  bundleName: string,
+  bookmarkId: string,
+  newIndex: number
+): Root => {
+  const updatedRoot = {
+    ...root,
+    categories: updateCategoryByName(
+      root.categories,
+      categoryName,
+      category => ({
+        ...category,
+        bundles: category.bundles.map(bundle => {
+          if (bundle.name !== bundleName) {
+            return bundle;
+          }
+          
+          const bookmarks = [...bundle.bookmarks];
+          const currentIndex = bookmarks.findIndex(b => b.id === bookmarkId);
+          
+          if (currentIndex === -1) {
+            return bundle;
+          }
+          
+          // Calculate the actual target index after removal
+          let targetIndex = newIndex;
+          
+          // If moving forward, adjust for the removal
+          if (currentIndex < newIndex) {
+            targetIndex = Math.min(newIndex - 1, bookmarks.length - 1);
+          } else {
+            targetIndex = Math.min(newIndex, bookmarks.length - 1);
+          }
+          
+          // Don't do anything if we're already at the target position
+          if (currentIndex === targetIndex) {
+            return bundle;
+          }
+          
+          // Remove from current position
+          const [bookmark] = bookmarks.splice(currentIndex, 1);
+          
+          // Insert at new position
+          bookmarks.splice(targetIndex, 0, bookmark);
+          
+          return {
+            ...bundle,
+            bookmarks,
+            metadata: {
+              ...bundle.metadata,
+              lastModified: getCurrentTimestamp()
+            }
+          };
+        }),
+        metadata: updateCategoryMetadata(category).metadata
+      })
+    )
+  };
+  
+  return updateRootMetadata(updatedRoot, getCurrentTimestamp());
+};

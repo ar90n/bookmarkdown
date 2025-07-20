@@ -30,6 +30,10 @@ export interface BookmarkContextValue {
   moveBookmark: (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string) => Promise<void>;
   moveBundle: (fromCategory: string, toCategory: string, bundleName: string) => Promise<void>;
   
+  // Reorder operations
+  reorderCategories: (categoryName: string, newIndex: number) => Promise<void>;
+  reorderBundles: (categoryName: string, bundleName: string, newIndex: number) => Promise<void>;
+  
   // Search and stats
   searchBookmarks: (filter?: BookmarkFilter) => BookmarkSearchResult[];
   getStats: () => BookmarkStats;

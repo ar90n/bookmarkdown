@@ -1,44 +1,39 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { Bundle } from '../../../../../src/types/bookmark';
 
-interface DraggableBundleProps {
-  bundle: Bundle;
+interface DraggableCategoryProps {
   categoryName: string;
   index: number;
   children: React.ReactNode;
 }
 
 interface DragItem {
-  type: 'bundle';
-  bundleName: string;
+  type: 'category';
   categoryName: string;
   index: number;
 }
 
-export const DraggableBundle: React.FC<DraggableBundleProps> = ({
-  bundle,
+export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
   categoryName,
   index,
   children
 }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'bundle',
+    type: 'category',
     item: {
-      type: 'bundle',
-      bundleName: bundle.name,
+      type: 'category',
       categoryName,
       index,
     } as DragItem,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [bundle, categoryName, index]);
+  }), [categoryName, index]);
 
   return (
     <div
       ref={drag}
-      data-bundle-item
+      data-category-item
       style={{
         opacity: isDragging ? 0.5 : 1,
         cursor: 'move',

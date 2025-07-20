@@ -14,7 +14,9 @@ import {
   searchBookmarksInRoot,
   getStatsFromRoot,
   moveBookmarkToBundle,
-  moveBundleToCategory
+  moveBundleToCategory,
+  reorderCategoriesInRoot,
+  reorderBundlesInRoot
 } from '../core/index.js';
 import { GistSyncShell, GistSyncResult } from '../shell/gist-sync.js';
 
@@ -46,6 +48,10 @@ export interface BookmarkService {
   // Move operations
   moveBookmark: (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string) => Result<Root>;
   moveBundle: (fromCategory: string, toCategory: string, bundleName: string) => Result<Root>;
+  
+  // Reorder operations
+  reorderCategories: (categoryName: string, newIndex: number) => Result<Root>;
+  reorderBundles: (categoryName: string, bundleName: string, newIndex: number) => Result<Root>;
   
   // Sync operations
   loadFromRemote: () => Promise<Result<Root>>;
@@ -223,6 +229,24 @@ export const createBookmarkService = (syncShell?: GistSyncShell, config?: Bookma
         return failure(error instanceof Error ? error : new Error('Failed to move bundle'));
       }
     },
+
+    // Reorder operations
+    reorderCategories: (categoryName: string, newIndex: number): Result<Root> => {
+      try {
+        return success(updateRoot(reorderCategoriesInRoot(currentRoot, categoryName, newIndex)));
+      } catch (error) {
+        return failure(error instanceof Error ? error : new Error('Failed to reorder categories'));
+      }
+    },
+
+    reorderBundles: (categoryName: string, bundleName: string, newIndex: number): Result<Root> => {
+      try {
+        return success(updateRoot(reorderBundlesInRoot(currentRoot, categoryName, bundleName, newIndex)));
+      } catch (error) {
+        return failure(error instanceof Error ? error : new Error('Failed to reorder bundles'));
+      }
+    },
+
 
     // Sync operations
     loadFromRemote: async (): Promise<Result<Root>> => {

@@ -1,5 +1,9 @@
 export { DnDProvider } from './DnDProvider';
 export { DraggableBookmark } from './DraggableBookmark';
 export { DraggableBundle } from './DraggableBundle';
+export { DraggableCategory } from './DraggableCategory';
 export { DroppableBundle } from './DroppableBundle';
 export { DroppableCategory } from './DroppableCategory';
+export { DroppableCategories } from './DroppableCategories';
+export { DroppableBundleContainer } from './DroppableBundleContainer';
+export { DroppableBookmarkGrid } from './DroppableBookmarkGrid';

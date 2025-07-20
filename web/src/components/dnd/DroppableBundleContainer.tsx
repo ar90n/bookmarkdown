@@ -3,7 +3,7 @@ import { useDrop } from 'react-dnd';
 import { useBookmarkContext } from '../../contexts/AppProvider';
 import { calculateBundleDropIndex } from '../../lib/utils/dnd-helpers';
 
-interface DroppableCategoryProps {
+interface DroppableBundleContainerProps {
   categoryName: string;
   bundleCount: number;
   children: React.ReactNode;
@@ -16,7 +16,7 @@ interface DragItem {
   index?: number;
 }
 
-export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
+export const DroppableBundleContainer: React.FC<DroppableBundleContainerProps> = ({
   categoryName,
   bundleCount,
   children
@@ -24,11 +24,11 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
   const bookmark = useBookmarkContext();
   const ref = useRef<HTMLDivElement>(null);
 
-  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+  const [{ isOver }, drop] = useDrop(() => ({
     accept: 'bundle',
     canDrop: (item: DragItem) => {
-      // Use service state for business logic
-      return bookmark.canDropBundle(item.bundleName, item.categoryName, categoryName);
+      // Only allow reordering within the same category for now
+      return item.categoryName === categoryName;
     },
     drop: async (item: DragItem, monitor) => {
       try {
@@ -48,22 +48,13 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
               );
             }
           }
-        } else {
-          // Different category - use move operation
-          await bookmark.moveBundle(
-            item.categoryName,
-            categoryName,
-            item.bundleName
-          );
         }
       } catch (error) {
-        console.error('Failed to move/reorder bundle:', error);
-        // The error will be handled by the context provider and shown in the UI
+        console.error('[DroppableBundleContainer] Failed to reorder bundle:', error);
       }
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
     }),
   }));
 
@@ -74,10 +65,14 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
   };
 
   return (
-    <div ref={combinedRef}>
-      {React.cloneElement(children as React.ReactElement, {
-        categoryDropHighlight: isOver && canDrop,
-      })}
+    <div 
+      ref={combinedRef}
+      style={{
+        backgroundColor: isOver ? '#f0f9ff' : undefined,
+        transition: 'background-color 0.2s ease',
+      }}
+    >
+      {children}
     </div>
   );
 };
