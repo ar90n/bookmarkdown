@@ -59,6 +59,17 @@ export default defineConfig({
           console.error('Failed to copy popup.js:', error);
         }
         
+        // Copy newtab.js
+        try {
+          copyFileSync(
+            resolve(__dirname, 'extension/newtab.js'),
+            resolve(outDir, 'newtab.js')
+          );
+          console.log('✓ Copied newtab.js');
+        } catch (error) {
+          console.error('Failed to copy newtab.js:', error);
+        }
+        
         // Copy icons directory
         const iconsDir = resolve(__dirname, 'extension/icons');
         const targetIconsDir = resolve(outDir, 'icons');
