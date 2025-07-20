@@ -40,12 +40,7 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Mock BroadcastChannel
-(global as any).BroadcastChannel = vi.fn(() => ({
-  postMessage: vi.fn(),
-  close: vi.fn(),
-  onmessage: null
-}));
+// BroadcastChannel removed - no mock needed
 
 describe('useBookmarkContextProvider - Basic Tests', () => {
   beforeEach(() => {

@@ -21,15 +21,7 @@ vi.mock('../../src/lib/shell/gist-sync.js', () => ({
   }))
 }));
 
-// Mock BroadcastChannel
-vi.mock('../../src/utils/polyfills/broadcast-channel', () => ({
-  BroadcastChannel: vi.fn().mockImplementation(() => ({
-    postMessage: vi.fn(),
-    close: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn()
-  }))
-}));
+// BroadcastChannel removed - no mock needed
 
 describe('Auto-sync pause during conflicts', () => {
   const mockOnConflictDuringAutoSync = vi.fn();

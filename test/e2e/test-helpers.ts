@@ -50,6 +50,9 @@ export async function setupAuth(page: Page, authData?: Partial<AuthData>) {
   const auth = { ...defaultAuth, ...authData };
 
   await page.addInitScript((authData) => {
+    // Enable test mode to bypass GitHub API validation
+    localStorage.setItem('TEST_MODE', 'true');
+    
     // Set auth data
     localStorage.setItem('bookmark_auth', JSON.stringify(authData));
   }, auth);
@@ -83,9 +86,13 @@ export async function mockGistAPI(page: Page, config: {
   delayMs?: number;
 }) {
   
+  // Track etags for conditional requests
+  const etagMap = new Map<string, string>();
+  
   await page.route('https://api.github.com/**', async (route, request) => {
     const method = request.method();
     const url = new URL(request.url());
+    const headers = request.headers();
     
     // Add delay if specified
     if (config.delayMs) {
@@ -97,10 +104,50 @@ export async function mockGistAPI(page: Page, config: {
       await route.abort('failed');
       return;
     }
-
     
-    // Handle different API endpoints
-    if (method === 'GET' && url.pathname === '/gists') {
+    // Check authorization - accept test token
+    const authHeader = headers['authorization'];
+    if (!authHeader || !authHeader.includes('Bearer')) {
+      // Return 401 for missing auth
+      await route.fulfill({
+        status: 401,
+        body: JSON.stringify({
+          message: 'Requires authentication',
+          documentation_url: 'https://docs.github.com/rest'
+        }),
+        headers: {
+          'content-type': 'application/json'
+        }
+      });
+      return;
+    }
+
+    // Mock user endpoint for token validation
+    if (method === 'GET' && url.pathname === '/user') {
+      // Return user data for token validation
+      await route.fulfill({
+        status: 200,
+        body: JSON.stringify({
+          login: 'testuser',
+          name: 'Test User',
+          avatar_url: 'https://github.com/testuser.png',
+          id: 123456,
+          email: 'test@example.com'
+        }),
+        headers: {
+          'content-type': 'application/json',
+          'x-oauth-scopes': 'gist, user:email'
+        }
+      });
+    } else if (method === 'HEAD' && url.pathname === '/user') {
+      // Return headers for scope check
+      await route.fulfill({
+        status: 200,
+        headers: {
+          'x-oauth-scopes': 'gist, user:email'
+        }
+      });
+    } else if (method === 'GET' && url.pathname === '/gists') {
       // List gists
       await route.fulfill({
         status: 200,
@@ -162,6 +209,31 @@ export async function mockGistAPI(page: Page, config: {
           'content-type': 'application/json'
         }
       });
+    } else if (method === 'GET' && url.pathname.match(/\/gists\/[a-zA-Z0-9\-]+\/commits$/)) {
+      // Get gist commits
+      const gistId = url.pathname.split('/')[3];
+      await route.fulfill({
+        status: 200,
+        body: JSON.stringify([
+          {
+            version: 'abc123',
+            committed_at: new Date().toISOString(),
+            change_status: {
+              total: 1,
+              additions: 1,
+              deletions: 0
+            },
+            url: `https://api.github.com/gists/${gistId}/abc123`,
+            user: {
+              login: 'testuser',
+              avatar_url: 'https://github.com/testuser.png'
+            }
+          }
+        ]),
+        headers: {
+          'content-type': 'application/json'
+        }
+      });
     } else {
       // Default: continue with original request
       await route.continue();
@@ -219,29 +291,95 @@ export function createTestBookmarkData() {
  * Wait for sync operation to complete
  */
 export async function waitForSync(page: Page) {
-  // Wait for sync status to update - check for various possible status texts
-  try {
-    await page.waitForSelector('text=/Synced|Last sync|Sync complete/i', {
-      timeout: 10000
-    });
-  } catch {
-    // If no sync status is visible, that's okay - the operation might have completed quickly
-  }
+  // Wait for sync status to show synced state
+  await page.waitForSelector('[data-testid="sync-status"][data-sync-status="synced"], [data-testid="sync-status"]:has-text("Synced")', {
+    timeout: 5000
+  });
+}
+
+/**
+ * Wait for specific sync status
+ */
+export async function waitForSyncStatus(page: Page, status: 'syncing' | 'synced' | 'error' | 'pending') {
+  await page.waitForSelector(`[data-testid="sync-status"][data-sync-status="${status}"]`, {
+    timeout: 5000
+  });
+}
+
+/**
+ * Wait for bookmark count to change
+ */
+export async function waitForBookmarkCount(page: Page, expectedCount: number) {
+  await page.waitForFunction(
+    (count) => {
+      const bookmarkElements = document.querySelectorAll('a[href^="https://"], a[href^="http://"]');
+      return bookmarkElements.length === count;
+    },
+    expectedCount,
+    { timeout: 5000 }
+  );
 }
 
 /**
  * Wait for initial data to load
  */
 export async function waitForInitialLoad(page: Page) {
-  // Wait for network to be idle
-  await page.waitForLoadState('networkidle');
+  // Wait for page to be ready
+  await page.waitForLoadState('domcontentloaded');
   
-  // Wait for either data or empty state
-  try {
-    await page.waitForSelector('text="Test Category"', { timeout: 5000 });
-  } catch {
-    // If test category not found, wait for empty state
-    await page.waitForSelector('text="No bookmarks yet"', { timeout: 15000 });
+  // Wait for main content area to be visible
+  await page.waitForSelector('main', { timeout: 5000 });
+  
+  // Wait for either bookmark content or empty state
+  // Check for any of these indicators individually
+  const indicators = await Promise.race([
+    page.waitForSelector('button:has-text("Add Category")', { timeout: 5000 }).catch(() => null),
+    page.waitForSelector('text=No bookmarks yet', { timeout: 5000 }).catch(() => null),
+    page.waitForSelector('h3', { timeout: 5000 }).catch(() => null),
+    page.waitForSelector('h4', { timeout: 5000 }).catch(() => null)
+  ]);
+  
+  if (!indicators) {
+    throw new Error('No bookmark indicators found');
+  }
+  
+  // Ensure sync status is visible
+  await page.waitForSelector('[data-testid="sync-status"]', { timeout: 2000 });
+}
+
+/**
+ * Wait for authentication to be ready
+ */
+export async function waitForAuth(page: Page) {
+  // Wait for auth to initialize
+  await page.waitForFunction(() => {
+    const authData = localStorage.getItem('bookmark_auth');
+    if (!authData) return false;
+    
+    try {
+      const parsed = JSON.parse(authData);
+      return parsed.user && parsed.tokens;
+    } catch {
+      return false;
+    }
+  }, { timeout: 5000 });
+  
+  // If there's an auth error notification, dismiss it
+  const authError = page.locator('[data-testid="error-notification"]');
+  if (await authError.isVisible({ timeout: 1000 })) {
+    // Click the dismiss button
+    const dismissButton = authError.locator('button:has-text("Dismiss")');
+    if (await dismissButton.isVisible()) {
+      await dismissButton.click();
+      await authError.waitFor({ state: 'hidden', timeout: 2000 });
+    }
+  }
+  
+  // Also check for the sync error status and wait for it to clear
+  const syncError = page.locator('[data-testid="sync-status"][data-sync-status="error"]');
+  if (await syncError.isVisible({ timeout: 500 })) {
+    // Wait a bit for the error to clear after dismissing notification
+    await page.waitForTimeout(1000);
   }
 }
 

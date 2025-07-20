@@ -22,7 +22,8 @@
       "Bash(npx vitest run:*)",
       "Bash(act:*)",
       "Bash(CI=true act -j test-e2e-chromium -P ubuntu-latest=catthehacker/ubuntu:act-latest)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(timeout 10 npm test -- --run web/test/unit/use-bookmark-context-provider-state.test.ts)"
     ],
     "deny": []
   }

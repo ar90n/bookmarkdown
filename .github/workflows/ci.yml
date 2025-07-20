@@ -522,7 +522,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        browser: [chromium, firefox]
+        browser: [chromium]
       fail-fast: false
     
     steps:

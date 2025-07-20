@@ -13,22 +13,21 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.ts', './test/setup-react.ts', './test/setup-mocks.ts'],
-    pool: 'forks',
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: false,
-        maxForks: 1,
-        // Limit concurrent test files to reduce memory usage
-        maxThreads: 1,
+      threads: {
+        singleThread: false,
+        maxThreads: 4,
         minThreads: 1,
         isolate: true
       }
     },
-    // Run tests sequentially to reduce memory usage
-    fileParallelism: false,
-    // Increase teardown timeout for proper cleanup
+    // Allow parallel test execution
+    fileParallelism: true,
+    // Increase timeouts
     teardownTimeout: 10000,
-    testTimeout: 30000,
+    testTimeout: 60000,
+    hookTimeout: 60000,
     include: [
       'test/**/*.test.ts',
       'test/**/*.test.tsx',

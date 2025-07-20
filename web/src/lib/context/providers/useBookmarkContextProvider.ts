@@ -24,13 +24,8 @@ interface BookmarkContextV2Config {
 export function useBookmarkContextProvider(config: BookmarkContextV2Config): BookmarkContextValue {
   const STORAGE_KEY = config.storageKey || 'bookmarkdown_data';
   const GIST_ID_STORAGE_KEY = `${STORAGE_KEY}_gist_id`;
-  const BROADCAST_CHANNEL_NAME = 'bookmarkdown_sync';
-  
   // Service state (persisted with useRef)
   const service = useRef<BookmarkService | null>(null);
-  
-  // BroadcastChannel for inter-tab communication
-  const broadcastChannel = useRef<BroadcastChannel | null>(null);
   
   // Parser/Generator instances
   const parser = useRef(new MarkdownParser());
@@ -77,6 +72,14 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       if (config.createSyncShell) {
         // For testing
         syncShell = config.createSyncShell();
+        // Initialize the custom shell
+        const initResult = await syncShell.initialize(currentGistId);
+        if (!initResult.success) {
+          console.error('Failed to initialize custom GistSyncShell:', initResult.error);
+          initializationError = initResult.error;
+          setError(`Failed to connect to Gist: ${initResult.error.message}`);
+          syncShell = undefined;
+        }
       } else if (config.accessToken) {
         // Production: create real sync shell
         syncShell = new GistSyncShell({
@@ -146,35 +149,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     initializeService();
   }, [config.accessToken, currentGistId, config.filename, config.createSyncShell]);
   
-  // Initialize BroadcastChannel
-  useEffect(() => {
-    if (typeof BroadcastChannel !== 'undefined') {
-      broadcastChannel.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-      
-      // Listen for updates from other tabs
-      broadcastChannel.current.onmessage = (event) => {
-        if (event.data.type === 'bookmark_update' && service.current) {
-          setRoot(service.current.getRoot());
-          setIsDirty(false);
-          if (event.data.syncAt) {
-            setLastSyncAt(new Date(event.data.syncAt));
-          }
-        }
-      };
-    }
-    
-    return () => {
-      broadcastChannel.current?.close();
-    };
-  }, [BROADCAST_CHANNEL_NAME]);
-  
-  // Broadcast update to other tabs
-  const broadcastUpdate = useCallback((syncAt?: Date) => {
-    broadcastChannel.current?.postMessage({
-      type: 'bookmark_update',
-      syncAt: syncAt?.toISOString()
-    });
-  }, []);
+  // Removed BroadcastChannel - not needed for cross-device sync
   
   // Ref for debounced auto-sync
   const debouncedAutoSyncRef = useRef<(() => void) | null>(null);
@@ -428,7 +403,6 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         setIsDirty(false);
         setLastSyncAt(new Date());
         setInitialSyncCompleted(true);
-        broadcastUpdate(new Date());
         
         // Update GistID if loaded successfully
         const gistInfo = service.current.getGistInfo();
@@ -448,7 +422,6 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
               setIsDirty(false);
               setLastSyncAt(new Date());
               setInitialSyncCompleted(true);
-              broadcastUpdate(new Date());
               
               const gistInfo = service.current!.getGistInfo();
               if (gistInfo.gistId) {
@@ -474,7 +447,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       setIsLoading(false);
       setIsSyncing(false);
     }
-  }, [broadcastUpdate, saveGistId, config.accessToken, doRetryInitialization]);
+  }, [saveGistId, config.accessToken, doRetryInitialization]);
   
   const saveToRemote = useCallback(async () => {
     if (!service.current) {
@@ -489,7 +462,6 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       if (result.success) {
         setIsDirty(false);
         setLastSyncAt(new Date());
-        broadcastUpdate(new Date());
         
         // Update GistID if created new
         if (result.data.gistId) {
@@ -506,7 +478,6 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
             if (retryResult.success) {
               setIsDirty(false);
               setLastSyncAt(new Date());
-              broadcastUpdate(new Date());
               if (retryResult.data.gistId) {
                 saveGistId(retryResult.data.gistId);
               }
@@ -527,7 +498,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     } finally {
       setIsLoading(false);
     }
-  }, [broadcastUpdate, saveGistId, config.accessToken, doRetryInitialization]);
+  }, [saveGistId, config.accessToken, doRetryInitialization]);
   
   // Simplified sync (no merge conflicts in V2)
   const syncWithRemote = useCallback(async (options?: {

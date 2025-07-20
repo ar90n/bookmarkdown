@@ -25,20 +25,7 @@ const localStorageMock = {
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-// Mock BroadcastChannel
-const mockBroadcastChannel = {
-  postMessage: vi.fn(),
-  close: vi.fn(),
-  onmessage: null as any,
-  name: ''
-};
-
-const BroadcastChannelMock = vi.fn().mockImplementation((name: string) => {
-  mockBroadcastChannel.name = name;
-  return mockBroadcastChannel;
-});
-
-(global as any).BroadcastChannel = BroadcastChannelMock;
+// BroadcastChannel removed - no mock needed
 
 describe('useBookmarkContextProvider', () => {
   let mockService: any;
@@ -55,10 +42,7 @@ describe('useBookmarkContextProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
-    // Reset BroadcastChannel mock
-    mockBroadcastChannel.postMessage.mockClear();
-    mockBroadcastChannel.close.mockClear();
-    mockBroadcastChannel.onmessage = null;
+    // BroadcastChannel removed - no reset needed
     
     // Setup mock service
     mockService = {
@@ -193,11 +177,7 @@ describe('useBookmarkContextProvider', () => {
       expect(result.current.currentGistId).toBe('config-gist-id');
     });
 
-    it('should initialize BroadcastChannel', () => {
-      renderHookWithCleanup(() => useBookmarkContextProvider({}));
-      
-      expect(BroadcastChannelMock).toHaveBeenCalledWith('bookmarkdown_sync');
-    });
+    // BroadcastChannel test removed - feature removed
 
     it('should perform initial sync when gist ID and token exist', async () => {
       localStorageMock.getItem.mockReturnValue('stored-gist-id');

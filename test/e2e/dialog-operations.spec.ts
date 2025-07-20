@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Dialog Operations', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock authentication
+    // Mock authentication with correct format
     await page.addInitScript(() => {
       const authData = {
         user: {
@@ -10,8 +10,10 @@ test.describe('Dialog Operations', () => {
           name: 'Test User',
           avatar_url: 'https://github.com/testuser.png'
         },
-        token: 'test-token',
-        lastSyncAt: new Date().toISOString()
+        tokens: {
+          accessToken: 'test-token'
+        },
+        lastLoginAt: new Date().toISOString()
       };
       localStorage.setItem('bookmark_auth', JSON.stringify(authData));
     });
@@ -111,20 +113,32 @@ test.describe('Dialog Operations', () => {
       
       // Try to create duplicate
       await page.click('button:has-text("Add Category")');
-      await page.fill('input#categoryName', 'Duplicate Category');
-      await page.click('button[type="submit"]:has-text("Create Category")');
       
-      // Should see error
-      await expect(page.locator('text=/Category.*already exists/i').first()).toBeVisible();
+      // Wait for the dialog to open and input to be ready
+      await page.waitForSelector('input#categoryName', { state: 'visible' });
+      
+      // Fill the form with the same name
+      await page.fill('input#categoryName', 'Duplicate Category');
+      
+      // Wait for button to be enabled (form validation)
+      const submitButton = page.locator('button[type="submit"]:has-text("Create Category")');
+      await expect(submitButton).toBeEnabled({ timeout: 5000 });
+      
+      // Click submit
+      await submitButton.click();
+      
+      // Should see error in the dialog
+      await expect(page.locator('.bg-red-50 .text-red-800').first()).toBeVisible();
+      
+      // Verify the error message content
+      const errorText = await page.locator('.bg-red-50 .text-red-800').first().textContent();
+      expect(errorText).toContain('already exists');
       
       // Close dialog if still open
       const cancelButton = page.locator('button:has-text("Cancel")');
       if (await cancelButton.isVisible()) {
         await cancelButton.click();
       }
-      
-      // Wait for UI to settle
-      await page.waitForTimeout(500);
       
       // Verify only one category exists
       const categoryCount = await page.locator('h3:has-text("Duplicate Category")').count();
@@ -179,26 +193,42 @@ test.describe('Dialog Operations', () => {
       
       // Create first bundle
       await page.click('button[title="Add Bundle"]');
+      await page.waitForSelector('input#bundleName', { state: 'visible' });
       await page.fill('input#bundleName', 'Duplicate Bundle');
-      await page.click('button[type="submit"]:has-text("Create Bundle")');
+      
+      // Wait for button to be enabled
+      const firstSubmit = page.locator('button[type="submit"]:has-text("Create Bundle")');
+      await expect(firstSubmit).toBeEnabled({ timeout: 5000 });
+      await firstSubmit.click();
+      
       await page.waitForSelector('input#bundleName', { state: 'hidden' });
       
       // Try to create duplicate
       await page.click('button[title="Add Bundle"]');
-      await page.fill('input#bundleName', 'Duplicate Bundle');
-      await page.click('button[type="submit"]:has-text("Create Bundle")');
       
-      // Should see error
-      await expect(page.locator('text=/Bundle.*already exists/i').first()).toBeVisible();
+      // Wait for dialog to open
+      await page.waitForSelector('input#bundleName', { state: 'visible' });
+      
+      // Fill with duplicate name
+      await page.fill('input#bundleName', 'Duplicate Bundle');
+      
+      // Wait for button to be enabled before clicking
+      const createButton = page.locator('button[type="submit"]:has-text("Create Bundle")');
+      await expect(createButton).toBeEnabled({ timeout: 5000 });
+      await createButton.click();
+      
+      // Should see error in the dialog
+      await expect(page.locator('.bg-red-50 .text-red-800').first()).toBeVisible();
+      
+      // Verify the error message content
+      const errorText = await page.locator('.bg-red-50 .text-red-800').first().textContent();
+      expect(errorText).toContain('already exists');
       
       // Close dialog if still open
       const cancelButton = page.locator('button:has-text("Cancel")');
       if (await cancelButton.isVisible()) {
         await cancelButton.click();
       }
-      
-      // Wait for UI to settle
-      await page.waitForTimeout(500);
       
       // Verify only one bundle exists
       const bundleCount = await page.locator('h4:has-text("Duplicate Bundle")').count();
@@ -282,7 +312,6 @@ test.describe('Dialog Operations', () => {
       await submitButton.click();
       
       // The form should not close due to validation error
-      await page.waitForTimeout(500);
       await expect(page.locator('input#bookmarkUrl')).toBeVisible();
       
       // Fix URL

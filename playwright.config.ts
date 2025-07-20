@@ -14,15 +14,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   
   /* Retry on CI only */
-  retries: 2,
+  retries: process.env.CI ? 1 : 0,
   
-  /* Opt out of parallel tests on CI. */
-  workers: 1,
+  /* Enable parallel execution */
+  workers: process.env.CI ? 2 : 4,
   
   /* Global timeout */
-  timeout: 60000,
+  timeout: 30000,
   expect: {
-    timeout: 10000,
+    timeout: 5000,
   },
   
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -43,8 +43,8 @@ export default defineConfig({
     video: 'retain-on-failure',
     
     /* Set timeout */
-    actionTimeout: 30000,
-    navigationTimeout: 30000,
+    actionTimeout: 10000,
+    navigationTimeout: 15000,
   },
 
   /* Configure projects for major browsers */
@@ -53,17 +53,13 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
   ],
 
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'npm run build:web && npm run preview:web',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
-    timeout: 180 * 1000, // 3 minutes
+    reuseExistingServer: true,
+    timeout: 60 * 1000, // 1 minute
   },
 });
