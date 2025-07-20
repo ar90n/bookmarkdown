@@ -18,6 +18,7 @@
     "test:unit:only": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest --run --exclude='**/e2e/**' --exclude='**/*.spec.ts'",
     "test:e2e:only": "playwright test",
     "test:core": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/unit/core/",
+    "test:react": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/components/ web/test/pages/",
     "test:web": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/",
     "test:web-unit": "cross-env NODE_OPTIONS=--max-old-space-size=8192 vitest web/test/unit/",
     "test:web-unit-context-bookmark": "cross-env NODE_OPTIONS=--max-old-space-size=10240 vitest run web/test/unit/use-bookmark-context-provider.test.ts web/test/unit/bookmark-context-*.test.*",
