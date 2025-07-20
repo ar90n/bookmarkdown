@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, setupAutoSync, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown, waitForInitialLoad, waitForAuth } from '../../../test/e2e/test-helpers';
+import { setupAuth, setupGistId, setupAutoSync, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown, waitForInitialLoad, waitForAuth } from './test-helpers';
 
 test.describe('Auto-sync functionality', () => {
   test.beforeEach(async ({ page }) => {

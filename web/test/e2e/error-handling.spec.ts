@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown, waitForInitialLoad } from '../../../test/e2e/test-helpers';
+import { setupAuth, setupGistId, mockGistAPI, createBookmark, waitForSync, createTestBookmarkMarkdown, waitForInitialLoad } from './test-helpers';
 
 test.describe('Error handling and recovery', () => {
   test.beforeEach(async ({ page }) => {
