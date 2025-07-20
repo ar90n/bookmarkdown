@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BookMarkDown",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A simple and portable bookmark management service using GitHub Gist as data storage with Markdown format",
   "author": "BookMarkDown Contributors",
   "permissions": [
