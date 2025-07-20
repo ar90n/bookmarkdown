@@ -518,7 +518,15 @@ export const addBookmarkToTree = (
   bookmark: Bookmark
 ): Root => {
   const timestamp = getCurrentTimestamp();
-  const bookmarkWithMeta = ensureBookmarkMetadata(bookmark);
+  // Ensure bookmark has metadata with the same timestamp
+  const bookmarkWithMeta: Bookmark = {
+    ...bookmark,
+    metadata: {
+      ...bookmark.metadata,
+      lastModified: timestamp,
+      lastSynced: bookmark.metadata?.lastSynced || timestamp
+    }
+  };
   
   return traverseAndUpdate(root, {
     path: [categoryName, bundleName],
