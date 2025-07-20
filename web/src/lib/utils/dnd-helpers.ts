@@ -10,9 +10,6 @@ export function calculateDropIndex(
   clientOffset: { x: number; y: number },
   itemCount: number
 ): number {
-  const containerRect = container.getBoundingClientRect();
-  const relativeY = clientOffset.y - containerRect.top;
-  
   // Get all bookmark items within the container
   const items = container.querySelectorAll('[data-bookmark-item]');
   
@@ -43,9 +40,6 @@ export function calculateCategoryDropIndex(
   clientOffset: { x: number; y: number },
   categoryCount: number
 ): number {
-  const containerRect = container.getBoundingClientRect();
-  const relativeY = clientOffset.y - containerRect.top;
-  
   // Get all category items within the container
   const categories = container.querySelectorAll('[data-category-item]');
   
@@ -76,9 +70,6 @@ export function calculateBundleDropIndex(
   clientOffset: { x: number; y: number },
   bundleCount: number
 ): number {
-  const containerRect = container.getBoundingClientRect();
-  const relativeY = clientOffset.y - containerRect.top;
-  
   // Get all bundle items within the container
   const bundles = container.querySelectorAll('[data-bundle-item]');
   
