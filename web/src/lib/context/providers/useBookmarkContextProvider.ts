@@ -440,18 +440,17 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     return newService;
   }, [config.accessToken, config.filename, currentGistId]);
   
-  // Remote operations
-  const loadFromRemote = useCallback(async () => {
-    return withSyncLock(async () => {
-      if (!service.current) {
-        throw new Error('Service not initialized');
-      }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const result = await service.current.loadFromRemote();
+  // Remote operations - Internal (no lock)
+  const loadFromRemoteInternal = useCallback(async () => {
+    if (!service.current) {
+      throw new Error('Service not initialized');
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await service.current.loadFromRemote();
       if (result.success) {
         setRoot(result.data);
         setIsDirty(false);
@@ -491,29 +490,33 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           throw result.error;
         }
       }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setError(errorMessage);
-        // Mark initial sync as completed even on error to show local data
-        setInitialSyncCompleted(true);
-        throw error; // Re-throw so caller can handle
-      } finally {
-        setIsLoading(false);
-      }
-    }, 'loadFromRemote');
-  }, [saveGistId, config.accessToken, doRetryInitialization, withSyncLock]);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      // Mark initial sync as completed even on error to show local data
+      setInitialSyncCompleted(true);
+      throw error; // Re-throw so caller can handle
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveGistId, config.accessToken, doRetryInitialization]);
   
-  const saveToRemote = useCallback(async () => {
-    return withSyncLock(async () => {
-      if (!service.current) {
-        throw new Error('Service not initialized');
-      }
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        const result = await service.current.saveToRemote();
+  // Public loadFromRemote with lock
+  const loadFromRemote = useCallback(async () => {
+    return withSyncLock(loadFromRemoteInternal, 'loadFromRemote');
+  }, [loadFromRemoteInternal, withSyncLock]);
+  
+  // Internal saveToRemote without lock
+  const saveToRemoteInternal = useCallback(async () => {
+    if (!service.current) {
+      throw new Error('Service not initialized');
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const result = await service.current.saveToRemote();
       if (result.success) {
         setIsDirty(false);
         setLastSyncAt(new Date());
@@ -546,15 +549,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           throw result.error;
         }
       }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setError(errorMessage);
-        throw error; // Re-throw so caller can handle
-      } finally {
-        setIsLoading(false);
-      }
-    }, 'saveToRemote');
-  }, [saveGistId, config.accessToken, doRetryInitialization, withSyncLock]);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(errorMessage);
+      throw error; // Re-throw so caller can handle
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveGistId, config.accessToken, doRetryInitialization]);
+  
+  // Public saveToRemote with lock
+  const saveToRemote = useCallback(async () => {
+    return withSyncLock(saveToRemoteInternal, 'saveToRemote');
+  }, [saveToRemoteInternal, withSyncLock]);
   
   // Simplified sync (no merge conflicts in V2)
   const syncWithRemote = useCallback(async (options?: {
@@ -592,12 +599,12 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           if (options?.onConflict) {
             options.onConflict({
               onLoadRemote: async () => {
-                await loadFromRemote();
+                await loadFromRemoteInternal();
                 // Conflict resolved
                 dialogStateRef.hasUnresolvedConflict = false;
               },
               onSaveLocal: async () => {
-                await saveToRemote();
+                await saveToRemoteInternal();
                 // Conflict resolved
                 dialogStateRef.hasUnresolvedConflict = false;
               }
@@ -608,12 +615,12 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
           return;
         } else {
           // No local changes, safe to reload
-          await loadFromRemote();
+          await loadFromRemoteInternal();
         }
       } else {
         // No remote changes, safe to save if dirty
         if (isDirty) {
-          await saveToRemote();
+          await saveToRemoteInternal();
         }
       }
       } catch (error) {
@@ -622,7 +629,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         throw error;
       }
     }, 'syncWithRemote');
-  }, [isDirty, loadFromRemote, saveToRemote, doRetryInitialization, withSyncLock]);
+  }, [isDirty, loadFromRemoteInternal, saveToRemoteInternal, doRetryInitialization, withSyncLock]);
   
   // Conflict resolution - simplified for V2
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
