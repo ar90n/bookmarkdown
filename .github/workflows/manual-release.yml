@@ -97,6 +97,7 @@ jobs:
           bookmarkdown-extension-v${{ inputs.version }}.zip
           bookmarkdown-library-v${{ inputs.version }}.zip
         prerelease: ${{ inputs.prerelease }}
+        allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload extension to artifacts
