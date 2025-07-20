@@ -25,7 +25,8 @@
       "Bash(cat:*)",
       "Bash(timeout 10 npm test -- --run web/test/unit/use-bookmark-context-provider-state.test.ts)",
       "Bash(mv:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(node:*)"
     ],
     "deny": []
   }
