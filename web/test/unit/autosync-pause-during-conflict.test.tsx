@@ -3,6 +3,7 @@ import { act, renderHook } from '../test-utils';
 import { useBookmarkContextProvider } from '../../src/lib/context/providers/useBookmarkContextProvider';
 import { dialogStateRef } from '../../src/lib/context/providers/dialog-state-ref';
 import { createBookmarkService } from '../../src/lib/adapters/bookmark-service.js';
+import { GistSyncShell } from '../../src/lib/shell/gist-sync.js';
 
 // Mock the services and dependencies
 vi.mock('../../src/lib/adapters/bookmark-service.js', () => ({
@@ -17,7 +18,10 @@ vi.mock('../../src/lib/adapters/bookmark-service.js', () => ({
 
 vi.mock('../../src/lib/shell/gist-sync.js', () => ({
   GistSyncShell: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn(() => Promise.resolve({ success: true }))
+    initialize: vi.fn(() => Promise.resolve({ success: true })),
+    loadFromRemote: vi.fn(() => Promise.resolve({ success: true, data: { categories: [] } })),
+    saveToRemote: vi.fn(() => Promise.resolve({ success: true, data: {} })),
+    hasRemoteChanges: vi.fn(() => Promise.resolve({ success: true, data: false }))
   }))
 }));
 
@@ -66,15 +70,24 @@ describe('Auto-sync pause during conflicts', () => {
   });
 
   it('should resume auto-sync after conflict is resolved', async () => {
+    const mockSyncShell = {
+      initialize: vi.fn(() => Promise.resolve({ success: true })),
+      loadFromRemote: vi.fn(() => Promise.resolve({ success: true, data: { categories: [] } })),
+      saveToRemote: vi.fn(() => Promise.resolve({ success: true, data: {} })),
+      hasRemoteChanges: vi.fn(() => Promise.resolve({ success: true, data: false }))
+    };
+
     const mockBookmarkService = {
       getRoot: vi.fn(() => ({ categories: [] })),
       addCategory: vi.fn(() => ({ success: true })),
       isDirty: vi.fn(() => true),
       hasRemoteChanges: vi.fn(() => Promise.resolve({ success: true, data: false })),
-      saveToRemote: vi.fn(() => Promise.resolve({ success: true, data: {} }))
+      saveToRemote: vi.fn(() => Promise.resolve({ success: true, data: {} })),
+      getGistInfo: vi.fn(() => ({ etag: 'test-etag', gistId: 'test-gist-id' }))
     };
 
     vi.mocked(createBookmarkService).mockReturnValue(mockBookmarkService);
+    vi.mocked(GistSyncShell).mockImplementation(() => mockSyncShell);
 
     const { result } = renderHook(() => useBookmarkContextProvider({
       accessToken: 'test-token',

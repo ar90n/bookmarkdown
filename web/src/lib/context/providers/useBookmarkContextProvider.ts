@@ -187,6 +187,11 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
 
   // Trigger auto-sync after operation completes
   const triggerAutoSyncIfEnabled = useCallback(() => {
+    // Skip auto-sync if there's an unresolved conflict
+    if (dialogStateRef.hasUnresolvedConflict) {
+      return;
+    }
+    
     if (config.autoSync && autoSyncEnabled && config.accessToken && debouncedAutoSyncRef.current) {
       debouncedAutoSyncRef.current();
     }
