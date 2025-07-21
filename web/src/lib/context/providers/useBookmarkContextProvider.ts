@@ -185,15 +185,18 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   }, []);
   
   // Helper to update state after operations
-  const updateState = useCallback(() => {
+  // Internal update state without triggering auto-sync (for use within sync operations)
+  const updateStateInternal = useCallback(() => {
     if (service.current) {
       setRoot(service.current.getRoot());
       setIsDirty(true);
-      
-      // Trigger auto-sync if enabled
-      if (config.autoSync && autoSyncEnabled && config.accessToken && debouncedAutoSyncRef.current) {
-        debouncedAutoSyncRef.current();
-      }
+    }
+  }, []);
+
+  // Trigger auto-sync after operation completes
+  const triggerAutoSyncIfEnabled = useCallback(() => {
+    if (config.autoSync && autoSyncEnabled && config.accessToken && debouncedAutoSyncRef.current) {
+      debouncedAutoSyncRef.current();
     }
   }, [config.autoSync, config.accessToken, autoSyncEnabled]);
   
@@ -219,162 +222,232 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Category operations
   const addCategory = useCallback(async (name: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.addCategory(name);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'addCategory');
     
-    const result = service.current.addCategory(name);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const removeCategory = useCallback(async (name: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.removeCategory(name);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'removeCategory');
     
-    const result = service.current.removeCategory(name);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const renameCategory = useCallback(async (oldName: string, newName: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.renameCategory(oldName, newName);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'renameCategory');
     
-    const result = service.current.renameCategory(oldName, newName);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   // Bundle operations
   const addBundle = useCallback(async (categoryName: string, bundleName: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.addBundle(categoryName, bundleName);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'addBundle');
     
-    const result = service.current.addBundle(categoryName, bundleName);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const removeBundle = useCallback(async (categoryName: string, bundleName: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.removeBundle(categoryName, bundleName);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'removeBundle');
     
-    const result = service.current.removeBundle(categoryName, bundleName);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const renameBundle = useCallback(async (categoryName: string, oldName: string, newName: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.renameBundle(categoryName, oldName, newName);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'renameBundle');
     
-    const result = service.current.renameBundle(categoryName, oldName, newName);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   // Bookmark operations
   const addBookmark = useCallback(async (categoryName: string, bundleName: string, bookmark: BookmarkInput) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.addBookmark(categoryName, bundleName, bookmark);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'addBookmark');
     
-    const result = service.current.addBookmark(categoryName, bundleName, bookmark);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const addBookmarksBatch = useCallback(async (categoryName: string, bundleName: string, bookmarks: BookmarkInput[]) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.addBookmarksBatch(categoryName, bundleName, bookmarks);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'addBookmarksBatch');
     
-    const result = service.current.addBookmarksBatch(categoryName, bundleName, bookmarks);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const updateBookmark = useCallback(async (categoryName: string, bundleName: string, bookmarkId: string, update: BookmarkUpdate) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.updateBookmark(categoryName, bundleName, bookmarkId, update);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'updateBookmark');
     
-    const result = service.current.updateBookmark(categoryName, bundleName, bookmarkId, update);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const removeBookmark = useCallback(async (categoryName: string, bundleName: string, bookmarkId: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.removeBookmark(categoryName, bundleName, bookmarkId);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'removeBookmark');
     
-    const result = service.current.removeBookmark(categoryName, bundleName, bookmarkId);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   // Move operations
   const moveBookmark = useCallback(async (fromCategory: string, fromBundle: string, toCategory: string, toBundle: string, bookmarkId: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.moveBookmark(fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'moveBookmark');
     
-    const result = service.current.moveBookmark(fromCategory, fromBundle, toCategory, toBundle, bookmarkId);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const moveBundle = useCallback(async (fromCategory: string, toCategory: string, bundleName: string) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.moveBundle(fromCategory, toCategory, bundleName);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'moveBundle');
     
-    const result = service.current.moveBundle(fromCategory, toCategory, bundleName);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
 
   // Reorder operations
   const reorderCategories = useCallback(async (categoryName: string, newIndex: number) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.reorderCategories(categoryName, newIndex);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'reorderCategories');
     
-    const result = service.current.reorderCategories(categoryName, newIndex);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
 
   const reorderBundles = useCallback(async (categoryName: string, bundleName: string, newIndex: number) => {
-    if (!service.current) return;
+    await withSyncLock(async () => {
+      if (!service.current) return;
+      
+      const result = service.current.reorderBundles(categoryName, bundleName, newIndex);
+      if (result.success) {
+        updateStateInternal();
+      } else {
+        setError(result.error.message);
+      }
+    }, 'reorderBundles');
     
-    const result = service.current.reorderBundles(categoryName, bundleName, newIndex);
-    if (result.success) {
-      updateState();
-    } else {
-      setError(result.error.message);
-    }
-  }, [updateState]);
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
 
   
   // Query operations
@@ -661,38 +734,43 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Import/Export
   const importData = useCallback(async (data: string, format: 'json' | 'markdown') => {
-    if (!service.current) return;
-    
-    try {
-      let root: Root;
-      if (format === 'markdown') {
-        root = parser.current.parse(data);
-      } else {
-        root = JSON.parse(data) as Root;
-      }
+    await withSyncLock(async () => {
+      if (!service.current) return;
       
-      // Clear existing data
-      const currentRoot = service.current.getRoot();
-      currentRoot.categories.forEach(cat => {
-        service.current!.removeCategory(cat.name);
-      });
-      
-      // Import new data
-      root.categories.forEach(category => {
-        service.current!.addCategory(category.name);
-        category.bundles.forEach(bundle => {
-          service.current!.addBundle(category.name, bundle.name);
-          bundle.bookmarks.forEach(bookmark => {
-            service.current!.addBookmark(category.name, bundle.name, bookmark);
+      try {
+        let root: Root;
+        if (format === 'markdown') {
+          root = parser.current.parse(data);
+        } else {
+          root = JSON.parse(data) as Root;
+        }
+        
+        // Clear existing data
+        const currentRoot = service.current.getRoot();
+        currentRoot.categories.forEach(cat => {
+          service.current!.removeCategory(cat.name);
+        });
+        
+        // Import new data
+        root.categories.forEach(category => {
+          service.current!.addCategory(category.name);
+          category.bundles.forEach(bundle => {
+            service.current!.addBundle(category.name, bundle.name);
+            bundle.bookmarks.forEach(bookmark => {
+              service.current!.addBookmark(category.name, bundle.name, bookmark);
+            });
           });
         });
-      });
-      
-      updateState();
-    } catch (err) {
-      setError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    }
-  }, [updateState]);
+        
+        updateStateInternal();
+      } catch (err) {
+        setError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }, 'importData');
+    
+    // Trigger auto-sync after lock is released
+    triggerAutoSyncIfEnabled();
+  }, [withSyncLock, updateStateInternal, triggerAutoSyncIfEnabled]);
   
   const exportData = useCallback(async (format: 'json' | 'markdown'): Promise<string> => {
     if (!service.current) {
