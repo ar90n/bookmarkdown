@@ -830,54 +830,57 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       return;
     }
     
-    try {
-      // Get current Gist info for logging
-      const gistInfo = service.current.getGistInfo();
-      console.log('[AutoSync] Starting auto-sync', {
-        currentEtag: gistInfo.etag,
-        gistId: gistInfo.gistId
-      });
-      
-      // Check for remote changes
-      const hasChangesResult = await service.current.hasRemoteChanges();
-      if (!hasChangesResult.success) {
-        throw hasChangesResult.error;
-      }
-      
-      console.log('[AutoSync] Remote changes check result', {
-        hasRemoteChanges: hasChangesResult.data
-      });
-      
-      if (hasChangesResult.data) {
-        // Remote has changes - conflict detected
-        console.log('[AutoSync] Conflict detected during auto-sync');
-        dialogStateRef.hasUnresolvedConflict = true;
+    // Wrap entire auto-sync in sync lock
+    return withSyncLock(async () => {
+      try {
+        // Get current Gist info for logging
+        const gistInfo = service.current!.getGistInfo();
+        console.log('[AutoSync] Starting auto-sync', {
+          currentEtag: gistInfo.etag,
+          gistId: gistInfo.gistId
+        });
         
-        if (onConflictRef.current) {
-          onConflictRef.current({
-            onLoadRemote: async () => {
-              await loadFromRemote();
-              // Conflict resolved
-              dialogStateRef.hasUnresolvedConflict = false;
-            },
-            onSaveLocal: async () => {
-              await saveToRemote();
-              // Conflict resolved
-              dialogStateRef.hasUnresolvedConflict = false;
-            }
-          });
-        } else {
-          setError('Auto-sync failed: Remote has changes');
+        // Check for remote changes
+        const hasChangesResult = await service.current!.hasRemoteChanges();
+        if (!hasChangesResult.success) {
+          throw hasChangesResult.error;
         }
-      } else {
-        // No remote changes, safe to save
-        await saveToRemote();
+        
+        console.log('[AutoSync] Remote changes check result', {
+          hasRemoteChanges: hasChangesResult.data
+        });
+        
+        if (hasChangesResult.data) {
+          // Remote has changes - conflict detected
+          console.log('[AutoSync] Conflict detected during auto-sync');
+          dialogStateRef.hasUnresolvedConflict = true;
+          
+          if (onConflictRef.current) {
+            onConflictRef.current({
+              onLoadRemote: async () => {
+                await loadFromRemoteInternal();
+                // Conflict resolved
+                dialogStateRef.hasUnresolvedConflict = false;
+              },
+              onSaveLocal: async () => {
+                await saveToRemoteInternal();
+                // Conflict resolved
+                dialogStateRef.hasUnresolvedConflict = false;
+              }
+            });
+          } else {
+            setError('Auto-sync failed: Remote has changes');
+          }
+        } else {
+          // No remote changes, safe to save
+          await saveToRemoteInternal();
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setError(`Auto-sync failed: ${errorMessage}`);
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(`Auto-sync failed: ${errorMessage}`);
-    }
-  }, [loadFromRemote, saveToRemote]);
+    }, 'triggerAutoSync');
+  }, [loadFromRemoteInternal, saveToRemoteInternal, withSyncLock]);
   
   // Debounced auto-sync
   const debouncedAutoSync = useDebounce(triggerAutoSync, 1000);
