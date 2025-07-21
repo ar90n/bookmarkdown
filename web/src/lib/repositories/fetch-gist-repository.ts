@@ -223,10 +223,6 @@ export class FetchGistRepository implements GistRepository {
     try {
       const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
       
-      console.log('[FetchGistRepository] Reading gist', {
-        gistId: this.gistId,
-        currentEtag: this._etag
-      });
       
       const response = await fetch(
         `${apiBaseUrl}/gists/${this.gistId}`,
@@ -247,11 +243,6 @@ export class FetchGistRepository implements GistRepository {
         return failure(new Error('No etag received from API'));
       }
       
-      console.log('[FetchGistRepository] Read successful', {
-        oldEtag: this._etag,
-        newEtag: etag,
-        etagChanged: this._etag !== etag
-      });
       
       this._etag = etag;
       
@@ -277,11 +268,6 @@ export class FetchGistRepository implements GistRepository {
     try {
       const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
       
-      console.log('[FetchGistRepository] Updating gist', {
-        gistId: this.gistId,
-        currentEtag: this._etag,
-        hasDescription: !!description
-      });
       
       // Perform update
       const content = this.generator.generate(root);
@@ -314,13 +300,6 @@ export class FetchGistRepository implements GistRepository {
       
       if (!updateResponse.ok) {
         const error = await handleApiError(updateResponse);
-        console.log('[FetchGistRepository] Update failed', {
-          status: updateResponse.status,
-          statusText: updateResponse.statusText,
-          currentEtag: this._etag,
-          responseEtag: updateResponse.headers.get('etag'),
-          error: error.message
-        });
         return failure(error);
       }
       
@@ -330,11 +309,6 @@ export class FetchGistRepository implements GistRepository {
         return failure(new Error('No etag received from API'));
       }
       
-      console.log('[FetchGistRepository] Update successful', {
-        oldEtag: this._etag,
-        newEtag: newEtag,
-        etagChanged: this._etag !== newEtag
-      });
       
       this._etag = newEtag;
       
@@ -351,10 +325,6 @@ export class FetchGistRepository implements GistRepository {
     try {
       const apiBaseUrl = this.config.apiBaseUrl || 'https://api.github.com';
       
-      console.log('[FetchGistRepository] Checking for remote changes', {
-        gistId: this.gistId,
-        currentEtag: this._etag
-      });
       
       const response = await fetch(
         `${apiBaseUrl}/gists/${this.gistId}`,
@@ -367,13 +337,6 @@ export class FetchGistRepository implements GistRepository {
         }
       );
       
-      const newEtag = response.headers.get('etag');
-      console.log('[FetchGistRepository] Remote check response', {
-        status: response.status,
-        newEtag,
-        currentEtag: this._etag,
-        hasChanges: response.status !== 304
-      });
       
       if (response.status === 304) {
         // Not Modified - no updates

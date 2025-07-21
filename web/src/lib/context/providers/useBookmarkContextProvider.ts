@@ -159,25 +159,17 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Helper for exclusive sync operations
   const withSyncLock = useCallback(async <T,>(
-    operation: () => Promise<T>,
-    operationName: string
+    operation: () => Promise<T>
   ): Promise<T> => {
     if (syncLockRef.current) {
-      console.log(`[Sync] ${operationName} skipped - another sync operation is in progress`);
       throw new Error('Another sync operation is in progress');
     }
     
-    console.log(`[Sync] ${operationName} started`);
     syncLockRef.current = true;
     setIsSyncing(true);
     
     try {
-      const result = await operation();
-      console.log(`[Sync] ${operationName} completed`);
-      return result;
-    } catch (error) {
-      console.log(`[Sync] ${operationName} failed:`, error);
-      throw error;
+      return await operation();
     } finally {
       syncLockRef.current = false;
       setIsSyncing(false);
@@ -231,7 +223,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'addCategory');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -247,7 +239,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'removeCategory');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -263,7 +255,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'renameCategory');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -280,7 +272,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'addBundle');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -296,7 +288,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'removeBundle');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -312,7 +304,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'renameBundle');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -329,7 +321,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'addBookmark');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -345,7 +337,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'addBookmarksBatch');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -361,7 +353,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'updateBookmark');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -377,7 +369,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'removeBookmark');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -394,7 +386,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'moveBookmark');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -410,7 +402,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'moveBundle');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -427,7 +419,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'reorderCategories');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -443,7 +435,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } else {
         setError(result.error.message);
       }
-    }, 'reorderBundles');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -576,7 +568,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Public loadFromRemote with lock
   const loadFromRemote = useCallback(async () => {
-    return withSyncLock(loadFromRemoteInternal, 'loadFromRemote');
+    return withSyncLock(loadFromRemoteInternal);
   }, [loadFromRemoteInternal, withSyncLock]);
   
   // Internal saveToRemote without lock
@@ -633,7 +625,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   
   // Public saveToRemote with lock
   const saveToRemote = useCallback(async () => {
-    return withSyncLock(saveToRemoteInternal, 'saveToRemote');
+    return withSyncLock(saveToRemoteInternal);
   }, [saveToRemoteInternal, withSyncLock]);
   
   // Simplified sync (no merge conflicts in V2)
@@ -716,7 +708,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         setError(errorMessage);
         throw error;
       }
-    }, 'syncWithRemote');
+    });
   }, [isDirty, loadFromRemoteInternal, saveToRemoteInternal, doRetryInitialization, withSyncLock]);
   
   // Conflict resolution - simplified for V2
@@ -766,7 +758,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       } catch (err) {
         setError(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
-    }, 'importData');
+    });
     
     // Trigger auto-sync after lock is released
     triggerAutoSyncIfEnabled();
@@ -957,7 +949,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         setError(`Auto-sync failed: ${errorMessage}`);
       }
-    }, 'triggerAutoSync');
+    });
   }, [loadFromRemoteInternal, saveToRemoteInternal, withSyncLock]);
   
   // Debounced auto-sync
