@@ -573,6 +573,14 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       }
       
       try {
+        // Get current Gist info for logging
+        const gistInfo = service.current.getGistInfo();
+        console.log('[syncWithRemote] Starting sync', {
+          isDirty,
+          currentEtag: gistInfo.etag,
+          gistId: gistInfo.gistId
+        });
+        
       // Check for remote changes
       let hasChangesResult = await service.current.hasRemoteChanges();
       if (!hasChangesResult.success) {
@@ -589,10 +597,17 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         }
       }
       
+      console.log('[syncWithRemote] Remote changes check result', {
+        hasRemoteChanges: hasChangesResult.data,
+        isDirty,
+        willConflict: hasChangesResult.data && isDirty
+      });
+      
       if (hasChangesResult.success && hasChangesResult.data) {
         // Remote has changes - need to decide what to do
         if (isDirty) {
           // Conflict detected - set the flag
+          console.log('[syncWithRemote] Conflict detected - both local and remote have changes');
           dialogStateRef.hasUnresolvedConflict = true;
           
           // Use the dialog if callback provided
@@ -816,14 +831,26 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     }
     
     try {
+      // Get current Gist info for logging
+      const gistInfo = service.current.getGistInfo();
+      console.log('[AutoSync] Starting auto-sync', {
+        currentEtag: gistInfo.etag,
+        gistId: gistInfo.gistId
+      });
+      
       // Check for remote changes
       const hasChangesResult = await service.current.hasRemoteChanges();
       if (!hasChangesResult.success) {
         throw hasChangesResult.error;
       }
       
+      console.log('[AutoSync] Remote changes check result', {
+        hasRemoteChanges: hasChangesResult.data
+      });
+      
       if (hasChangesResult.data) {
         // Remote has changes - conflict detected
+        console.log('[AutoSync] Conflict detected during auto-sync');
         dialogStateRef.hasUnresolvedConflict = true;
         
         if (onConflictRef.current) {
