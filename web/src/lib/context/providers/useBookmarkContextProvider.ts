@@ -8,7 +8,6 @@ import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { dialogStateRef } from './dialog-state-ref.js';
-import { useAuthContext } from '../../../contexts/AppProvider';
 
 interface BookmarkContextV2Config {
   accessToken?: string;
@@ -17,6 +16,7 @@ interface BookmarkContextV2Config {
   autoSave?: boolean;
   gistId?: string;
   autoSync?: boolean;
+  isAuthLoading?: boolean;
   onConflictDuringAutoSync?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
   // For testing
   createSyncShell?: () => GistSyncShell;
@@ -25,9 +25,6 @@ interface BookmarkContextV2Config {
 export function useBookmarkContextProvider(config: BookmarkContextV2Config): BookmarkContextValue {
   const STORAGE_KEY = config.storageKey || 'bookmarkdown_data';
   const GIST_ID_STORAGE_KEY = `${STORAGE_KEY}_gist_id`;
-  
-  // Get auth context for checking authentication status
-  const authContext = useAuthContext();
   
   // Service state (persisted with useRef)
   const service = useRef<BookmarkService | null>(null);
@@ -1008,7 +1005,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   useEffect(() => {
     const performInitialSync = async () => {
       // Wait for authentication to complete
-      if (!config.accessToken || authContext.isLoading) {
+      if (!config.accessToken || config.isAuthLoading) {
         return;
       }
       
@@ -1049,7 +1046,7 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
     };
     
     performInitialSync();
-  }, [currentGistId, config.accessToken, authContext.isLoading, syncConfigured, initialSyncCompleted, loadFromRemote]);
+  }, [currentGistId, config.accessToken, config.isAuthLoading, syncConfigured, initialSyncCompleted, loadFromRemote]);
   
   return {
     // State

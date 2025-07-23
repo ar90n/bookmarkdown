@@ -65,6 +65,7 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
     filename: 'bookmarks.md',
     autoSave: true,
     autoSync: true,  // Enable auto-sync on every change
+    isAuthLoading: authContext.isLoading,
     onConflictDuringAutoSync: (handlers) => {
       // Use the dialog callback ref to open the conflict dialog
       if (dialogCallbackRef.openSyncConflictDialog) {
