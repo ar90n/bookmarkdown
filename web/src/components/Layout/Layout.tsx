@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Navigation } from './Navigation';
+import { MobileNavigation } from './MobileNavigation';
 import { Footer } from './Footer';
 import { useBookmarkContext, useDialogContext } from '../../contexts/AppProvider';
 import { CategoryDialog } from '../Dialogs/CategoryDialog';
@@ -12,10 +13,12 @@ import { ImportDialog } from '../Dialogs/ImportDialog';
 import { ExportDialog } from '../Dialogs/ExportDialog';
 import { ErrorNotification } from '../ui/ErrorNotification';
 import { useErrorHandler } from '../../hooks/useErrorHandler';
+import { useMobileMenu } from '../../hooks/useMobileMenu';
 
 export const Layout: React.FC = () => {
   const bookmark = useBookmarkContext();
   const dialog = useDialogContext();
+  const mobileMenu = useMobileMenu();
   const errorHandler = useErrorHandler({
     onConflict: () => {
       // Could show a specific dialog for conflicts
@@ -65,10 +68,11 @@ export const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header />
+      <Header onMenuToggle={mobileMenu.toggle} />
       <div className="flex flex-1">
         <Navigation />
-        <main className="flex-1 p-6">
+        <MobileNavigation isOpen={mobileMenu.isOpen} onClose={mobileMenu.close} />
+        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

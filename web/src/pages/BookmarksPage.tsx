@@ -247,22 +247,22 @@ export const BookmarksPage: React.FC = () => {
           />
         ))}
         {/* Page Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Bookmarks</h1>
-            <p className="text-gray-600">Organize and manage your bookmark collection</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Bookmarks</h1>
+            <p className="text-sm sm:text-base text-gray-600">Organize and manage your bookmark collection</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button 
               onClick={dialog.openCategoryDialog}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors text-sm sm:text-base"
             >
               Add Category
             </button>
             {chromeExtension.isAvailable && (
               <button 
                 onClick={handleImportTabs}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
               >
                 Import Tabs
               </button>

@@ -5,7 +5,11 @@ import { Button } from '../UI/Button';
 import { UserProfile } from '../Auth/UserProfile';
 import { SyncStatusWithActions } from '../ui/SyncStatusWithActions';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onMenuToggle: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
   const auth = useAuthContext();
   const bookmark = useBookmarkContext();
 
@@ -13,13 +17,24 @@ export const Header: React.FC = () => {
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo and title */}
+          {/* Mobile menu button and Logo */}
           <div className="flex items-center">
+            {/* Mobile menu toggle */}
+            <button
+              onClick={onMenuToggle}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors mr-3"
+              aria-label="Toggle menu"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
             <Link to="/" className="flex items-center space-x-3">
               <div className="flex items-center justify-center w-8 h-8 bg-primary-600 rounded-lg">
                 <span className="text-white font-bold text-sm">📚</span>
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="text-xl font-bold text-gray-900">BookMarkDown</h1>
                 <p className="text-xs text-gray-500">Portable bookmark management</p>
               </div>

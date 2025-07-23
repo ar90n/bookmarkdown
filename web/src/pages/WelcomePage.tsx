@@ -2,24 +2,17 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AppProvider';
 import { Button } from '../components/UI/Button';
-import { Navigation } from '../components/Layout/Navigation';
-import { Header } from '../components/Layout/Header';
 
 export const WelcomePage: React.FC = () => {
   const auth = useAuthContext();
 
   // Different layout based on authentication status
   if (auth.isAuthenticated) {
-    // Layout for authenticated users with navigation
+    // Authenticated users should use the main layout with navigation
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Header />
-        <div className="flex flex-1">
-          <Navigation />
-          <main className="flex-1 p-6">
-            <div className="max-w-6xl mx-auto">
-              {/* Hero Section */}
-              <div className="text-center mb-12">
+      <div className="space-y-6">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
                 <div className="flex items-center justify-center mb-6">
                   <span className="text-5xl">📚</span>
                 </div>
@@ -114,8 +107,6 @@ export const WelcomePage: React.FC = () => {
                 </div>
               </div>
             </div>
-          </main>
-        </div>
       </div>
     );
   }

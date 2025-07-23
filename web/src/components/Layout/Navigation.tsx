@@ -73,7 +73,7 @@ export const Navigation: React.FC = () => {
   };
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 p-4">
+    <nav className="hidden md:block w-64 bg-white shadow-sm border-r border-gray-200 p-4">
       <div className="space-y-1">
         {navItems.map((item) => (
           <NavLink
