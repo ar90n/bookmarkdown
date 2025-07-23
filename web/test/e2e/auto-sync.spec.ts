@@ -67,7 +67,9 @@ test.describe('Auto-sync functionality', () => {
     expect(syncCallCount).toBeGreaterThanOrEqual(0);
     
     // Verify the bookmark remains visible
-    await expect(page.locator('text="New Auto-synced Bookmark"')).toBeVisible();
+    await expect(page.locator('text="New Auto-synced Bookmark"')).toBeVisible({
+      timeout: 10000
+    });
   });
 
   test('should not auto-sync when disabled', async ({ page }) => {

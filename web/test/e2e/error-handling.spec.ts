@@ -153,16 +153,13 @@ test.describe('Error handling and recovery', () => {
     // Try to sync
     await page.click('button:has-text("Sync")');
     
-    // Should show error status
-    await expect(page.locator('[data-testid="sync-status"][data-sync-status="error"]')).toBeVisible({
+    // Should redirect to login page due to auto-logout on authentication error
+    await expect(page).toHaveURL('/login', {
       timeout: 10000
     });
     
-    // Check for error notification with authentication error message
-    const errorNotification = page.locator('[data-testid="error-notification"], .notification-error, div:has-text("Authentication failed")');
-    await expect(errorNotification.first()).toBeVisible({
-      timeout: 5000
-    });
+    // Verify we're on the login page
+    await expect(page.locator('text="Sign in with GitHub"')).toBeVisible();
   });
 
   test('should handle rate limit errors', async ({ page }) => {

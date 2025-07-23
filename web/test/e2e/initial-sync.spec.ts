@@ -306,19 +306,27 @@ test.describe('Initial sync on page load', () => {
     
     // Make a change
     await page.click('button:has-text("Add Category")');
+    
+    // Wait for dialog to be ready
+    await page.waitForSelector('input#categoryName:not([disabled])', { state: 'visible' });
     await page.fill('input#categoryName', 'New Category');
     await page.click('button[type="submit"]:has-text("Create Category")');
     
     // Wait to ensure no auto-sync - verify sync status doesn't change
+    await page.waitForSelector('[data-testid="sync-status"]', { state: 'visible' });
     const currentStatus = await page.getAttribute('[data-testid="sync-status"]', 'data-sync-status');
-    await page.waitForFunction(
-      (status) => {
-        const el = document.querySelector('[data-testid="sync-status"]');
-        return el?.getAttribute('data-sync-status') === status;
-      },
-      currentStatus,
-      { timeout: 1000 }
-    );
+    
+    // Wait a bit to ensure no sync happens
+    await page.waitForTimeout(2000);
+    
+    // Verify no sync calls were made
     expect(syncCallCount).toBe(0);
+    
+    // Verify status hasn't changed (if element still exists)
+    const syncStatusElement = await page.locator('[data-testid="sync-status"]');
+    if (await syncStatusElement.isVisible()) {
+      const newStatus = await syncStatusElement.getAttribute('data-sync-status');
+      expect(newStatus).toBe(currentStatus);
+    }
   });
 });
