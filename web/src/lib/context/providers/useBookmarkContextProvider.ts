@@ -18,6 +18,7 @@ interface BookmarkContextV2Config {
   autoSync?: boolean;
   isAuthLoading?: boolean;
   onConflictDuringAutoSync?: (handlers: { onLoadRemote: () => void; onSaveLocal: () => void }) => void;
+  onAuthError?: () => Promise<void>; // Callback for authentication errors
   // For testing
   createSyncShell?: () => GistSyncShell;
 }
@@ -564,6 +565,21 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check for authentication errors
+      if (error instanceof Error && 
+          (error.message.includes('Bad credentials') || 
+           error.message.includes('Authentication failed'))) {
+        console.log('Authentication error detected, logging out...');
+        if (config.onAuthError) {
+          await config.onAuthError();
+        }
+        setError('Authentication failed. Please login again.');
+        // Mark initial sync as completed to show UI
+        setInitialSyncCompleted(true);
+        return; // Don't re-throw after logout
+      }
+      
       setError(errorMessage);
       // Mark initial sync as completed even on error to show local data
       setInitialSyncCompleted(true);
@@ -623,6 +639,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Check for authentication errors
+      if (error instanceof Error && 
+          (error.message.includes('Bad credentials') || 
+           error.message.includes('Authentication failed'))) {
+        console.log('Authentication error detected, logging out...');
+        if (config.onAuthError) {
+          await config.onAuthError();
+        }
+        setError('Authentication failed. Please login again.');
+        return; // Don't re-throw after logout
+      }
+      
       setError(errorMessage);
       throw error; // Re-throw so caller can handle
     } finally {
@@ -712,6 +741,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
       }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        // Check for authentication errors
+        if (error instanceof Error && 
+            (error.message.includes('Bad credentials') || 
+             error.message.includes('Authentication failed'))) {
+          console.log('Authentication error detected, logging out...');
+          if (config.onAuthError) {
+            await config.onAuthError();
+          }
+          setError('Authentication failed. Please login again.');
+          return; // Don't re-throw after logout
+        }
+        
         setError(errorMessage);
         throw error;
       }
@@ -954,6 +996,19 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        
+        // Check for authentication errors
+        if (error instanceof Error && 
+            (error.message.includes('Bad credentials') || 
+             error.message.includes('Authentication failed'))) {
+          console.log('Authentication error detected during auto-sync, logging out...');
+          if (config.onAuthError) {
+            await config.onAuthError();
+          }
+          setError('Authentication failed. Please login again.');
+          return; // Don't continue with auto-sync
+        }
+        
         setError(`Auto-sync failed: ${errorMessage}`);
       }
     });

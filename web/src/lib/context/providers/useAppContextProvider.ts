@@ -71,6 +71,10 @@ export function useAppContextProvider(config: AppConfig): AppContextValue {
       if (dialogCallbackRef.openSyncConflictDialog) {
         dialogCallbackRef.openSyncConflictDialog(handlers);
       }
+    },
+    onAuthError: async () => {
+      // Logout on authentication error
+      await authContext.logout();
     }
   });
 
