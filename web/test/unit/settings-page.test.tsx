@@ -101,12 +101,6 @@ describe('SettingsPage', () => {
       expect(screen.getByText('Settings')).toBeInTheDocument();
       expect(screen.getByText('Manage your account and bookmark data')).toBeInTheDocument();
     });
-
-    it('should show V2 indicator when using V2 sync', () => {
-      render(<SettingsPage />);
-
-      expect(screen.getByText('Using V2 sync engine with etag-based version control')).toBeInTheDocument();
-    });
   });
 
   describe('Account Section', () => {

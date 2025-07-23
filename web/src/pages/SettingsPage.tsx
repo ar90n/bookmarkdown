@@ -115,17 +115,6 @@ export const SettingsPage: React.FC = () => {
         <p className="mt-2 text-gray-600">Manage your account and bookmark data</p>
       </div>
 
-      {/* V2 Feature Flag Indicator */}
-      {isV2 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <InformationCircleIcon className="h-5 w-5 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900">
-              Using V2 sync engine with etag-based version control
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Account Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">

@@ -71,15 +71,17 @@ describe('WelcomePage', () => {
     expect(screen.queryByRole('link', { name: 'View My Bookmarks' })).not.toBeInTheDocument();
   });
 
-  it('should show navigation sidebar when user is authenticated', () => {
+  it('should show authenticated content when user is authenticated', () => {
     // Temporarily set authenticated to true
     mockAuthContext.isAuthenticated = true;
     
     renderWelcomePage();
     
-    // When authenticated, navigation is shown in the sidebar
-    expect(screen.getByRole('link', { name: /Bookmarks/ })).toBeInTheDocument();
+    // When authenticated, user sees the compact welcome content without Get Started button
     expect(screen.queryByRole('link', { name: 'Get Started' })).not.toBeInTheDocument();
+    // The page still shows the main content but in a more compact form
+    expect(screen.getByRole('heading', { name: 'BookMarkDown' })).toBeInTheDocument();
+    expect(screen.getByText('How It Works')).toBeInTheDocument();
     
     // Reset for other tests
     mockAuthContext.isAuthenticated = false;
@@ -136,12 +138,12 @@ describe('WelcomePage', () => {
     expect(getStartedLink.closest('a')).toHaveAttribute('href', '/login');
   });
 
-  it('should have correct navigation link for authenticated users', () => {
+  it('should not show Get Started link for authenticated users', () => {
     mockAuthContext.isAuthenticated = true;
     renderWelcomePage();
     
-    const bookmarksLink = screen.getByRole('link', { name: /Bookmarks/ });
-    expect(bookmarksLink.closest('a')).toHaveAttribute('href', '/bookmarks');
+    // Authenticated users don't see the Get Started link
+    expect(screen.queryByRole('link', { name: 'Get Started' })).not.toBeInTheDocument();
     
     mockAuthContext.isAuthenticated = false; // Reset
   });
