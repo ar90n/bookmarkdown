@@ -11,7 +11,8 @@ test.describe('BookMarkDown Welcome Page', () => {
   });
 
   test('should display the main heading and description', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'BookMarkDown' })).toBeVisible();
+    // Get the main heading within the main content area
+    await expect(page.getByRole('main').getByRole('heading', { name: 'BookMarkDown' })).toBeVisible();
     await expect(page.getByText('A simple, powerful bookmark manager')).toBeVisible();
   });
 
@@ -30,7 +31,8 @@ test.describe('BookMarkDown Welcome Page', () => {
     
     // How it works section
     await expect(page.getByRole('heading', { name: 'How It Works' })).toBeVisible();
-    await expect(page.getByText('Sign In')).toBeVisible();
+    // Use more specific selector for "Sign In" heading in How It Works section
+    await expect(page.getByRole('heading', { name: 'Sign In', level: 3 })).toBeVisible();
     await expect(page.getByText('Add Bookmarks')).toBeVisible();
     await expect(page.getByText('Auto Sync')).toBeVisible();
     await expect(page.getByText('Access Anywhere')).toBeVisible();
@@ -44,7 +46,7 @@ test.describe('BookMarkDown Welcome Page', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     
     // Main heading should still be visible
-    await expect(page.getByRole('heading', { name: 'BookMarkDown' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: 'BookMarkDown' })).toBeVisible();
     
     // Get Started button should be visible
     const getStartedBtn = page.getByRole('link', { name: 'Get Started' });

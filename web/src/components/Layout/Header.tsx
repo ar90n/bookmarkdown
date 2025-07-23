@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
                 <span className="text-white font-bold text-sm">📚</span>
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900">BookMarkDown</h1>
+                <span className="text-xl font-bold text-gray-900">BookMarkDown</span>
                 <p className="text-xs text-gray-500">Portable bookmark management</p>
               </div>
             </Link>
