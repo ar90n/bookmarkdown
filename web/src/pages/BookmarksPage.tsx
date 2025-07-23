@@ -604,79 +604,71 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
                     bundleName={bundle.name}
                     index={index}
                   >
-                    <a 
-                      href={bookmark.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="block hover:no-underline group"
-                    >
-                      <div className="bg-gray-50 rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 transition-all duration-200 h-fit cursor-pointer">
-                        <div className="flex flex-col h-full">
-                          <div className="flex-1">
-                            <h3 className="text-primary-600 group-hover:text-primary-700 font-medium block mb-2 line-clamp-2">
-                              {bookmark.title}
-                            </h3>
-                            <div className="text-sm text-gray-500 mb-2 truncate">{bookmark.url}</div>
-                            {bookmark.notes && (
-                              <div className="text-sm text-gray-600 mb-2 italic line-clamp-2">{bookmark.notes}</div>
-                            )}
-                            {bookmark.tags && bookmark.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mb-3">
-                                {bookmark.tags.map((tag) => (
-                                  <span key={tag} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div 
-                            className="flex justify-end space-x-2 pt-2 border-t border-gray-100"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              e.preventDefault(); 
-                            }}
-                          >
-                            {isMobile ? (
-                              <MobileMenu
-                                onMove={() => handleMoveBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
-                                onEdit={() => handleEditBookmark(category.name, bundle.name, bookmark)}
-                                onDelete={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
-                              />
-                            ) : (
-                              <>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handleEditBookmark(category.name, bundle.name, bookmark);
-                                  }}
-                                  className="text-gray-400 hover:text-gray-600"
-                                  title="Edit bookmark"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title);
-                                  }}
-                                  className="text-gray-400 hover:text-red-600"
-                                  title="Delete bookmark"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </>
-                            )}
-                          </div>
+                    <div className="bg-gray-50 rounded-lg shadow-sm hover:shadow-md border border-gray-200 p-4 transition-all duration-200 h-fit group">
+                      <div className="flex flex-col h-full">
+                        <a 
+                          href={bookmark.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex-1 block hover:no-underline"
+                        >
+                          <h3 className="text-primary-600 group-hover:text-primary-700 font-medium block mb-2 line-clamp-2">
+                            {bookmark.title}
+                          </h3>
+                          <div className="text-sm text-gray-500 mb-2 truncate">{bookmark.url}</div>
+                          {bookmark.notes && (
+                            <div className="text-sm text-gray-600 mb-2 italic line-clamp-2">{bookmark.notes}</div>
+                          )}
+                          {bookmark.tags && bookmark.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {bookmark.tags.map((tag) => (
+                                <span key={tag} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </a>
+                        <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
+                          {isMobile ? (
+                            <MobileMenu
+                              onMove={() => handleMoveBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                              onEdit={() => handleEditBookmark(category.name, bundle.name, bookmark)}
+                              onDelete={() => handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title)}
+                            />
+                          ) : (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleEditBookmark(category.name, bundle.name, bookmark);
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                                title="Edit bookmark"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  handleDeleteBookmark(category.name, bundle.name, bookmark.id, bookmark.title);
+                                }}
+                                className="text-gray-400 hover:text-red-600"
+                                title="Delete bookmark"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </a>
+                    </div>
                   </DraggableBookmark>
                 ))}
               </DroppableBookmarkGrid>

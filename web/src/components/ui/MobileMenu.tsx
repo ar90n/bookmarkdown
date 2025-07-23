@@ -34,7 +34,9 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
     };
   }, [isOpen]);
 
-  const handleMenuClick = (action: () => void) => {
+  const handleMenuClick = (e: React.MouseEvent | React.TouchEvent, action: () => void) => {
+    e.stopPropagation();
+    e.preventDefault();
     action();
     setIsOpen(false);
   };
@@ -44,7 +46,12 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
       <button
         onClick={(e) => {
           e.stopPropagation();
+          e.preventDefault();
           setIsOpen(!isOpen);
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
         }}
         className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         aria-label="Options menu"
@@ -60,7 +67,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
         <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[120px]">
           {onMove && (
             <button
-              onClick={() => handleMenuClick(onMove)}
+              onClick={(e) => handleMenuClick(e, onMove)}
+              onTouchEnd={(e) => handleMenuClick(e, onMove)}
               className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
             >
               <span>📁</span>
@@ -69,7 +77,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
           )}
           {onEdit && (
             <button
-              onClick={() => handleMenuClick(onEdit)}
+              onClick={(e) => handleMenuClick(e, onEdit)}
+              onTouchEnd={(e) => handleMenuClick(e, onEdit)}
               className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
             >
               <span>✏️</span>
@@ -78,7 +87,8 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
           )}
           {onDelete && (
             <button
-              onClick={() => handleMenuClick(onDelete)}
+              onClick={(e) => handleMenuClick(e, onDelete)}
+              onTouchEnd={(e) => handleMenuClick(e, onDelete)}
               className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
             >
               <span>🗑️</span>
