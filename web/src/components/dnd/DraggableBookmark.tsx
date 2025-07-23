@@ -64,6 +64,11 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
     }),
   }), [bookmark, categoryName, bundleName, index, bookmarkContext]);
 
+  // Don't apply drag functionality on mobile
+  if (isMobile) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       ref={drag}

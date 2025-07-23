@@ -26,11 +26,6 @@ export const DroppableBundleContainer: React.FC<DroppableBundleContainerProps> =
   const ref = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <div>{children}</div>;
-  }
-
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'bundle',
     canDrop: (item: DragItem) => {
@@ -68,8 +63,15 @@ export const DroppableBundleContainer: React.FC<DroppableBundleContainerProps> =
   // Combine refs
   const combinedRef = (node: HTMLDivElement) => {
     ref.current = node;
-    drop(node);
+    if (!isMobile) {
+      drop(node);
+    }
   };
+
+  // Don't apply drop functionality on mobile
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
 
   return (
     <div 

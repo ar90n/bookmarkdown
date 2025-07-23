@@ -25,11 +25,6 @@ export const DraggableBundle: React.FC<DraggableBundleProps> = ({
 }) => {
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <div>{children}</div>;
-  }
-
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'bundle',
     item: {
@@ -42,6 +37,11 @@ export const DraggableBundle: React.FC<DraggableBundleProps> = ({
       isDragging: monitor.isDragging(),
     }),
   }), [bundle, categoryName, index]);
+
+  // Don't apply drag functionality on mobile
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
 
   return (
     <div

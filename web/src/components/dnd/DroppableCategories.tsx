@@ -57,8 +57,15 @@ export const DroppableCategories: React.FC<DroppableCategoriesProps> = ({
   // Combine refs
   const combinedRef = (node: HTMLDivElement) => {
     ref.current = node;
-    drop(node);
+    if (!isMobile) {
+      drop(node);
+    }
   };
+
+  // Don't apply drop functionality on mobile
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
 
   return (
     <div 

@@ -74,8 +74,15 @@ export const DroppableBookmarkGrid: React.FC<DroppableBookmarkGridProps> = ({
   // Combine refs
   const combinedRef = (node: HTMLDivElement) => {
     ref.current = node;
-    drop(node);
+    if (!isMobile) {
+      drop(node);
+    }
   };
+
+  // Don't apply drop functionality on mobile
+  if (isMobile) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <div 

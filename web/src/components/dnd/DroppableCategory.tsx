@@ -26,11 +26,6 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <>{children}</>;
-  }
-
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'bundle',
     canDrop: (item: DragItem) => {
@@ -77,8 +72,15 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
   // Combine refs
   const combinedRef = (node: HTMLDivElement) => {
     ref.current = node;
-    drop(node);
+    if (!isMobile) {
+      drop(node);
+    }
   };
+
+  // Don't apply drop functionality on mobile
+  if (isMobile) {
+    return <>{children}</>;
+  }
 
   return (
     <div ref={combinedRef}>

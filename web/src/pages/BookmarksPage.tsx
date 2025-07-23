@@ -15,7 +15,6 @@ export const BookmarksPage: React.FC = () => {
   const dialog = useDialogContext();
   const chromeExtension = useChromeExtension();
   const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
-  const isMobile = useMobile();
 
   // Move modal state
   const [moveModal, setMoveModal] = useState<{
@@ -302,7 +301,6 @@ export const BookmarksPage: React.FC = () => {
                       handleDeleteBundle={handleDeleteBundle}
                       handleEditBookmark={handleEditBookmark}
                       handleDeleteBookmark={handleDeleteBookmark}
-                      isMobile={isMobile}
                       handleMoveBookmark={handleMoveBookmark}
                       handleMoveBundle={handleMoveBundle}
                     />
@@ -343,7 +341,6 @@ interface CategoryComponentProps {
   handleEditBookmark: (categoryName: string, bundleName: string, bookmark: any) => void;
   handleDeleteBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   categoryDropHighlight?: boolean;
-  isMobile: boolean;
   handleMoveBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   handleMoveBundle: (categoryName: string, bundleName: string) => void;
 }
@@ -362,10 +359,10 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
   handleEditBookmark,
   handleDeleteBookmark,
   categoryDropHighlight,
-  isMobile,
   handleMoveBookmark,
   handleMoveBundle
 }) => {
+  const isMobile = useMobile();
   return (
     <div 
       className="bg-white rounded-lg border border-gray-200 overflow-hidden"
@@ -462,7 +459,6 @@ const CategoryComponent: React.FC<CategoryComponentProps> = ({
                       handleDeleteBundle={handleDeleteBundle}
                       handleEditBookmark={handleEditBookmark}
                       handleDeleteBookmark={handleDeleteBookmark}
-                      isMobile={isMobile}
                       handleMoveBookmark={handleMoveBookmark}
                       handleMoveBundle={handleMoveBundle}
                       />
@@ -491,7 +487,6 @@ interface BundleComponentProps {
   handleEditBookmark: (categoryName: string, bundleName: string, bookmark: any) => void;
   handleDeleteBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   bundleDropHighlight?: boolean;
-  isMobile: boolean;
   handleMoveBookmark: (categoryName: string, bundleName: string, bookmarkId: string, bookmarkTitle: string) => void;
   handleMoveBundle: (categoryName: string, bundleName: string) => void;
 }
@@ -508,10 +503,10 @@ const BundleComponent: React.FC<BundleComponentProps> = ({
   handleEditBookmark,
   handleDeleteBookmark,
   bundleDropHighlight,
-  isMobile,
   handleMoveBookmark,
   handleMoveBundle
 }) => {
+  const isMobile = useMobile();
   return (
     <div 
       className="border border-gray-200 rounded-lg overflow-hidden" 

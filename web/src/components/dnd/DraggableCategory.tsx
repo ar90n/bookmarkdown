@@ -21,11 +21,6 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
 }) => {
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <div>{children}</div>;
-  }
-
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'category',
     item: {
@@ -37,6 +32,11 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
       isDragging: monitor.isDragging(),
     }),
   }), [categoryName, index]);
+
+  // Don't apply drag functionality on mobile
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
 
   return (
     <div
