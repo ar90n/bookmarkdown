@@ -8,6 +8,7 @@ import { MarkdownGenerator } from '../../parsers/json-to-markdown.js';
 import { MarkdownParser } from '../../parsers/markdown-to-json.js';
 import { useDebounce } from '../../hooks/useDebounce.js';
 import { dialogStateRef } from './dialog-state-ref.js';
+import { useAuthContext } from '../../../contexts/AppProvider';
 
 interface BookmarkContextV2Config {
   accessToken?: string;
@@ -24,6 +25,10 @@ interface BookmarkContextV2Config {
 export function useBookmarkContextProvider(config: BookmarkContextV2Config): BookmarkContextValue {
   const STORAGE_KEY = config.storageKey || 'bookmarkdown_data';
   const GIST_ID_STORAGE_KEY = `${STORAGE_KEY}_gist_id`;
+  
+  // Get auth context for checking authentication status
+  const authContext = useAuthContext();
+  
   // Service state (persisted with useRef)
   const service = useRef<BookmarkService | null>(null);
   
@@ -1002,23 +1007,49 @@ export function useBookmarkContextProvider(config: BookmarkContextV2Config): Boo
   // Immediate sync on initialization when Gist ID exists
   useEffect(() => {
     const performInitialSync = async () => {
+      // Wait for authentication to complete
+      if (!config.accessToken || authContext.isLoading) {
+        return;
+      }
+      
       // Only sync if:
       // 1. We have a Gist ID from localStorage
       // 2. We have an access token
       // 3. Service is initialized
       // 4. Initial sync hasn't been completed yet
-      if (currentGistId && config.accessToken && service.current && !initialSyncCompleted && syncConfigured) {
-        try {
-          await loadFromRemote();
-        } catch (error) {
-          console.error('Initial sync failed:', error);
-          // Error is already handled in loadFromRemote
+      if (currentGistId && service.current && !initialSyncCompleted && syncConfigured) {
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            await loadFromRemote();
+            break; // Success - exit retry loop
+          } catch (error) {
+            console.error(`Initial sync failed (attempt ${retryCount + 1}):`, error);
+            
+            // Only retry on 401 authentication errors
+            if (error instanceof Error && 
+                (error.message.includes('401') || error.message.includes('Authentication failed'))) {
+              retryCount++;
+              if (retryCount < maxRetries) {
+                // Exponential backoff: 1s, 2s, 4s
+                const delay = Math.pow(2, retryCount - 1) * 1000;
+                console.log(`Retrying initial sync in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+              }
+            }
+            
+            // Other errors or max retries reached - exit loop
+            break;
+          }
         }
       }
     };
     
     performInitialSync();
-  }, [currentGistId, config.accessToken, syncConfigured, initialSyncCompleted, loadFromRemote]);
+  }, [currentGistId, config.accessToken, authContext.isLoading, syncConfigured, initialSyncCompleted, loadFromRemote]);
   
   return {
     // State

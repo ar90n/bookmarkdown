@@ -10,7 +10,7 @@ export const WelcomePage: React.FC = () => {
   if (auth.isAuthenticated) {
     // Authenticated users should use the main layout with navigation
     return (
-      <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
         {/* Hero Section */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
