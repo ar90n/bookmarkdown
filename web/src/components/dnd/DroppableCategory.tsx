@@ -29,6 +29,9 @@ export const DroppableCategory: React.FC<DroppableCategoryProps> = ({
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'bundle',
     canDrop: (item: DragItem) => {
+      // Disable dropping on mobile
+      if (isMobile) return false;
+      
       // Use service state for business logic
       return bookmark.canDropBundle(item.bundleName, item.categoryName, categoryName);
     },

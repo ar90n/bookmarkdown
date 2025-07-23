@@ -23,13 +23,10 @@ export const DroppableCategories: React.FC<DroppableCategoriesProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <div>{children}</div>;
-  }
-
+  // Always call hooks - React Rules of Hooks
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'category',
+    canDrop: () => !isMobile, // Disable dropping on mobile
     drop: async (item: DragItem, monitor) => {
       try {
         // Calculate drop index based on mouse position

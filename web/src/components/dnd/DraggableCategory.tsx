@@ -28,10 +28,11 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
       categoryName,
       index,
     } as DragItem,
+    canDrag: () => !isMobile, // Disable dragging on mobile
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [categoryName, index]);
+  }), [categoryName, index, isMobile]);
 
   // Don't apply drag functionality on mobile
   if (isMobile) {

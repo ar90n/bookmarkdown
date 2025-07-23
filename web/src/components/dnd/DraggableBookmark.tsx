@@ -39,11 +39,7 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
     }
   }, [bookmarkContext, bookmark.id, categoryName, bundleName]);
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <>{children}</>;
-  }
-
+  // Always call hooks - React Rules of Hooks
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'bookmark',
     item: {
@@ -54,6 +50,9 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
       index,
     } as DragItem,
     canDrag: () => {
+      // Disable dragging on mobile
+      if (isMobile) return false;
+      
       // Use service state for business logic
       const canDrag = bookmarkContext.canDragBookmark(categoryName, bundleName, bookmark.id);
       
@@ -62,7 +61,7 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [bookmark, categoryName, bundleName, index, bookmarkContext]);
+  }), [bookmark, categoryName, bundleName, index, bookmarkContext, isMobile]);
 
   // Don't apply drag functionality on mobile
   if (isMobile) {

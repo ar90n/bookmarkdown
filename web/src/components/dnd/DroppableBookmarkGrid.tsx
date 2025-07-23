@@ -31,14 +31,13 @@ export const DroppableBookmarkGrid: React.FC<DroppableBookmarkGridProps> = ({
   const ref = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
 
-  // Return early for mobile to avoid DnD hooks
-  if (isMobile) {
-    return <div className={className}>{children}</div>;
-  }
-
+  // Always call hooks - React Rules of Hooks
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'bookmark',
     canDrop: (item: DragItem) => {
+      // Disable dropping on mobile
+      if (isMobile) return false;
+      
       // Don't allow dropping in the same bundle (reordering is disabled)
       if (item.categoryName === categoryName && item.bundleName === bundleName) {
         return false;

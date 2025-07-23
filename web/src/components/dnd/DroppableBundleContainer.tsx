@@ -29,6 +29,9 @@ export const DroppableBundleContainer: React.FC<DroppableBundleContainerProps> =
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'bundle',
     canDrop: (item: DragItem) => {
+      // Disable dropping on mobile
+      if (isMobile) return false;
+      
       // Only allow reordering within the same category for now
       return item.categoryName === categoryName;
     },
