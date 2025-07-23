@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
+import { useMobile } from '../../hooks/useMobile';
 
 interface DraggableCategoryProps {
   categoryName: string;
@@ -18,6 +19,13 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
   index,
   children
 }) => {
+  const isMobile = useMobile();
+
+  // Return early for mobile to avoid DnD hooks
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'category',
     item: {

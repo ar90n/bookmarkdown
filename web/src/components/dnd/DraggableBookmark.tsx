@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useDrag } from 'react-dnd';
 import { Bookmark } from '../../../../../src/types/bookmark';
 import { useBookmarkContext } from '../../contexts/AppProvider';
+import { useMobile } from '../../hooks/useMobile';
 
 interface DraggableBookmarkProps {
   bookmark: Bookmark;
@@ -27,6 +28,7 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
   children
 }) => {
   const bookmarkContext = useBookmarkContext();
+  const isMobile = useMobile();
 
   // Validate that the bookmark still exists in the service state
   useEffect(() => {
@@ -36,6 +38,11 @@ export const DraggableBookmark: React.FC<DraggableBookmarkProps> = ({
       console.warn(`Bookmark ${bookmark.id} not found in service state. UI might be stale.`);
     }
   }, [bookmarkContext, bookmark.id, categoryName, bundleName]);
+
+  // Return early for mobile to avoid DnD hooks
+  if (isMobile) {
+    return <>{children}</>;
+  }
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'bookmark',

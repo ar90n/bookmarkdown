@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
 import { Bundle } from '../../../../../src/types/bookmark';
+import { useMobile } from '../../hooks/useMobile';
 
 interface DraggableBundleProps {
   bundle: Bundle;
@@ -22,6 +23,13 @@ export const DraggableBundle: React.FC<DraggableBundleProps> = ({
   index,
   children
 }) => {
+  const isMobile = useMobile();
+
+  // Return early for mobile to avoid DnD hooks
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'bundle',
     item: {

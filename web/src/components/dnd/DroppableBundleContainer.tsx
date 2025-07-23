@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useDrop } from 'react-dnd';
 import { useBookmarkContext } from '../../contexts/AppProvider';
 import { calculateBundleDropIndex } from '../../lib/utils/dnd-helpers';
+import { useMobile } from '../../hooks/useMobile';
 
 interface DroppableBundleContainerProps {
   categoryName: string;
@@ -23,6 +24,12 @@ export const DroppableBundleContainer: React.FC<DroppableBundleContainerProps> =
 }) => {
   const bookmark = useBookmarkContext();
   const ref = useRef<HTMLDivElement>(null);
+  const isMobile = useMobile();
+
+  // Return early for mobile to avoid DnD hooks
+  if (isMobile) {
+    return <div>{children}</div>;
+  }
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'bundle',
