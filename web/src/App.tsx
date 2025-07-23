@@ -32,8 +32,8 @@ export const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/welcome" element={<WelcomePage />} />
           <Route element={<Layout />}>
+            <Route path="/welcome" element={<WelcomePage />} />
             <Route
               path="/bookmarks"
               element={
