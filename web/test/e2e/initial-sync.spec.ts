@@ -307,9 +307,16 @@ test.describe('Initial sync on page load', () => {
     // Make a change
     await page.click('button:has-text("Add Category")');
     
-    // Wait for dialog to be ready
-    await page.waitForSelector('input#categoryName:not([disabled])', { state: 'visible' });
-    await page.fill('input#categoryName', 'New Category');
+    // Wait for dialog to appear
+    await page.waitForSelector('.fixed.inset-0.bg-black.bg-opacity-50', { state: 'visible' });
+    await page.waitForTimeout(500); // Wait for animation
+    
+    // Wait for input to be ready
+    const categoryInput = page.locator('input#categoryName');
+    await categoryInput.waitFor({ state: 'visible' });
+    
+    // Fill the form
+    await categoryInput.fill('New Category');
     await page.click('button[type="submit"]:has-text("Create Category")');
     
     // Wait to ensure no auto-sync - verify sync status doesn't change

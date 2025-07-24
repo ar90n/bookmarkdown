@@ -57,8 +57,19 @@ test.describe('Auto-sync functionality', () => {
     // Instead, verify the bookmark was created locally
     await expect(page.locator('text="New Auto-synced Bookmark"')).toBeVisible();
     
+    // Try to close any error notifications
+    try {
+      await page.locator('[data-testid="error-notification"] button[aria-label="Close"]').click({ timeout: 2000 });
+      await page.waitForTimeout(500);
+    } catch {
+      // No error notification to close
+    }
+    
     // Manual sync should work even if auto-sync doesn't
-    await page.click('button:has-text("Sync")');
+    // Use a more specific selector and wait for it to be clickable
+    const syncButton = page.locator('button').filter({ hasText: 'Sync' }).first();
+    await syncButton.waitFor({ state: 'visible' });
+    await syncButton.click();
     
     // Wait a bit for sync attempt
     await page.waitForTimeout(1000);
