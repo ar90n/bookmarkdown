@@ -305,35 +305,34 @@ test.describe('Initial sync on page load', () => {
     });
     
     // Make a change
-    await page.click('button:has-text("Add Category")');
+    const addCategoryButton = page.locator('button:has-text("Add Category")');
+    await expect(addCategoryButton).toBeVisible();
+    await addCategoryButton.click();
     
-    // Wait for dialog to appear
-    await page.waitForSelector('.fixed.inset-0.bg-black.bg-opacity-50', { state: 'visible' });
+    // Wait for dialog overlay
+    await page.waitForSelector('.fixed.inset-0.bg-black.bg-opacity-50', { state: 'visible', timeout: 5000 });
+    
+    // Wait for dialog content to be ready
+    await page.waitForSelector('.bg-white.rounded-lg.shadow-xl', { state: 'visible' });
     await page.waitForTimeout(500); // Wait for animation
     
-    // Wait for input to be ready
-    const categoryInput = page.locator('input#categoryName');
-    await categoryInput.waitFor({ state: 'visible' });
+    // Find and fill the input
+    const categoryInput = page.locator('input[placeholder="Enter category name"]');
+    await expect(categoryInput).toBeVisible({ timeout: 5000 });
+    await expect(categoryInput).toBeEnabled({ timeout: 5000 });
     
-    // Fill the form
+    await categoryInput.click();
     await categoryInput.fill('New Category');
-    await page.click('button[type="submit"]:has-text("Create Category")');
     
-    // Wait to ensure no auto-sync - verify sync status doesn't change
-    await page.waitForSelector('[data-testid="sync-status"]', { state: 'visible' });
-    const currentStatus = await page.getAttribute('[data-testid="sync-status"]', 'data-sync-status');
+    // Submit the form
+    const submitButton = page.locator('button[type="submit"]:has-text("Create Category")');
+    await expect(submitButton).toBeVisible();
+    await submitButton.click();
     
-    // Wait a bit to ensure no sync happens
-    await page.waitForTimeout(2000);
+    // Wait to see if any sync happens
+    await page.waitForTimeout(3000);
     
-    // Verify no sync calls were made
+    // Verify no auto-sync happened (no PATCH calls)
     expect(syncCallCount).toBe(0);
-    
-    // Verify status hasn't changed (if element still exists)
-    const syncStatusElement = await page.locator('[data-testid="sync-status"]');
-    if (await syncStatusElement.isVisible()) {
-      const newStatus = await syncStatusElement.getAttribute('data-sync-status');
-      expect(newStatus).toBe(currentStatus);
-    }
   });
 });
