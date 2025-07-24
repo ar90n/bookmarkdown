@@ -415,6 +415,10 @@ export async function createBookmark(page: Page, data: {
         await page.click('button:has-text("Add Category")');
       }
     }
+    
+    // Wait for dialog to be ready
+    await waitForDialog(page);
+    
     await page.fill('input#categoryName', categoryName);
     await page.click('button[type="submit"]:has-text("Create Category")');
     await page.waitForSelector('input#categoryName', { state: 'hidden' });
@@ -423,13 +427,32 @@ export async function createBookmark(page: Page, data: {
   // Create bundle if needed
   if (!await page.locator(`h4:has-text("${bundleName}")`).isVisible()) {
     await page.click('button[title="Add Bundle"]');
-    await page.fill('input#bundleName', bundleName);
-    await page.click('button[type="submit"]:has-text("Create Bundle")');
-    await page.waitForSelector('input#bundleName', { state: 'hidden' });
+    
+    // Wait for dialog to be ready
+    await waitForDialog(page);
+    
+    // Check if the bundle name is already filled (edit mode or existing bundle)
+    const currentValue = await page.locator('input#bundleName').inputValue();
+    if (currentValue !== bundleName) {
+      await page.fill('input#bundleName', bundleName);
+    }
+    
+    // Submit or cancel if it's already the right bundle
+    if (currentValue === bundleName) {
+      await page.click('button:has-text("Cancel")');
+      await page.waitForSelector('input#bundleName', { state: 'hidden' });
+    } else {
+      await page.click('button[type="submit"]:has-text("Create Bundle")');
+      await page.waitForSelector('input#bundleName', { state: 'hidden' });
+    }
   }
 
   // Create bookmark - look for add bookmark button
   await page.click('button:has-text("Add Bookmark"), button:has-text("+ Add Another Bookmark")');
+  
+  // Wait for dialog to be ready
+  await waitForDialog(page);
+  
   await page.fill('input#bookmarkUrl', data.url);
   await page.fill('input#bookmarkTitle', data.title);
   await page.click('button[type="submit"]:has-text("Add Bookmark")');
@@ -465,4 +488,18 @@ export async function resolveSyncConflict(page: Page, choice: 'local' | 'remote'
   
   await page.click(button);
   await page.waitForSelector('[data-testid="sync-conflict-dialog"]', { state: 'hidden' });
+}
+
+/**
+ * Wait for dialog to be ready for interaction
+ */
+export async function waitForDialog(page: Page) {
+  // Wait for backdrop - use a more specific selector that excludes mobile menu backdrop
+  await page.waitForSelector('.fixed.inset-0.bg-black.bg-opacity-50.z-50', { state: 'visible', timeout: 5000 });
+  
+  // Wait for dialog container
+  await page.waitForSelector('.bg-white.rounded-lg.shadow-xl', { state: 'visible', timeout: 5000 });
+  
+  // Small delay for animation
+  await page.waitForTimeout(300);
 }

@@ -204,7 +204,7 @@ test.describe('Auto-sync functionality', () => {
         id: 'test-gist-123',
         files: {
           'bookmarks.md': {
-            content: '# Bookmarks'
+            content: createTestBookmarkMarkdown()
           }
         },
         updated_at: new Date().toISOString()
